@@ -179,14 +179,10 @@ io.on('connection', (socket) => {
 require('dotenv').config();
 const mongoose = require('mongoose');
 
-console.log("💥 MongoDB URI from env:", process.env.MONGODB_URI);
-
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => console.log('✅ MongoDB connected'))
-.catch(err => console.error('❌ MongoDB connection error:', err));
+// Connect to MongoDB Atlas
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // SQLite DB setup
 const db = new sqlite3.Database('./forum.db', err => {
@@ -395,51 +391,6 @@ app.get('/', (req, res) => {
         if (err) return res.status(500).send("Database error (battle)");
         res.render('index', { stories, topFans, battle });
       });
-    });
-  });
-});
-
-// --- Story Upload ---
-app.post('/stories/upload', (req, res, next) => {
-  if (!req.session.user) {
-    return res.redirect('/?error=You must be logged in to post stories.');
-  }
-  next();
-}, upload.single('storyMedia'), (req, res) => {
-  try {
-    if (!req.file) return res.redirect('/?error=No file uploaded');
-
-    const filePath = `/uploads/${req.file.filename}`;
-    const createdAt = new Date().toISOString();
-    const username = req.session.user.username;
-    const caption = req.body.caption || '';
-
-    db.run(
-      "INSERT INTO stories (image, username, caption, createdAt) VALUES (?, ?, ?, ?)",
-      [filePath, username, caption, createdAt],
-      err => {
-        if (err) return res.redirect('/?error=Failed to save story');
-        res.redirect('/');
-      }
-    );
-  } catch (err) {
-    const message = err.code === 'LIMIT_FILE_SIZE'
-      ? 'Video too large (max 50MB)'
-      : 'Upload failed';
-    res.redirect(`/?error=${message}`);
-  }
-});
-
-// --- Delete Story ---
-app.post('/stories/delete/:id', (req, res) => {
-  const storyId = req.params.id;
-  db.get("SELECT * FROM stories WHERE id = ?", [storyId], (err, story) => {
-    if (err || !story) return res.status(404).send("Story not found");
-    const imagePath = path.join(__dirname, 'public', story.image);
-    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-    db.run("DELETE FROM stories WHERE id = ?", [storyId], err => {
-      if (err) return res.status(500).send("Failed to delete story");
-      res.redirect('/');
     });
   });
 });
@@ -703,21 +654,17 @@ app.get('/', (req, res) => {
   `, (err, topFans) => {
     if (err) return res.status(500).send("Database error (top fans)");
 
-    db.all("SELECT * FROM stories WHERE createdAt >= ? ORDER BY createdAt DESC", [cutoff], (err, stories) => {
-      if (err) return res.status(500).send("Database error (stories)");
+    // --- Post Story Upload Route (Keep outside of db.all blocks!) ---
+app.post('/stories/upload', upload.single('storyMedia'), (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/?error=You must be logged in to post stories.');
+  }
 
-      const storyIds = stories.map(s => s.id);
-      const enrichedStories = [];
-
-      if (storyIds.length === 0) {
-        return res.render('index', { stories: [], topFans, battle: null });
-      }
-
-      app.post('/stories/upload', upload.single('storyMedia'), (req, res) => {
   if (!req.file) return res.redirect('/?error=No file uploaded');
+
   const filePath = `/uploads/${req.file.filename}`;
   const createdAt = new Date().toISOString();
-  const username = req.session.user?.username || '';
+  const username = req.session.user.username;
   const caption = req.body.caption || '';
 
   db.run("INSERT INTO stories (image, username, caption, createdAt) VALUES (?, ?, ?, ?)",
@@ -728,7 +675,31 @@ app.get('/', (req, res) => {
     });
 });
 
-      // Load comments and reactions
+// --- Load Home Page with Stories, Reactions, Top Fans, Battle ---
+app.get('/', (req, res) => {
+  const cutoff = dayjs().subtract(24, 'hour').toISOString();
+
+  db.all(`
+    SELECT user AS username,
+           COUNT(*) AS comments,
+           SUM(COALESCE(like_reactions, 0)) AS likes
+    FROM comments
+    GROUP BY user
+    ORDER BY likes DESC
+    LIMIT 5
+  `, (err, topFans) => {
+    if (err) return res.status(500).send("Database error (top fans)");
+
+    db.all("SELECT * FROM stories WHERE createdAt >= ? ORDER BY createdAt DESC", [cutoff], (err, stories) => {
+      if (err) return res.status(500).send("Database error (stories)");
+
+      const storyIds = stories.map(s => s.id);
+      const enrichedStories = [];
+
+      if (storyIds.length === 0) {
+        return res.render('index', { stories: [], topFans, battle: null });
+      }
+
       db.all("SELECT * FROM story_comments WHERE story_id IN (" + storyIds.map(() => '?').join(',') + ")", storyIds, (err, comments) => {
         if (err) return res.status(500).send("Error loading comments");
 
@@ -755,6 +726,7 @@ app.get('/', (req, res) => {
   });
 });
 
+// --- React to a Story ---
 app.post('/stories/:id/react', (req, res) => {
   const { id } = req.params;
   const { reaction_type } = req.body;
@@ -769,6 +741,7 @@ app.post('/stories/:id/react', (req, res) => {
     });
 });
 
+// --- Comment on a Story ---
 app.post('/stories/:id/comment', (req, res) => {
   const { id } = req.params;
   const { comment } = req.body;
@@ -782,4 +755,18 @@ app.post('/stories/:id/comment', (req, res) => {
       if (err) return res.status(500).send("Failed to comment");
       res.redirect('/');
     });
+});
+
+// --- Delete a Story ---
+app.post('/stories/delete/:id', (req, res) => {
+  const storyId = req.params.id;
+  db.get("SELECT * FROM stories WHERE id = ?", [storyId], (err, story) => {
+    if (err || !story) return res.status(404).send("Story not found");
+    const imagePath = path.join(__dirname, 'public', story.image);
+    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+    db.run("DELETE FROM stories WHERE id = ?", [storyId], err => {
+      if (err) return res.status(500).send("Failed to delete story");
+      res.redirect('/');
+    });
+  });
 });
