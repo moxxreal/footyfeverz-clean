@@ -38,6 +38,17 @@
           <form action="/stories/delete/<%= story.id %>" method="POST" onsubmit="return confirm('Delete this story?');">
             <button type="submit">🗑️</button>
           </form>
+          <% stories.forEach(story => { %>
+            
+  <% if (story.image.endsWith('.mp4') || story.image.endsWith('.mov')) { %>
+    <video controls width="100%">
+      <source src="<%= story.image %>" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+  <% } else { %>
+    <img src="<%= story.image %>" alt="Story Image" />
+  <% } %>
+<% }) %>
 
           <!-- Reactions -->
           <form action="/stories/<%= story.id %>/react" method="POST">
