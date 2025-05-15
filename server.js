@@ -176,11 +176,10 @@ io.on('connection', (socket) => {
 });
 
 // MongoDB connect
-const mongoose = require('mongoose');
 require('dotenv').config();
 const mongoose = require('mongoose');
 
-console.log("💥 MongoDB URI from env:", process.env.MONGODB_URI); // <-- debug log
+console.log("💥 MongoDB URI from env:", process.env.MONGODB_URI);
 
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
@@ -188,7 +187,6 @@ mongoose.connect(process.env.MONGODB_URI, {
 })
 .then(() => console.log('✅ MongoDB connected'))
 .catch(err => console.error('❌ MongoDB connection error:', err));
-h(err => console.error('MongoDB connection error:', err));
 
 // SQLite DB setup
 const db = new sqlite3.Database('./forum.db', err => {
