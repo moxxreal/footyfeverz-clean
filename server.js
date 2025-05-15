@@ -1,8 +1,6 @@
-// server.js (cleaned-up with story support)
+const express = require('express');
 const http = require('http');
-const server = http.createServer(app);
 const { Server } = require('socket.io');
-const io = new Server(server);
 const path = require('path');
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -14,11 +12,15 @@ const session = require('express-session');
 const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const webpush = require('web-push');
-const express = require('express');
+
+// Setup Express and middleware
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
