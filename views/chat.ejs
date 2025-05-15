@@ -1,0 +1,223 @@
+<%- include('partials/_header', {
+  headerClass: 'header-simple',
+  showAuthLinks: false,
+  showLeagueLink: false,
+  leagueSlug: '',
+  leagueName: '',
+  useTeamHeader: false
+}) %>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-messaging-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDS433ffk_aUkeuINqcVfH3Ti9uhUMVjJ4",
+    authDomain: "footyfeverz-31319.firebaseapp.com",
+    projectId: "footyfeverz-31319",
+    storageBucket: "footyfeverz-31319.firebasestorage.app",
+    messagingSenderId: "711628126301",
+    appId: "1:711628126301:web:569c8db35ab0b1d5cdb5b4",
+    measurementId: "G-SFPWD59N9K"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const messaging = firebase.messaging();
+
+  const currentUsername = '<%= currentUser.username %>';
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/firebase-messaging-sw.js')
+      .then((registration) => {
+        return messaging.getToken({
+          vapidKey: 'BLLxGEe9jjKIF9Vrt6UTX4_nVp3BOY0e-H0-9h8rUsbQyTxGZstNaPUd2IY7ieqEYa0o0bTxHxIWCHljbtuTRxg',
+          serviceWorkerRegistration: registration
+        });
+      })
+      .then((token) => {
+        if (token) {
+          console.log('FCM Token:', token);
+          return fetch('/api/fcm/save-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUsername, token })
+          });
+        }
+      })
+      .catch((err) => {
+        console.error('FCM error:', err);
+      });
+  }
+
+  messaging.onMessage((payload) => {
+    console.log('Message received:', payload);
+    new Notification(payload.notification.title, {
+      body: payload.notification.body,
+      icon: '/images/favicon.png'
+    });
+  });
+</script>
+
+<h2 style="text-align:center; margin-top: 20px;">
+  Chat with <%= receiver.username %>
+  <span id="online-status" style="font-size: 16px; margin-left: 10px; color: #888;">Checking...</span>
+</h2>
+
+<div id="chat-box" style="border:1px solid #ccc; padding:1em; height:300px; overflow-y:auto; background:#f9f9f9; margin: 20px auto; width: 90%; max-width: 600px; border-radius: 10px; display: flex; flex-direction: column;">
+</div>
+
+<p id="typing-indicator" style="text-align:center; font-style:italic; color:#666; display:none;">Typing...</p>
+
+<form id="chat-form" style="text-align:center; margin-bottom: 40px;">
+  <textarea id="message-input" rows="3" style="width:90%; max-width:600px; padding:10px; border-radius:8px;" placeholder="Type your message..." required></textarea>
+  <br>
+  <button type="submit" style="margin-top:10px; padding:8px 20px; border:none; background:#007bff; color:white; border-radius:5px; cursor:pointer;">Send</button>
+</form>
+
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
+<script>
+  dayjs.extend(window.dayjs_plugin_relativeTime);
+</script>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  const receiverUsername = '<%= receiver.username %>';
+  const chatBox = document.getElementById('chat-box');
+  const messageInput = document.getElementById('message-input');
+  const typingIndicator = document.getElementById('typing-indicator');
+  const statusElement = document.getElementById('online-status');
+
+  socket.emit('checkOnlineStatus', { userToCheck: receiverUsername });
+  socket.emit('joinRoom', { sender: currentUsername, receiver: receiverUsername });
+
+  socket.on('userOnline', ({ username }) => {
+    if (username === receiverUsername) {
+      statusElement.textContent = '🟢 Online';
+      statusElement.style.color = 'green';
+    }
+  });
+
+  socket.on('userOffline', ({ username, lastSeen }) => {
+    if (username === receiverUsername) {
+      const relative = lastSeen ? dayjs(lastSeen).fromNow() : 'a while ago';
+      statusElement.textContent = `⚫️ Last seen ${relative}`;
+      statusElement.style.color = '#888';
+    }
+  });
+
+  async function loadMessages() {
+    try {
+      const res = await fetch(`/api/messages/conversation/${receiverUsername}`);
+      const messages = await res.json();
+      renderMessages(messages);
+    } catch (err) {
+      console.error('Failed to load messages:', err);
+    }
+  }
+  console.log('Messages:', messages.map(m => ({ content: m.content, timestamp: m.timestamp })));
+  function renderMessages(messages) {
+  chatBox.innerHTML = '';
+
+  messages.forEach((msg) => {
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.margin = '10px 0';
+
+    const msgDiv = document.createElement('div');
+    msgDiv.textContent = msg.content;
+    msgDiv.style.padding = '10px';
+    msgDiv.style.borderRadius = '8px';
+    msgDiv.style.maxWidth = '70%';
+    msgDiv.style.wordWrap = 'break-word';
+
+    const time = document.createElement('div');
+    const timestamp = msg.timestamp ? dayjs(msg.timestamp).format('HH:mm') : 'now';
+    time.textContent = timestamp;
+    time.style.fontSize = '12px';
+    time.style.color = '#888';
+    time.style.marginTop = '4px';
+
+    if (msg.sender === currentUsername) {
+      msgDiv.style.background = '#d1e7dd';
+      msgDiv.style.alignSelf = 'flex-end';
+      msgDiv.style.textAlign = 'right';
+      wrapper.style.alignItems = 'flex-end';
+    } else {
+      msgDiv.style.background = '#f8d7da';
+      msgDiv.style.alignSelf = 'flex-start';
+      msgDiv.style.textAlign = 'left';
+      wrapper.style.alignItems = 'flex-start';
+    }
+
+    wrapper.appendChild(msgDiv);
+    wrapper.appendChild(time);
+    chatBox.appendChild(wrapper);
+  });
+
+  chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+}
+
+  document.getElementById('chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const content = messageInput.value.trim();
+    if (!content) return;
+
+    try {
+      const res = await fetch('/api/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiver: receiverUsername, content })
+      });
+      const data = await res.json();
+
+      socket.emit('chatMessage', {
+        sender: currentUsername,
+        receiver: receiverUsername,
+        content
+      });
+
+      messageInput.value = '';
+      socket.emit('stopTyping', { to: receiverUsername, from: currentUsername });
+      loadMessages();
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    }
+  });
+
+  socket.on('newMessage', (msg) => {
+    console.log('✅ [client] newMessage received from socket:', msg);
+    if (
+      (msg.sender === currentUsername && msg.receiver === receiverUsername) ||
+      (msg.sender === receiverUsername && msg.receiver === currentUsername)
+    ) {
+      loadMessages();
+    }
+  });
+
+  let typingTimeout;
+  messageInput.addEventListener('input', () => {
+    socket.emit('typing', { to: receiverUsername, from: currentUsername });
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      socket.emit('stopTyping', { to: receiverUsername, from: currentUsername });
+    }, 1000);
+  });
+
+  socket.on('typing', ({ from }) => {
+    if (from === receiverUsername) {
+      typingIndicator.style.display = 'block';
+    }
+  });
+
+  socket.on('stopTyping', ({ from }) => {
+    if (from === receiverUsername) {
+      typingIndicator.style.display = 'none';
+    }
+  });
+
+  loadMessages();
+</script>

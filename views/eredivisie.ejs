@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Eredivisie Teams 2024/2025</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <%- include('partials/_header', {
+    headerClass: 'header-home',
+    showAuthLinks: true,
+    showLeagueLink: false,
+    useTeamHeader: false
+  }) %>
+  
+  <div class="eredivisie-container">
+    <a href="/team/ajax" class="card-big" style="background-image: url('/eredivisie-images/ajax.jpg');"></a>
+    <a href="/team/psv-eindhoven" class="card-big" style="background-image: url('/eredivisie-images/psv-eindhoven.jpg');"></a>
+    <a href="/team/feyenoord" class="card-big" style="background-image: url('/eredivisie-images/feyenoord.jpg');"></a>
+    <a href="/team/az-alkmaar" class="card-medium" style="background-image: url('/eredivisie-images/az-alkmaar.jpg');"></a>
+    <a href="/team/fc-twente" class="card-medium" style="background-image: url('/eredivisie-images/fc-twente.jpg');"></a>
+    <a href="/team/fc-utrecht" class="card-medium" style="background-image: url('/eredivisie-images/fc-utrecht.jpg');"></a>
+    <a href="/team/sc-heerenveen" class="card-medium" style="background-image: url('/eredivisie-images/sc-heerenveen.jpg');"></a>
+    <a href="/team/nec-nijmegen" class="card-medium" style="background-image: url('/eredivisie-images/nec-nijmegen.jpg');"></a>
+    <a href="/team/sparta-rotterdam" class="card-medium" style="background-image: url('/eredivisie-images/sparta-rotterdam.jpg');"></a>
+    <a href="/team/go-ahead-eagles" class="card-medium" style="background-image: url('/eredivisie-images/go-ahead-eagles.jpg');"></a>
+    <a href="/team/fc-groningen" class="card-medium" style="background-image: url('/eredivisie-images/fc-groningen.jpg');"></a>
+    <a href="/team/pec-zwolle" class="card-medium" style="background-image: url('/eredivisie-images/pec-zwolle.jpg');"></a>
+    <a href="/team/fortuna-sittard" class="card-medium" style="background-image: url('/eredivisie-images/fortuna-sittard.jpg');"></a>
+    <a href="/team/nac-breda" class="card-medium" style="background-image: url('/eredivisie-images/nac-breda.jpg');"></a>
+    <a href="/team/heracles-almelo" class="card-medium" style="background-image: url('/eredivisie-images/heracles-almelo.jpg');"></a>
+    <a href="/team/willem-ii" class="card-medium" style="background-image: url('/eredivisie-images/willem-ii.jpg');"></a>
+    <a href="/team/almere-city" class="card-medium" style="background-image: url('/eredivisie-images/almere-city.jpg');"></a>
+    <a href="/team/rkc-waalwijk" class="card-medium" style="background-image: url('/eredivisie-images/rkc-waalwijk.jpg');"></a>
+  </div>
+  <%- include('partials/_authModals') %>
+</body>
+</html>

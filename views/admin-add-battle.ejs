@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Add Fan Battle</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <%- include('partials/_header', { headerClass: 'header-home', showAuthLinks: false, useTeamHeader: false }) %>
+
+  <main class="auth-main">
+    <div class="auth-container">
+      <h1>Add New Fan Battle</h1>
+      <form method="POST" action="/admin/add-battle" class="auth-form">
+        <input type="text" name="team1" placeholder="Team 1 Slug (e.g., barcelona)" required />
+        <input type="text" name="team2" placeholder="Team 2 Slug (e.g., real-madrid)" required />
+        <button type="submit">Create Battle</button>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title><%= profileUser %>'s Profile | Footy Feverz</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <%- include('partials/_header', {
+    headerClass: 'header-home',
+    useTeamHeader: false
+  }) %>
+
+  <section class="user-profile">
+    <div class="profile-box">
+      <h1>@<%= profileUser %>'s Profile</h1>
+      <div class="stats">
+        <div class="stat-box">
+          <strong><%= totalComments %></strong>
+          <span>Comments</span>
+        </div>
+        <div class="stat-box">
+          <strong><%= totalLikes %></strong>
+          <span>Likes Received</span>
+        </div>
+      </div>
+
+      <% if (user && user.username !== profileUser) { %>
+        <a href="/chat/<%= profileUser %>" class="chat-button" style="margin-top: 15px; display: inline-block; padding: 10px 20px; background: #007bff; color: #fff; border-radius: 5px; text-decoration: none;">
+          Message @<%= profileUser %>
+        </a>
+      <% } %>
+    </div>
+
+    <div class="recent-comments">
+      <h2>Recent Comments</h2>
+      <% if (comments.length === 0) { %>
+        <p>This user hasn't posted any comments yet.</p>
+      <% } else { %>
+        <% comments.forEach(comment => { %>
+          <div class="comment-item" style="margin-bottom: 20px;">
+            <strong>Team:</strong> <a href="/team/<%= comment.team %>"><%= comment.team %></a><br />
+            <p><%= comment.text %></p>
+
+            <% if (comment.media) {
+              const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg'); %>
+              <% if (isVideo) { %>
+                <video src="<%= comment.media %>" controls style="max-width: 100%; margin-top: 10px;"></video>
+              <% } else { %>
+                <img src="<%= comment.media %>" alt="Comment Media" style="max-width: 100%; margin-top: 10px;" />
+              <% } %>
+            <% } %>
+
+            <div class="reactions">
+              ❤️ <%= comment.love_reactions || 0 %>
+              😂 <%= comment.funny_reactions || 0 %>
+              😡 <%= comment.angry_reactions || 0 %>
+              👍 <%= comment.like_reactions || 0 %>
+            </div>
+
+            <small><%= comment.relativeTime %></small>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
+  </section>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Thread for <%= teamname.replace("-", " ").toUpperCase() %></title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <a href="/">Home</a>
+    <a href="/team/<%= teamname %>"><%= teamname.replace("-", " ").toUpperCase() %></a>
+  </header>
+
+  <h1>Create New Thread for <%= teamname.replace("-", " ").toUpperCase() %></h1>
+
+  <form action="/team/<%= teamname %>/create" method="POST">
+    <input type="text" name="title" placeholder="Thread Title" required>
+    <textarea name="content" placeholder="Write your thread..." required></textarea>
+    <input type="text" name="media" placeholder="Image URL (optional)">
+    <button type="submit">Create Thread</button>
+  </form>
+</body>
+</html>

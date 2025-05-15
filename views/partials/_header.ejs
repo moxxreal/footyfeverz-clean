@@ -1,0 +1,45 @@
+<header class="<%= headerClass %> <%= useTeamHeader && !user ? 'team-logged-out' : '' %>">
+
+  <!-- Left Side -->
+  <div class="header-side left">
+    <% if (!user) { %>
+      <% if (useTeamHeader) { %>
+        <div class="auth-stack">
+          <a href="#" class="header-link" onclick="openLogin()">Login</a>
+          <a href="#" class="header-link" onclick="openSignup()">Sign Up</a>
+        </div>
+      <% } else { %>
+        <a href="#" class="header-link" onclick="openLogin()">Login</a>
+      <% } %>
+    <% } else { %>
+      <div class="user-dropdown-container">
+        <span class="header-link username-toggle"><%= user.username %></span>
+        <div class="user-dropdown hidden">
+          <a href="/user/<%= user.username %>">My Profile</a>
+          <a href="/logout?redirectTo=<%= request.originalUrl %>">Log out</a>
+        </div>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Center Logo -->
+  <div class="header-center">
+    <a href="/" class="header-logo">
+      <img src="/images/footyfeverz.png" class="header-logo-img" alt="Footy Feverz Logo">
+    </a>
+  </div>
+<!-- Right Side -->
+<div class="header-side right">
+  <% if (!user && !useTeamHeader) { %>
+    <a href="#" class="header-link" onclick="openSignup()">Sign Up</a>
+  <% } %>
+
+  <% if (user && !useTeamHeader) { %>
+    <a href="/inbox" class="header-link">Inbox</a>
+  <% } %>
+
+  <% if (useTeamHeader && leagueSlug && leagueName) { %>
+    <a href="/<%= leagueSlug %>.html" class="header-link"><%= leagueName %></a>
+  <% } %>
+</div>
+</header>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title><%= teamname %> Fan Page</title>
+  <link rel="stylesheet" href="/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.2/dist/emoji-button.min.js"></script>
+</head>
+<body>
+  <%- include('partials/_header', {
+    headerClass: 'header-simple',
+    showAuthLinks: false,
+    showLeagueLink: true,
+    leagueSlug: leagueSlug,
+    leagueName: leagueName
+  }) %>
+
+  <h1><%= teamname.toUpperCase() %> Fan Comments</h1>
+
+  <div class="sort-comments" style="margin-bottom: 20px;">
+    <form method="GET">
+      <label for="sort">Sort Comments:</label>
+      <select name="sort" id="sort" onchange="this.form.submit()">
+        <option value="new" <%= (!sort || sort === 'new') ? 'selected' : '' %>>Newest First</option>
+        <option value="top" <%= (sort === 'top') ? 'selected' : '' %>>Most Liked</option>
+      </select>
+    </form>
+  </div>
+
+  <div id="commentsContainer" class="comments-container">
+    <% if (comments.length === 0) { %>
+      <p>No comments yet. Be the first!</p>
+    <% } else { %>
+      <% comments.forEach(comment => { %>
+        <div class="comment-item">
+          <strong><%= comment.user %></strong> says:
+          <img 
+            src="<%= comment.profile_pic || '/default-avatar.png' %>" 
+            alt="Avatar" 
+            class="comment-avatar"
+          />
+
+          <p><%= comment.text %></p>
+
+          <% if (comment.media) { 
+            const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg');
+          %>
+            <% if (isVideo) { %>
+              <video src="<%= comment.media %>" controls style="max-width: 300px; border-radius: 10px; margin-top: 10px;"></video>
+            <% } else { %>
+              <img src="<%= comment.media %>" style="max-width: 200px; height: auto; border-radius: 10px; margin-top: 10px;" />
+            <% } %>
+          <% } %>
+
+          <div class="reactions">
+            <button onclick="reactToComment('<%= comment.id %>', 'like')">👍 <span id="like-<%= comment.id %>"><%= comment.like_reactions || 0 %></span></button>
+            <button onclick="reactToComment('<%= comment.id %>', 'funny')">😂 <span id="funny-<%= comment.id %>"><%= comment.funny_reactions || 0 %></span></button>
+            <button onclick="reactToComment('<%= comment.id %>', 'angry')">😡 <span id="angry-<%= comment.id %>"><%= comment.angry_reactions || 0 %></span></button>
+            <button onclick="reactToComment('<%= comment.id %>', 'love')">😍 <span id="love-<%= comment.id %>"><%= comment.love_reactions || 0 %></span></button>
+          </div>
+        </div>
+      <% }) %>
+    <% } %>
+  </div>
+<!-- Inside your comment loop -->
+<% comments.forEach(comment => { %>
+  <div class="comment-item">
+    <strong>
+      <a href="/chat/<%= comment.user %>" style="text-decoration: none; color: #1e90ff;">
+        <%= comment.user %>
+      </a>
+    </strong> says:
+
+    <img 
+      src="<%= comment.profile_pic || '/default-avatar.png' %>" 
+      alt="Avatar" 
+      class="comment-avatar"
+    />
+
+    <p><%= comment.text %></p>
+
+    <% if (comment.media) { 
+      const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg');
+    %>
+      <% if (isVideo) { %>
+        <video src="<%= comment.media %>" controls style="max-width: 300px; border-radius: 10px; margin-top: 10px;"></video>
+      <% } else { %>
+        <img src="<%= comment.media %>" style="max-width: 200px; height: auto; border-radius: 10px; margin-top: 10px;" />
+      <% } %>
+    <% } %>
+
+    <div class="reactions">
+      <button onclick="reactToComment('<%= comment.id %>', 'like')">👍 <span id="like-<%= comment.id %>"><%= comment.like_reactions || 0 %></span></button>
+      <button onclick="reactToComment('<%= comment.id %>', 'funny')">😂 <span id="funny-<%= comment.id %>"><%= comment.funny_reactions || 0 %></span></button>
+      <button onclick="reactToComment('<%= comment.id %>', 'angry')">😡 <span id="angry-<%= comment.id %>"><%= comment.angry_reactions || 0 %></span></button>
+      <button onclick="reactToComment('<%= comment.id %>', 'love')">😍 <span id="love-<%= comment.id %>"><%= comment.love_reactions || 0 %></span></button>
+    </div>
+  </div>
+<% }) %>
+
+  <!-- Comment Form -->
+  <div class="comments-container" style="margin-top: 40px;">
+    <div style="background: #f9f9f9; padding: 30px; border-radius: 15px;">
+      <form id="commentForm" action="/team/<%= teamname %>/comment" method="POST" enctype="multipart/form-data">
+        <textarea id="commentText" name="text" placeholder="Write your comment..." required
+          style="width: 100%; height: 180px; font-size: 18px; padding: 12px; border-radius: 10px; margin-bottom: 10px;"></textarea>
+        <input type="file" name="media" accept="image/*,video/*" style="margin-bottom: 10px;">
+        <div>
+          <button type="submit" id="submitBtn" class="comment-submit-btn">Post Comment</button>
+          <button type="button" id="emoji-button">😊</button>
+        </div>
+        <% if (!user) { %>
+        <p id="unauthMessage" class="hidden" style="margin-top: 10px; font-weight: bold; color: black;">
+          You must <span onclick="openLogin()" style="text-decoration: underline; cursor: pointer;">Login</span> to post a comment.
+        </p>
+        <% } %>
+      </form>
+    </div>
+  </div>
+
+  <%- include('partials/_authModals') %>
+
+  <!-- Emoji Picker -->
+  <script>
+    const picker = new EmojiButton();
+    const emojiBtn = document.querySelector('#emoji-button');
+    const input = document.querySelector('#commentText');
+    emojiBtn.addEventListener('click', () => picker.togglePicker(emojiBtn));
+    picker.on('emoji', emoji => { input.value += emoji; });
+  </script>
+
+  <!-- Comment Reactions -->
+  <script>
+    async function reactToComment(id, type) {
+      const key = `reacted-${id}`;
+      if (localStorage.getItem(key)) {
+        alert("You already reacted!");
+        return;
+      }
+
+      const res = await fetch(`/comment/${id}/react/${type}`, { method: 'POST' });
+      if (res.ok) {
+        const span = document.getElementById(`${type}-${id}`);
+        span.textContent = parseInt(span.textContent || 0) + 1;
+        span.classList.add('bounce');
+        setTimeout(() => span.classList.remove('bounce'), 500);
+        localStorage.setItem(key, type);
+      }
+    }
+  </script>
+
+  <!-- Shake & Warning on Unauthenticated Submit -->
+  <script>
+    document.getElementById('commentForm').addEventListener('submit', function(e) {
+      <% if (!user) { %>
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        const msg = document.getElementById('unauthMessage');
+        msg.classList.remove('hidden');
+        btn.classList.add('shake');
+        setTimeout(() => btn.classList.remove('shake'), 500);
+      <% } %>
+    });
+  </script>
+</body>
+</html>

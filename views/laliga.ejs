@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Liga Teams</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <%- include('partials/_header', {
+    headerClass: 'header-home',
+    showAuthLinks: true,
+    showLeagueLink: false,
+    useTeamHeader: false
+  }) %>  
+     
+  <div class="la-liga-container">
+    <!-- Big Clubs -->
+    <a href="/team/barcelona" class="card-big" style="background-image: url('/la-liga-images/barcelona.png');"></a>
+    <a href="/team/real-madrid" class="card-big" style="background-image: url('/la-liga-images/real-madrid.png');"></a>
+    <a href="/team/atletico-madrid" class="card-big" style="background-image: url('/la-liga-images/atletico.png');"></a>
+
+    <!-- Medium Clubs -->
+    <a href="/team/athletic-bilbao" class="card-medium" style="background-image: url('/la-liga-images/athletic-bilbao.png');"></a>
+    <a href="/team/sevilla" class="card-medium" style="background-image: url('/la-liga-images/sevilla.png');"></a>
+    <a href="/team/real-sociedad" class="card-medium" style="background-image: url('/la-liga-images/real-sociedad.png');"></a>
+    <a href="/team/valencia" class="card-medium" style="background-image: url('/la-liga-images/valencia.png');"></a>
+    <a href="/team/villarreal" class="card-medium" style="background-image: url('/la-liga-images/villarreal.png');"></a>
+    <a href="/team/real-betis" class="card-medium" style="background-image: url('/la-liga-images/real-betis.png');"></a>
+
+    <!-- Small Clubs -->
+    <a href="/team/celta-vigo" class="card-small" style="background-image: url('/la-liga-images/celta-vigo.png');"></a>
+    <a href="/team/getafe" class="card-small" style="background-image: url('/la-liga-images/getafe.png');"></a>
+    <a href="/team/osasuna" class="card-small" style="background-image: url('/la-liga-images/osasuna.png');"></a>
+    <a href="/team/real-mallorca" class="card-small" style="background-image: url('/la-liga-images/real-mallorca.png');"></a>
+    <a href="/team/rayo-vallecano" class="card-small" style="background-image: url('/la-liga-images/rayo-vallecano.png');"></a>
+    <a href="/team/espanyol" class="card-small" style="background-image: url('/la-liga-images/rcd-espanyol.png');"></a>
+    <a href="/team/girona" class="card-small" style="background-image: url('/la-liga-images/girona.png');"></a>
+    <a href="/team/alaves" class="card-small" style="background-image: url('/la-liga-images/deportivo-alaves.png');"></a>
+    <a href="/team/las-palmas" class="card-small" style="background-image: url('/la-liga-images/las-palmas.png');"></a>
+    <a href="/team/leganes" class="card-small" style="background-image: url('/la-liga-images/cd-leganes.png');"></a>
+    <a href="/team/real-valladolid" class="card-small" style="background-image: url('/la-liga-images/real-valladolid.png');"></a>
+  </div>
+  <%- include('partials/_authModals') %>
+</body>
+</html>

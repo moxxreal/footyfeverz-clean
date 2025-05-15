@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roshn Saudi League Teams</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <%- include('partials/_header', {
+    headerClass: 'header-home',
+    showAuthLinks: true,
+    showLeagueLink: false,
+    useTeamHeader: false
+  }) %>
+   
+  <div class="roshn-saudi-container">
+    <!-- Big Clubs -->
+    <a href="/team/al-hilal" class="card-big" style="background-image: url('/roshn-saudi-images/al-hilal.png');"></a>
+    <a href="/team/al-nassr" class="card-big" style="background-image: url('/roshn-saudi-images/al-nassr.png');"></a>
+    <a href="/team/al-ittihad" class="card-big" style="background-image: url('/roshn-saudi-images/al-ittihad.png');"></a>
+
+    <!-- Medium Clubs -->
+    <a href="/team/al-ahli" class="card-medium" style="background-image: url('/roshn-saudi-images/al-ahli.png');"></a>
+    <a href="/team/al-shabab" class="card-medium" style="background-image: url('/roshn-saudi-images/al-shabab.png');"></a>
+    <a href="/team/al-taawoun" class="card-medium" style="background-image: url('/roshn-saudi-images/al-taawoun.png');"></a>
+    <a href="/team/al-ettifaq" class="card-medium" style="background-image: url('/roshn-saudi-images/al-ettifaq.png');"></a>
+    <a href="/team/al-fateh" class="card-medium" style="background-image: url('/roshn-saudi-images/al-fateh.png');"></a>
+    <a href="/team/al-fayha" class="card-medium" style="background-image: url('/roshn-saudi-images/al-fayha.png');"></a>
+
+    <!-- Small Clubs -->
+    <a href="/team/damac" class="card-small" style="background-image: url('/roshn-saudi-images/damac.png');"></a>
+    <a href="/team/al-wehda" class="card-small" style="background-image: url('/roshn-saudi-images/al-wehda.png');"></a>
+    <a href="/team/al-raed" class="card-small" style="background-image: url('/roshn-saudi-images/al-raed.png');"></a>
+    <a href="/team/al-khaleej" class="card-small" style="background-image: url('/roshn-saudi-images/al-khaleej.png');"></a>
+    <a href="/team/al-riyadh" class="card-small" style="background-image: url('/roshn-saudi-images/al-riyadh.png');"></a>
+    <a href="/team/al-okhdood" class="card-small" style="background-image: url('/roshn-saudi-images/al-okhdood.png');"></a>
+    <a href="/team/al-qadsiah" class="card-small" style="background-image: url('/roshn-saudi-images/al-qadsiah.png');"></a>
+    <a href="/team/al-kholood" class="card-small" style="background-image: url('/roshn-saudi-images/al-kholood.png');"></a>
+    <a href="/team/al-orobah" class="card-small" style="background-image: url('/roshn-saudi-images/al-orobah.png');"></a>
+  </div>
+  <%- include('partials/_authModals') %>
+</body>
+</html>

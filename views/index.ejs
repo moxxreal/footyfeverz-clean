@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Footy Feverz</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <%- include('partials/_header', { headerClass: 'header-home', showAuthLinks: true, showLeagueLink: false, useTeamHeader: false }) %>
+
+  <!-- Hidden Upload Form -->
+  <form id="storyForm" action="/stories/upload" method="POST" enctype="multipart/form-data" style="display: none;">
+    <input type="file" id="storyFile" name="storyMedia" accept="image/*,video/*" capture="environment" required />
+  </form>  
+
+  <!-- Stories Section -->
+  <section class="stories">
+    <div class="story-gallery" id="storyGallery">
+      <!-- Add Story Box -->
+      <div class="story-item add-story" onclick="document.getElementById('storyFile').click();">
+        <div class="add-story-content">
+          <div class="plus">＋</div>
+          <div>Add Story</div>
+        </div>
+      </div>      
+
+      <% stories.forEach((story, index) => {
+           const isVideo = story.image.endsWith('.mp4') || story.image.endsWith('.webm') || story.image.endsWith('.ogg');
+      %>
+        <div class="story-item" onclick="openModal(<%= index %>)">
+          <% if (isVideo) { %>
+            <video src="<%= story.image %>" muted autoplay loop></video>
+          <% } else { %>
+            <img src="<%= story.image %>" alt="Story">
+          <% } %>
+          <small><%= story.relativeTime %></small>
+          <form action="/stories/delete/<%= story.id %>" method="POST" onsubmit="return confirm('Delete this story?');">
+            <button type="submit">🗑️</button>
+          </form>
+
+          <!-- Reactions -->
+          <form action="/stories/<%= story.id %>/react" method="POST">
+            <button name="reaction_type" value="like">👍</button>
+            <button name="reaction_type" value="love">❤️</button>
+            <button name="reaction_type" value="funny">😂</button>
+          </form>
+
+          <!-- Comments -->
+          <form action="/stories/<%= story.id %>/comment" method="POST">
+            <input name="comment" placeholder="Reply to story..." required>
+            <button type="submit">Reply</button>
+          </form>
+
+          <% if (story.comments && story.comments.length) { %>
+            <ul>
+              <% story.comments.forEach(c => { %>
+                <li><strong><%= c.username %></strong>: <%= c.comment %></li>
+              <% }) %>
+            </ul>
+          <% } %>
+        </div>
+      <% }) %>
+    </div>
+  </section>
+
+  <!-- Modal Viewer -->
+  <div id="storyModal" class="modal" onmouseenter="pauseAutoplay()" onmouseleave="resumeAutoplay()">
+    <div class="story-progress"><div class="story-progress-bar" id="progressBar"></div></div>
+    <div class="modal-content" id="modalContent"></div>
+    <div class="story-caption" id="storyCaption"></div>
+  </div>
+
+  <!-- League Cards -->
+  <div class="card-container">
+    <% const leagues = [
+      ['premier', 'premier-league'], ['laliga', 'la-liga'], ['serie-a', 'serie-a'], ['bundesliga', 'bundesliga'],
+      ['ligue1', 'ligue1'], ['roshn-saudi', 'saudi-league'], ['eredivisie', 'eredivisie'],
+      ['liga-portugal', 'liga-portugal'], ['super-lig', 'super-lig'], ['champions', 'champions-league'],
+      ['world-cup', 'world-cup'], ['euros', 'euros'], ['copa-america', 'copa-america'],
+      ['fc25', 'fc25'], ['make-friends', 'make-friends']
+    ]; %>
+    <% leagues.forEach(([slug, image]) => { %>
+      <a href="/<%= slug %>.html" class="card" style="background-image: url('/<%= image %>.jpg');"></a>
+    <% }); %>
+  </div>
+
+  <!-- Top Fans Leaderboard -->
+  <section class="leaderboard">
+    <h2>🏆 Top Fans This Week</h2>
+    <table class="leaderboard-table">
+      <thead><tr><th>Rank</th><th>User</th><th>Comments</th><th>Likes</th></tr></thead>
+      <tbody>
+        <% topFans.forEach((fan, index) => { %>
+          <tr>
+            <td>#<%= index + 1 %></td>
+            <td><%= fan.username %></td>
+            <td><%= fan.comments %></td>
+            <td><%= fan.likes %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Fan Battle Section -->
+  <% if (battle) { %>
+    <section class="fan-battle">
+      <h2>🔥 Fan Battle: <%= battle.team1 %> vs <%= battle.team2 %> 🔥</h2>
+      <form id="fanBattleForm">
+        <input type="hidden" name="battleId" value="<%= battle.id %>" />
+        <button type="button" onclick="submitVote('team1')"><%= battle.team1 %></button>
+        <button type="button" onclick="submitVote('team2')"><%= battle.team2 %></button>
+      </form>
+      <div id="battleResults">
+        <p><strong><%= battle.team1 %>:</strong> <span id="votes1"><%= battle.votes_team1 %></span> votes</p>
+        <p><strong><%= battle.team2 %>:</strong> <span id="votes2"><%= battle.votes_team2 %></span> votes</p>
+      </div>
+      <p id="voteMsg" style="margin-top: 10px;"></p>
+    </section>
+  <% } %>
+
+  <!-- Scripts -->
+  <script>
+    function submitVote(team) {
+      const form = document.getElementById('fanBattleForm');
+      const battleId = form.battleId.value;
+
+      fetch('/battle/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ battleId, vote: team })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const msg = document.getElementById('voteMsg');
+        if (data.success) {
+          msg.textContent = `Thanks for voting for ${data.votedFor}! 🗳️`;
+          msg.style.color = 'lightgreen';
+          const span = document.getElementById(data.votedFor === 'team1' ? 'votes1' : 'votes2');
+          span.textContent = parseInt(span.textContent) + 1;
+        } else {
+          msg.textContent = data.message || 'There was a problem.';
+          msg.style.color = 'orange';
+        }
+      })
+      .catch(() => {
+        document.getElementById('voteMsg').textContent = 'Network error. Try again.';
+      });
+    }
+  </script>
+
+  <%- include('partials/_authModals') %>
+</body>
+</html>

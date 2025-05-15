@@ -1,0 +1,39 @@
+<%- include('partials/_header', {
+  headerClass: 'header-simple',
+  showAuthLinks: false,
+  showLeagueLink: false,
+  leagueSlug: '',
+  leagueName: '',
+  useTeamHeader: false
+}) %>
+
+<h2 style="text-align:center; margin: 30px 0 20px;">My Inbox</h2>
+
+<% if (conversations.length === 0) { %>
+  <p style="text-align: center; font-size: 18px;">You have no messages yet.</p>
+<% } else { %>
+  <div style="max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px;">
+    <% conversations.forEach(convo => { %>
+      <a href="/chat/<%= convo.user %>" style="display: flex; align-items: center; text-decoration: none; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9;">
+        <!-- Avatar -->
+        <img src="<%= convo.profile_pic || '/default-avatar.png' %>" alt="avatar"
+          style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; margin-right: 15px;" />
+
+        <div style="flex: 1;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong style="font-size: 17px; color: #333;">@<%= convo.user %></strong>
+            <small style="color: #888;"><%= new Date(convo.timestamp).toLocaleString() %></small>
+          </div>
+          <div style="margin-top: 6px; font-size: 15px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            <%= convo.lastMessage %>
+          </div>
+        </div>
+
+        <!-- Optional unread dot -->
+        <% if (!convo.seenByReceiver && convo.user !== currentUser.username) { %>
+          <div style="width: 10px; height: 10px; background: #ff5722; border-radius: 50%; margin-left: 10px;"></div>
+        <% } %>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
