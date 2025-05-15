@@ -639,21 +639,7 @@ module.exports = router;
 const keys = webpush.generateVAPIDKeys();
 console.log('Public VAPID Key:', keys.publicKey);
 console.log('Private VAPID Key:', keys.privateKey);
-
-app.get('/', (req, res) => {
-  const cutoff = dayjs().subtract(24, 'hour').toISOString();
   
-  db.all(`
-    SELECT user AS username,
-           COUNT(*) AS comments,
-           SUM(COALESCE(like_reactions, 0)) AS likes
-    FROM comments
-    GROUP BY user
-    ORDER BY likes DESC
-    LIMIT 5
-  `, (err, topFans) => {
-    if (err) return res.status(500).send("Database error (top fans)");
-
     // --- Post Story Upload Route (Keep outside of db.all blocks!) ---
 app.post('/stories/upload', upload.single('storyMedia'), (req, res) => {
   if (!req.session.user) {
