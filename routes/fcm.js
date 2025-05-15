@@ -1,7 +1,7 @@
 // routes/fcm.js
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User'); // Adjust path if needed
+const User = require('../models/user');
 
 router.post('/save-token', async (req, res) => {
   const { username, token } = req.body;
