@@ -40,7 +40,7 @@ admin.initializeApp({
 
 // --- Models & Middleware ---
 const Message = require('./models/Message');
-const User = require('./models/User');
+const User = require('./models/user');
 const messageRoutes = require('./routes/messages');
 const fcmRoutes = require('./routes/fcm');
 const isAuthenticated = require('./middleware/isAuthenticated');
