@@ -10,7 +10,6 @@ const relativeTime = require('dayjs/plugin/relativeTime');
 const sqlite3 = require('sqlite3').verbose();
 const session = require('express-session');
 const bcrypt = require('bcrypt');
-const mongoose = require('mongoose');
 const webpush = require('web-push');
 
 // Setup Express and middleware
@@ -177,9 +176,19 @@ io.on('connection', (socket) => {
 });
 
 // MongoDB connect
-mongoose.connect('mongodb://localhost:27017/footyforum')
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB error:', err));
+const mongoose = require('mongoose');
+require('dotenv').config();
+const mongoose = require('mongoose');
+
+console.log("💥 MongoDB URI from env:", process.env.MONGODB_URI); // <-- debug log
+
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('✅ MongoDB connected'))
+.catch(err => console.error('❌ MongoDB connection error:', err));
+h(err => console.error('MongoDB connection error:', err));
 
 // SQLite DB setup
 const db = new sqlite3.Database('./forum.db', err => {
