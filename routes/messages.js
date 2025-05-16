@@ -2,23 +2,17 @@ const express = require('express');
 const router = express.Router();
 const Message = require('../models/Message');
 
-// Send a message
+// --- Send a Message ---
 router.post('/send', async (req, res) => {
-  const { receiver, content } = req.body; // ✅ receiver, not receiverId
-  const sender = req.user && req.user._id;
+  const sender = req.user?._id;
+  const { receiver, content } = req.body;
 
   if (!sender || !receiver || !content?.trim()) {
     return res.status(400).json({ error: 'Missing sender, receiver, or message content.' });
   }
 
   try {
-    const message = new Message({
-      sender,
-      receiver,
-      content: content.trim()
-    });
-
-    await message.save();
+    const message = await Message.create({ sender, receiver, content: content.trim() });
     res.status(201).json({ message: 'Message sent', data: message });
   } catch (err) {
     console.error('Send error:', err);
@@ -26,29 +20,34 @@ router.post('/send', async (req, res) => {
   }
 });
 
-// Get conversation between two users
+// --- Get Conversation Between Users ---
 router.get('/conversation/:userId', async (req, res) => {
-  const user1 = req.user.username;
-  const user2 = req.params.userId;
+  const currentUser = req.user?._id;
+  const otherUser = req.params.userId;
+
+  if (!currentUser || !otherUser) {
+    return res.status(400).json({ error: 'Missing user data' });
+  }
 
   try {
-    // Mark messages sent to the current user as seen
+    // Mark incoming messages as seen
     await Message.updateMany(
-      { sender: user2, receiver: user1, seenByReceiver: false },
+      { sender: otherUser, receiver: currentUser, seenByReceiver: false },
       { $set: { seenByReceiver: true } }
     );
 
     const messages = await Message.find({
       $or: [
-        { sender: user1, receiver: user2 },
-        { sender: user2, receiver: user1 }
+        { sender: currentUser, receiver: otherUser },
+        { sender: otherUser, receiver: currentUser }
       ]
     }).sort({ timestamp: 1 });
 
-    res.status(200).json(messages);
+    res.json(messages);
   } catch (err) {
     console.error('Conversation error:', err);
-    res.status(500).json({ error: 'Could not fetch messages' });
+    res.status(500).json({ error: 'Failed to load conversation' });
   }
 });
+
 module.exports = router;

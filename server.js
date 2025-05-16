@@ -7,259 +7,299 @@ const fs = require('fs');
 const multer = require('multer');
 const dayjs = require('dayjs');
 const relativeTime = require('dayjs/plugin/relativeTime');
-const sqlite3 = require('sqlite3').verbose();
 const session = require('express-session');
 const bcrypt = require('bcrypt');
-const webpush = require('web-push');
+const mongoose = require('mongoose');
+const admin = require('firebase-admin');
+require('dotenv').config();
 
-// Setup Express and middleware
+dayjs.extend(relativeTime);
+
+// --- MongoDB Connect ---
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch(err => console.error('❌ MongoDB error:', err));
+
+// --- Firebase Admin ---
+const decoded = Buffer.from(process.env.FIREBASE_KEY_BASE64, 'base64').toString('utf8');
+admin.initializeApp({ credential: admin.credential.cert(JSON.parse(decoded)) });
+
+// --- Models ---
+const User = require('./models/user');
+const Message = require('./models/Message');
+const Story = require('./models/Story');
+const StoryComment = require('./models/StoryComment');
+const StoryReaction = require('./models/StoryReaction');
+const Battle = require('./models/Battle');
+const BattleVote = require('./models/BattleVote');
+const Comment = require('./models/Comment');
+const teamToLeagueMap = require('./teamToLeagueMap');
+
+// --- Express Setup ---
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
 
-// Extend dayjs
-dayjs.extend(relativeTime);
-
-// Firebase Admin
-const admin = require('firebase-admin');
-
-const serviceAccount = JSON.parse(
-  Buffer.from(process.env.FIREBASE_KEY_BASE64, 'base64').toString('utf8')
-);
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
-// --- Models & Middleware ---
-const Message = require('./models/Message');
-const User = require('./models/user');
-const messageRoutes = require('./routes/messages');
-const fcmRoutes = require('./routes/fcm');
-const isAuthenticated = require('./middleware/isAuthenticated');
-const teamToLeagueMap = require('./teamToLeagueMap');
-
-// Multer setup
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'public/uploads/'),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
-    cb(null, uniqueName);
-  }
-});
-const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
-const multiUpload = upload.fields([
-  { name: 'media', maxCount: 1 },
-  { name: 'profile_pic', maxCount: 1 }
-]);
-// App middleware
+// --- Middleware ---
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
-  secret: 'your-secret-key5ff583e7330e6d76299bedf5cda9ffd6d91ecb1d56bdf459d4e32b5944cfb3a8fb9b114f88f7cf484f2bad68b91eff813f8898e76dde4a8057b14325f5365b95',
+  secret: process.env.SESSION_SECRET || 'super-secret-key',
   resave: false,
   saveUninitialized: true
 }));
 
-// --- Route Fix ---
-app.post('/team/:teamname/comment', multiUpload, (req, res) => {
-  if (!req.session || !req.session.user) {
-    return res.status(401).send("You must be logged in to comment.");
-  }
-
-  const { teamname } = req.params;
-  const text = req.body.text?.trim();
-  const user = req.session.user.username;
-  const timestamp = new Date().toISOString();
-
-  if (!text) return res.status(400).send("Comment text cannot be empty.");
-
-  const mediaPath = req.files?.media ? `/uploads/${req.files.media[0].filename}` : '';
-  const profilePicPath = req.files?.profile_pic ? `/uploads/${req.files.profile_pic[0].filename}` : '';
-
-  db.run(
-    "INSERT INTO comments (team, user, text, media, profile_pic, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
-    [teamname, user, text, mediaPath, profilePicPath, timestamp],
-    err => {
-      if (err) return res.status(500).send("Failed to post comment");
-      res.redirect(`/team/${teamname}`);
-    }
-  );
+// --- Multer Setup ---
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, 'public/uploads/'),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${Math.random().toString(36).substring(7)}${path.extname(file.originalname)}`)
 });
+const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
+const multiUpload = upload.fields([{ name: 'media', maxCount: 1 }, { name: 'profile_pic', maxCount: 1 }]);
 
-// --- Setup socket events ---
-const connectedUsers = new Map();
-const lastSeenMap = new Map();
-
-io.on('connection', (socket) => {
-  console.log('New user connected:', socket.id);
-
-  socket.on('joinRoom', ({ sender, receiver }) => {
-    const room = [sender, receiver].sort().join('-');
-    socket.join(room);
-    connectedUsers.set(sender, socket.id);
-    socket.broadcast.emit('userOnline', { username: sender });
-  });
-
-  socket.on('chatMessage', async ({ sender, receiver, content }) => {
-    if (!content?.trim()) return;
-    console.log('✅ [server] chatMessage received:', sender, '→', receiver, content);
-
-    const newMsg = new Message({ sender, receiver, content });
-    await newMsg.save();
-
-    const room = [sender, receiver].sort().join('-');
-    io.to(room).emit('newMessage', newMsg);
-
-    try {
-      const receiverUser = await User.findOne({ username: receiver });
-      if (receiverUser && receiverUser.fcmToken) {
-        const payload = {
-          notification: {
-            title: `New message from ${sender}`,
-            body: content,
-            icon: '/images/favicon.png'
-          },
-          token: receiverUser.fcmToken
-        };
-
-        admin.messaging().send(payload)
-          .then(response => console.log('Push notification sent:', response))
-          .catch(err => console.error('Push notification error:', err));
-      }
-    } catch (err) {
-      console.error('Failed to fetch user or send push:', err);
-    }
-  });
-
-  socket.on('typing', ({ to, from }) => {
-    const room = [to, from].sort().join('-');
-    socket.to(room).emit('typing', { from });
-  });
-
-  socket.on('stopTyping', ({ to, from }) => {
-    const room = [to, from].sort().join('-');
-    socket.to(room).emit('stopTyping', { from });
-  });
-
-  socket.on('checkOnlineStatus', ({ userToCheck }) => {
-    if (connectedUsers.has(userToCheck)) {
-      socket.emit('userOnline', { username: userToCheck });
-    } else {
-      const lastSeen = lastSeenMap.get(userToCheck);
-      socket.emit('userOffline', { username: userToCheck, lastSeen });
-    }
-  });
-
-  socket.on('disconnect', () => {
-    for (const [username, id] of connectedUsers.entries()) {
-      if (id === socket.id) {
-        connectedUsers.delete(username);
-        const now = new Date().toISOString();
-        lastSeenMap.set(username, now);
-        socket.broadcast.emit('userOffline', { username, lastSeen: now });
-        break;
-      }
-    }
-    console.log('User disconnected:', socket.id);
-  });
-});
-
-// MongoDB connect
-require('dotenv').config();
-const mongoose = require('mongoose');
-
-// Connect to MongoDB Atlas
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
-
-// SQLite DB setup
-const db = new sqlite3.Database('./forum.db', err => {
-  if (err) console.error("Database error:", err);
-  else console.log("Connected to SQLite database");
-});
-
-// --- User Session Handling ---
+// --- User Session Middleware ---
 app.use(async (req, res, next) => {
   if (req.session.user) {
-    const unreadCount = await Message.countDocuments({
-      receiver: req.session.user.username,
-      seenByReceiver: false
-    }).catch(() => 0);
+    const unreadCount = await Message.countDocuments({ receiver: req.session.user.username, seenByReceiver: false }).catch(() => 0);
     req.session.user.unreadCount = unreadCount;
   }
   res.locals.user = req.session.user;
   res.locals.request = req;
   next();
 });
-// --- Messaging API ---
-app.use('/api/messages', (req, res, next) => {
-  if (req.session.user) {
-    req.user = { _id: req.session.user.username };
-    next();
-  } else {
-    res.status(401).json({ error: 'Not authenticated' });
-  }
-}, messageRoutes);
+// --- Home Page ---
+app.get('/', async (req, res) => {
+  const cutoff = dayjs().subtract(24, 'hour').toDate();
 
-app.use('/api/fcm', fcmRoutes);
-// --- Chat Page ---
-app.get('/chat', (req, res) => {
-  return res.redirect('/?error=No%20user%20selected%20for%20chat');
+  try {
+    const topFans = await Comment.aggregate([
+      { $group: { _id: "$user", comments: { $sum: 1 }, likes: { $sum: "$like_reactions" } } },
+      { $sort: { likes: -1 } },
+      { $limit: 5 },
+      { $project: { _id: 0, username: "$_id", comments: 1, likes: 1 } }
+    ]);
+
+    const stories = await Story.find({ createdAt: { $gte: cutoff } }).sort({ createdAt: -1 }).lean();
+    const storyIds = stories.map(s => s._id);
+
+    const [comments, reactions] = await Promise.all([
+      StoryComment.find({ story_id: { $in: storyIds } }).lean(),
+      StoryReaction.aggregate([
+        { $match: { story_id: { $in: storyIds } } },
+        { $group: { _id: { story_id: "$story_id", reaction_type: "$reaction_type" }, count: { $sum: 1 } } }
+      ])
+    ]);
+
+    const enrichedStories = stories.map(story => ({
+      ...story,
+      relativeTime: dayjs(story.createdAt).fromNow(),
+      comments: comments.filter(c => c.story_id.toString() === story._id.toString()),
+      reactions: reactions.filter(r => r._id.story_id.toString() === story._id.toString()).map(r => ({ type: r._id.reaction_type, count: r.count }))
+    }));
+
+    const battle = await Battle.findOne().sort({ created_at: -1 });
+
+    res.render('index', { stories: enrichedStories, topFans, battle });
+  } catch (err) {
+    console.error('❌ Home load error:', err);
+    res.status(500).send("Failed to load homepage");
+  }
 });
-app.get('/chat/:username', async (req, res) => {
-  if (!req.session.user) {
-    return res.redirect('/?error=You must be logged in to chat');
-  }
-  const currentUsername = req.session.user.username;
-  const receiverUsername = req.params.username;
 
-  if (currentUsername === receiverUsername) {
-    return res.redirect('/?error=Cannot%20chat%20with%20yourself');
-  }
+// --- Stories Upload ---
+app.post('/stories/upload', upload.single('storyMedia'), async (req, res) => {
+  if (!req.session.user || !req.file) return res.redirect('/?error=Login or file missing');
 
-  db.get("SELECT * FROM users WHERE username = ?", [receiverUsername], async (err, receiver) => {
-    if (err || !receiver) {
-      console.error('User not found:', err);
-      return res.status(404).send("User not found");
-    }
+  try {
+    await Story.create({ image: `/uploads/${req.file.filename}`, username: req.session.user.username, caption: req.body.caption || '' });
+    res.redirect('/');
+  } catch (err) {
+    console.error('Story upload error:', err);
+    res.redirect('/?error=Upload failed');
+  }
+});
+
+// --- Story React ---
+app.post('/stories/:id/react', async (req, res) => {
+  const { id } = req.params;
+  const { reaction_type } = req.body;
+  const username = req.session.user?.username;
+
+  if (!username || !reaction_type) return res.status(400).send("Login or reaction missing");
+
+  try {
+    await StoryReaction.updateOne({ story_id: id, username, reaction_type }, { $set: { story_id: id, username, reaction_type } }, { upsert: true });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Story react error:', err);
+    res.status(500).send("Failed to react");
+  }
+});
+
+// --- Story Comment ---
+app.post('/stories/:id/comment', async (req, res) => {
+  const { id } = req.params;
+  const { comment } = req.body;
+  const username = req.session.user?.username;
+
+  if (!username || !comment?.trim()) return res.status(400).send("Login or comment missing");
+
+  try {
+    await StoryComment.create({ story_id: id, username, comment: comment.trim() });
+    res.redirect('/');
+  } catch (err) {
+    console.error('Story comment error:', err);
+    res.status(500).send("Failed to comment");
+  }
+});
+
+// --- Team Comment ---
+app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
+  if (!req.session.user) return res.status(401).send("Login required");
+
+  const { teamname } = req.params;
+  const { text } = req.body;
+  const media = req.files?.media ? `/uploads/${req.files.media[0].filename}` : '';
+  const profilePic = req.files?.profile_pic ? `/uploads/${req.files.profile_pic[0].filename}` : '';
+
+  if (!text?.trim()) return res.status(400).send("Empty comment");
+
+  try {
+    await Comment.create({ team: teamname, user: req.session.user.username, text, media, profile_pic: profilePic });
+    res.redirect(`/team/${teamname}`);
+  } catch (err) {
+    console.error('Team comment error:', err);
+    res.status(500).send("Failed to post comment");
+  }
+});
+
+// --- Team Page ---
+app.get('/team/:teamname', async (req, res) => {
+  const { teamname } = req.params;
+  const sort = req.query.sort === 'top' ? { like_reactions: -1 } : { timestamp: -1 };
+
+  try {
+    const comments = await Comment.find({ team: teamname }).sort(sort);
+    const leagueInfo = teamToLeagueMap[teamname] || {};
+    res.render('team', { teamname, comments, sort: req.query.sort, useTeamHeader: true, leagueSlug: leagueInfo.slug || '', leagueName: leagueInfo.name || '' });
+  } catch (err) {
+    console.error('Team page error:', err);
+    res.status(500).send("Failed to load team page");
+  }
+});
+
+// --- Comment React ---
+app.post('/comment/:id/react/:type', async (req, res) => {
+  const { id, type } = req.params;
+  const validTypes = ['like', 'funny', 'angry', 'love'];
+
+  if (!validTypes.includes(type)) return res.status(400).json({ success: false, message: 'Invalid reaction' });
+
+  try {
+    await Comment.updateOne({ _id: id }, { $inc: { [`${type}_reactions`]: 1 } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('React error:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
+// --- Battle Vote ---
+app.post('/battle/vote', async (req, res) => {
+  const { battleId, vote } = req.body;
+  const username = req.session.user?.username;
+
+  if (!username || !vote) return res.status(400).json({ success: false, message: 'Missing data' });
+
+  try {
+    const alreadyVoted = await BattleVote.findOne({ battle_id: battleId, username });
+    if (alreadyVoted) return res.json({ success: false, message: 'Already voted' });
+
+    await BattleVote.create({ battle_id: battleId, username, voted_for: vote });
+    await Battle.updateOne({ _id: battleId }, { $inc: { [vote === 'team1' ? 'votes_team1' : 'votes_team2']: 1 } });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Vote error:', err);
+    res.status(500).json({ success: false, message: 'Vote failed' });
+  }
+});
+// --- League Pages ---
+const leagues = ['laliga', 'premier', 'serie-a', 'bundesliga', 'roshn-saudi', 'eredivisie', 'liga-portugal', 'super-lig', 'ligue1'];
+leagues.forEach(league => {
+  app.get(`/${league}.html`, (req, res) => res.render(league));
+});
+
+// --- Tournament Pages ---
+const tournaments = ['champions', 'world_cup', 'euros', 'copa_america'];
+const aliases = { 'world-cup': 'world_cup', 'copa-america': 'copa_america' };
+
+Object.entries(aliases).forEach(([dashed, underscored]) => {
+  app.get(`/${dashed}.html`, (req, res) => res.redirect(`/${underscored}.html`));
+});
+
+tournaments.forEach(tournament => {
+  app.get(`/${tournament}.html`, async (req, res) => {
+    const sort = req.query.sort === 'top' ? { like_reactions: -1 } : { timestamp: -1 };
 
     try {
-      await Message.updateMany(
-        { sender: receiverUsername, receiver: currentUsername, seenByReceiver: false },
-        { $set: { seenByReceiver: true } }
-      );
-    } catch (updateErr) {
-      console.error('Failed to mark messages as seen:', updateErr);
+      const comments = await Comment.find({ team: tournament }).sort(sort);
+      res.render('team', {
+        teamname: tournament,
+        comments,
+        sort: req.query.sort,
+        useTeamHeader: false,
+        leagueSlug: tournament,
+        leagueName: tournament.replace('_', ' ').toUpperCase()
+      });
+    } catch (err) {
+      console.error('Tournament page error:', err);
+      res.status(500).send("Failed to load tournament page");
     }
-
-    res.render('chat', {
-      receiver,
-      currentUser: req.session.user
-    });
   });
 });
 
-// --- Inbox Page ---
+// --- User Profile ---
+app.get('/user/:username', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const comments = await Comment.find({ user: username }).sort({ timestamp: -1 }).lean();
+    const totalComments = comments.length;
+    const totalLikes = comments.reduce((sum, c) => sum + (c.like_reactions || 0), 0);
+
+    const enrichedComments = comments.map(c => ({ ...c, relativeTime: dayjs(c.timestamp).fromNow() }));
+
+    res.render('user', {
+      profileUser: username,
+      comments: enrichedComments,
+      totalComments,
+      totalLikes
+    });
+  } catch (err) {
+    console.error('User profile error:', err);
+    res.status(500).send("Failed to load profile");
+  }
+});
+
+app.get('/profile', (req, res) => {
+  if (!req.session.user) return res.redirect('/?error=Login required');
+  res.redirect(`/user/${req.session.user.username}`);
+});
+
+// --- Inbox ---
 app.get('/inbox', async (req, res) => {
   if (!req.session.user) return res.redirect('/?error=Login required');
   const username = req.session.user.username;
 
   try {
-    const messages = await Message.find({
-      $or: [ { sender: username }, { receiver: username } ]
-    }).sort({ timestamp: -1 });
+    const messages = await Message.find({ $or: [{ sender: username }, { receiver: username }] }).sort({ timestamp: -1 });
 
     const conversations = {};
     messages.forEach(msg => {
@@ -273,486 +313,105 @@ app.get('/inbox', async (req, res) => {
       }
     });
 
-    res.render('inbox', {
-      conversations: Object.values(conversations),
-      currentUser: req.session.user
-    });
+    res.render('inbox', { conversations: Object.values(conversations), currentUser: req.session.user });
   } catch (err) {
     console.error('Inbox error:', err);
-    res.status(500).send("Failed to load inbox.");
-  }
-});
-
-// --- Middleware to make user available in all views ---
-app.use((req, res, next) => {
-  res.locals.user = req.session.user;
-  res.locals.request = req;
-  next();
-});
-// --- Cleanup Stories Older Than 24 Hours ---
-setInterval(() => {
-  const cutoff = dayjs().subtract(24, 'hour').toISOString();
-  db.all("SELECT * FROM stories WHERE createdAt < ?", [cutoff], (err, rows) => {
-    if (rows) {
-      rows.forEach(row => {
-        const filePath = path.join(__dirname, 'public', row.image);
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        db.run("DELETE FROM stories WHERE id = ?", [row.id]);
-      });
-    }
-  });
-}, 60 * 60 * 1000);
-
-// --- Create Tables ---
-const initStoryTables = () => {
-  db.run(`CREATE TABLE IF NOT EXISTS stories (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    image TEXT NOT NULL,
-    username TEXT,
-    caption TEXT,
-    createdAt TEXT NOT NULL
-  )`);
-
-  db.run(`CREATE TABLE IF NOT EXISTS story_comments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    story_id INTEGER,
-    username TEXT,
-    comment TEXT,
-    timestamp TEXT NOT NULL
-  )`);
-
-  db.run(`CREATE TABLE IF NOT EXISTS story_reactions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    story_id INTEGER,
-    username TEXT,
-    reaction_type TEXT,
-    UNIQUE(story_id, username, reaction_type)
-  )`);
-};
-initStoryTables();
-
-db.run(`CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username TEXT UNIQUE NOT NULL,
-  email TEXT UNIQUE,
-  password TEXT NOT NULL
-)`);
-db.run(`CREATE TABLE IF NOT EXISTS battles (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  team1 TEXT NOT NULL,
-  team2 TEXT NOT NULL,
-  votes_team1 INTEGER DEFAULT 0,
-  votes_team2 INTEGER DEFAULT 0,
-  created_at TEXT NOT NULL
-)`);
-db.run(`CREATE TABLE IF NOT EXISTS battle_votes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  battle_id INTEGER,
-  username TEXT,
-  voted_for TEXT,
-  UNIQUE(battle_id, username)
-)`);
-
-// --- Insert default test battle if none exists ---
-db.get("SELECT COUNT(*) AS count FROM battles", (err, row) => {
-  if (!err && row.count === 0) {
-    const now = new Date().toISOString();
-    db.run(
-      `INSERT INTO battles (team1, team2, votes_team1, votes_team2, created_at)
-       VALUES (?, ?, 0, 0, ?)`,
-      ['Real Madrid', 'Barcelona', now],
-      (err) => {
-        if (err) console.error('Failed to insert test battle:', err);
-        else console.log('Inserted default battle: Real Madrid vs Barcelona');
-      }
-    );
-  }
-});
-
-// --- Home Page with Top Fans and Fan Battle ---
-app.get('/', (req, res) => {
-  const cutoff = dayjs().subtract(24, 'hour').toISOString();
-  db.all(`
-    SELECT user AS username,
-           COUNT(*) AS comments,
-           SUM(COALESCE(like_reactions, 0)) AS likes
-    FROM comments
-    GROUP BY user
-    ORDER BY likes DESC
-    LIMIT 5
-  `, (err, topFans) => {
-    if (err) return res.status(500).send("Database error (top fans)");
-
-    db.all("SELECT * FROM stories WHERE createdAt >= ? ORDER BY createdAt DESC", [cutoff], (err, stories) => {
-      if (err) return res.status(500).send("Database error (stories)");
-      stories = stories.map(s => ({ ...s, relativeTime: dayjs(s.createdAt).fromNow() }));
-
-      db.get(`SELECT * FROM battles ORDER BY created_at DESC LIMIT 1`, (err, battle) => {
-        if (err) return res.status(500).send("Database error (battle)");
-        res.render('index', { stories, topFans, battle });
-      });
-    });
-  });
-});
-
-// --- Fan Battle Voting ---
-app.post('/battle/vote', (req, res) => {
-  if (!req.session.user) {
-    return res.status(401).json({ success: false, message: 'You must be logged in to vote.' });
-  }
-
-  const { battleId, vote } = req.body;
-  const username = req.session.user.username;
-  const field = vote === 'team1' ? 'votes_team1' : vote === 'team2' ? 'votes_team2' : null;
-
-  if (!field) return res.status(400).json({ success: false });
-
-  db.get("SELECT * FROM battle_votes WHERE battle_id = ? AND username = ?", [battleId, username], (err, row) => {
-    if (err) return res.status(500).json({ success: false });
-    if (row) return res.json({ success: false, message: 'You already voted.' });
-
-    db.run(`INSERT INTO battle_votes (battle_id, username, voted_for) VALUES (?, ?, ?)`, [battleId, username, vote], (err) => {
-      if (err) return res.status(500).json({ success: false });
-
-      db.run(`UPDATE battles SET ${field} = ${field} + 1 WHERE id = ?`, [battleId], (err) => {
-        if (err) return res.status(500).json({ success: false });
-        res.json({ success: true, votedFor: vote });
-      });
-    });
-  });
-});
-
-// --- League Pages ---
-const leagues = ['laliga', 'premier', 'serie-a', 'bundesliga', 'roshn-saudi', 'eredivisie', 'liga-portugal', 'super-lig', 'ligue1'];
-leagues.forEach(league => {
-  app.get(`/${league}.html`, (req, res) => res.render(league));
-});
-
-// --- Tournament Pages ---
-const tournaments = ['champions', 'world_cup', 'euros', 'copa_america'];
-const aliases = { 'world-cup': 'world_cup', 'copa-america': 'copa_america' };
-Object.entries(aliases).forEach(([dashed, underscored]) => {
-  app.get(`/${dashed}.html`, (req, res) => res.redirect(`/${underscored}.html`));
-});
-
-tournaments.forEach(tournament => {
-  app.get(`/${tournament}.html`, (req, res) => {
-    const sort = req.query.sort;
-    const orderBy = sort === 'top' ? 'likes DESC' : 'timestamp DESC';
-    db.all("SELECT * FROM comments WHERE team = ? ORDER BY " + orderBy, [tournament], (err, comments) => {
-      if (err) return res.status(500).send("Database error");
-      res.render('team', {
-        teamname: tournament,
-        comments,
-        sort,
-        useTeamHeader: false,
-        teamnameToLeagueSlug: tournament,
-        teamnameToLeagueName: tournament.replace('_', ' ').toUpperCase()
-      });
-    });
-  });
-});
-
-// --- Team Pages ---
-app.get('/team/:teamname', (req, res) => {
-  const { teamname } = req.params;
-  const { sort } = req.query;
-  const orderBy = sort === 'top' ? 'likes DESC' : 'timestamp DESC';
-  db.all("SELECT * FROM comments WHERE team = ? ORDER BY " + orderBy, [teamname], (err, comments) => {
-    if (err) return res.status(500).send("Database error");
-    const leagueInfo = teamToLeagueMap[teamname] || {};
-    res.render('team', {
-      teamname,
-      comments,
-      sort,
-      useTeamHeader: true,
-      leagueSlug: leagueInfo.slug || '',
-      leagueName: leagueInfo.name || ''
-    });
-  });
-});
-
-// --- React to Comments ---
-app.post('/comment/:id/react/:type', (req, res) => {
-  const { id, type } = req.params;
-  const validTypes = { like: 'like_reactions', funny: 'funny_reactions', angry: 'angry_reactions', love: 'love_reactions' };
-  const field = validTypes[type];
-  if (!field) return res.status(400).json({ success: false, message: 'Invalid reaction type' });
-
-  db.run(`UPDATE comments SET ${field} = ${field} + 1 WHERE id = ?`, [id], err => {
-    if (err) return res.status(500).json({ success: false, message: 'Failed to react' });
-    res.json({ success: true });
-  });
-});
-
-// --- Authentication ---
-app.post('/signup', (req, res) => {
-  const { username, email, password, redirectTo } = req.body;
-  const hashed = bcrypt.hashSync(password, 10);
-  db.run("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", [username, email, hashed], function(err) {
-    if (err) return res.redirect(`${redirectTo || '/'}?error=Username%20or%20email%20already%20taken`);
-    req.session.user = { id: this.lastID, username };
-    res.redirect(redirectTo || '/');
-  });
-});
-
-app.post('/login', (req, res) => {
-  const { username, password, redirectTo } = req.body;
-  db.get("SELECT * FROM users WHERE username = ?", [username], (err, user) => {
-    if (!user || !bcrypt.compareSync(password, user.password)) {
-      return res.redirect(`${redirectTo || '/'}?error=Invalid%20username%20or%20password`);
-    }
-    req.session.user = { id: user.id, username: user.username };
-    res.redirect(redirectTo || '/');
-  });
-});
-
-app.get('/logout', (req, res) => {
-  const redirectTo = req.query.redirectTo || '/';
-  req.session.destroy(() => res.redirect(redirectTo));
-});
-
-// --- Admin Add Battle Page ---
-app.get('/admin/add-battle', (req, res) => {
-  res.render('admin-add-battle');
-});
-
-app.post('/admin/add-battle', (req, res) => {
-  const { team1, team2 } = req.body;
-  if (!team1 || !team2) return res.send("Both team names are required.");
-  const createdAt = new Date().toISOString();
-  db.run(
-    `INSERT INTO battles (team1, team2, created_at) VALUES (?, ?, ?)`,
-    [team1, team2, createdAt],
-    (err) => {
-      if (err) return res.send("Failed to create battle.");
-      res.redirect('/fan-battle');
-    }
-  );
-});
-
-// --- User Profile Page ---
-app.get('/user/:username', (req, res) => {
-  const { username } = req.params;
-  db.all(`SELECT * FROM comments WHERE user = ? ORDER BY timestamp DESC`, [username], (err, comments) => {
-    if (err) return res.status(500).send("Database error (user comments)");
-    const totalComments = comments.length;
-    const totalLikes = comments.reduce((sum, c) => sum + (c.like_reactions || 0), 0);
-    
-    // ➕ Add this line to map relative time
-    const enrichedComments = comments.map(c => ({ ...c, relativeTime: dayjs(c.timestamp).fromNow() }));
-
-    res.render('user', {
-      profileUser: username,
-      comments: enrichedComments,
-      totalComments,
-      totalLikes
-    });
-  });
-});
-
-app.get('/profile', (req, res) => {
-  if (!req.session.user) return res.redirect('/?error=You%20must%20be%20logged%20in');
-  const username = req.session.user.username;
-  res.redirect(`/user/${username}`);
-});
-
-// in app.js or server.js
-app.use('/api/messages', isAuthenticated, messageRoutes);
-// middleware/isAuthenticated.js
-module.exports = function(req, res, next) {
-  if (req.isAuthenticated()) return next();
-  res.status(401).json({ error: 'Not authenticated' });
-};
-
-app.get('/inbox', async (req, res) => {
-  if (!req.session.user) return res.redirect('/?error=Login%20required');
-
-  const currentUserId = req.session.user.id;
-
-  try {
-    // Fetch all messages involving the current user
-    const messages = await Message.find({
-      $or: [{ sender: currentUserId }, { receiver: currentUserId }]
-    }).sort({ timestamp: -1 }).populate('sender receiver');
-
-    // Create a unique set of conversation partners
-    const uniqueConversations = {};
-    messages.forEach(msg => {
-      const otherUser = (msg.sender.id === currentUserId) ? msg.receiver : msg.sender;
-      if (!uniqueConversations[otherUser.id]) {
-        uniqueConversations[otherUser.id] = {
-          user: otherUser,
-          lastMessage: msg.content,
-          timestamp: msg.timestamp
-        };
-      }
-    });
-
-    const conversations = Object.values(uniqueConversations).sort((a, b) =>
-      new Date(b.timestamp) - new Date(a.timestamp)
-    );
-
-    res.render('inbox', { conversations, currentUser: req.session.user });
-  } catch (err) {
-    console.error(err);
     res.status(500).send("Inbox error");
   }
 });
+
+// --- Chat Page ---
+app.get('/chat/:username', async (req, res) => {
+  if (!req.session.user) return res.redirect('/?error=Login required');
+  const { username: receiver } = req.params;
+  const sender = req.session.user.username;
+
+  if (sender === receiver) return res.redirect('/?error=Cannot chat with yourself');
+
+  try {
+    const receiverUser = await User.findOne({ username: receiver });
+    if (!receiverUser) return res.status(404).send("User not found");
+
+    await Message.updateMany({ sender: receiver, receiver: sender, seenByReceiver: false }, { $set: { seenByReceiver: true } });
+
+    res.render('chat', { receiver: receiverUser, currentUser: req.session.user });
+  } catch (err) {
+    console.error('Chat load error:', err);
+    res.status(500).send("Failed to load chat");
+  }
+});
+
+// --- Messaging API Auth ---
+app.use('/api/messages', (req, res, next) => {
+  if (req.session.user) {
+    req.user = { _id: req.session.user.username };
+    next();
+  } else {
+    res.status(401).json({ error: 'Not authenticated' });
+  }
+}, require('./routes/messages'));
+
+// --- FCM Routes ---
+app.use('/api/fcm', require('./routes/fcm'));
+
+// --- Socket.IO ---
+const connectedUsers = new Map();
+const lastSeenMap = new Map();
+
 io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
+  console.log('🔌 Connected:', socket.id);
 
-  socket.on('chat message', (msg) => {
-    io.emit('chat message', msg); // broadcast to all
+  socket.on('joinRoom', ({ sender, receiver }) => {
+    const room = [sender, receiver].sort().join('-');
+    socket.join(room);
+    connectedUsers.set(sender, socket.id);
+    socket.broadcast.emit('userOnline', { username: sender });
   });
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+  socket.on('chatMessage', async ({ sender, receiver, content }) => {
+    if (!content?.trim()) return;
+    const newMsg = await Message.create({ sender, receiver, content });
+    io.to([sender, receiver].sort().join('-')).emit('newMessage', newMsg);
   });
+
   socket.on('typing', ({ to, from }) => {
     const room = [to, from].sort().join('-');
     socket.to(room).emit('typing', { from });
   });
-  
+
   socket.on('stopTyping', ({ to, from }) => {
     const room = [to, from].sort().join('-');
     socket.to(room).emit('stopTyping', { from });
-  });  
-});
-// routes/fcm.js
-const router = express.Router();
-router.post('/save-token', async (req, res) => {
-  const { username, token } = req.body;
-  if (!username || !token) return res.status(400).json({ error: 'Missing data' });
+  });
 
-  try {
-    await User.updateOne({ username }, { $set: { fcmToken: token } }, { upsert: true });
-    res.status(200).json({ success: true });
-  } catch (err) {
-    console.error('Failed to save FCM token:', err);
-    res.status(500).json({ error: 'Failed to save token' });
-  }
-});
-
-module.exports = router;
-// generate-vapid.js
-const keys = webpush.generateVAPIDKeys();
-console.log('Public VAPID Key:', keys.publicKey);
-console.log('Private VAPID Key:', keys.privateKey);
-  
-    // --- Post Story Upload Route (Keep outside of db.all blocks!) ---
-app.post('/stories/upload', upload.single('storyMedia'), (req, res) => {
-  if (!req.session.user) {
-    return res.redirect('/?error=You must be logged in to post stories.');
-  }
-
-  if (!req.file) return res.redirect('/?error=No file uploaded');
-
-  const filePath = `/uploads/${req.file.filename}`;
-  const createdAt = new Date().toISOString();
-  const username = req.session.user.username;
-  const caption = req.body.caption || '';
-
-  db.run("INSERT INTO stories (image, username, caption, createdAt) VALUES (?, ?, ?, ?)",
-    [filePath, username, caption, createdAt],
-    err => {
-      if (err) return res.redirect('/?error=Failed to save story');
-      res.redirect('/');
-    });
-});
-
-// --- Load Home Page with Stories, Reactions, Top Fans, Battle ---
-app.get('/', (req, res) => {
-  const cutoff = dayjs().subtract(24, 'hour').toISOString();
-
-  db.all(`
-    SELECT user AS username,
-           COUNT(*) AS comments,
-           SUM(COALESCE(like_reactions, 0)) AS likes
-    FROM comments
-    GROUP BY user
-    ORDER BY likes DESC
-    LIMIT 5
-  `, (err, topFans) => {
-    if (err) return res.status(500).send("Database error (top fans)");
-
-    db.all("SELECT * FROM stories WHERE createdAt >= ? ORDER BY createdAt DESC", [cutoff], (err, stories) => {
-      if (err) return res.status(500).send("Database error (stories)");
-
-      const storyIds = stories.map(s => s.id);
-      const enrichedStories = [];
-
-      if (storyIds.length === 0) {
-        return res.render('index', { stories: [], topFans, battle: null });
+  socket.on('disconnect', () => {
+    for (const [username, id] of connectedUsers.entries()) {
+      if (id === socket.id) {
+        connectedUsers.delete(username);
+        const lastSeen = new Date().toISOString();
+        lastSeenMap.set(username, lastSeen);
+        socket.broadcast.emit('userOffline', { username, lastSeen });
+        break;
       }
-
-      db.all("SELECT * FROM story_comments WHERE story_id IN (" + storyIds.map(() => '?').join(',') + ")", storyIds, (err, comments) => {
-        if (err) return res.status(500).send("Error loading comments");
-
-        db.all("SELECT story_id, reaction_type, COUNT(*) as count FROM story_reactions GROUP BY story_id, reaction_type", (err, reactions) => {
-          if (err) return res.status(500).send("Error loading reactions");
-
-          stories.forEach(story => {
-            const storyComments = comments.filter(c => c.story_id === story.id);
-            const storyReactions = reactions.filter(r => r.story_id === story.id);
-            enrichedStories.push({
-              ...story,
-              comments: storyComments,
-              reactions: storyReactions
-            });
-          });
-
-          db.get("SELECT * FROM battles ORDER BY created_at DESC LIMIT 1", (err, battle) => {
-            if (err) return res.status(500).send("Error loading battle");
-            res.render('index', { stories: enrichedStories, topFans, battle });
-          });
-        });
-      });
-    });
+    }
+    console.log('❌ Disconnected:', socket.id);
   });
 });
 
-// --- React to a Story ---
-app.post('/stories/:id/react', (req, res) => {
-  const { id } = req.params;
-  const { reaction_type } = req.body;
-  const username = req.session.user?.username;
+// --- Background Cleanup (Stories older than 24h) ---
+setInterval(async () => {
+  const cutoff = dayjs().subtract(24, 'hour').toDate();
+  const oldStories = await Story.find({ createdAt: { $lt: cutoff } });
 
-  if (!username) return res.status(401).send("Login required");
+  for (const story of oldStories) {
+    const filePath = path.join(__dirname, 'public', story.image);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    await Promise.all([
+      Story.deleteOne({ _id: story._id }),
+      StoryComment.deleteMany({ story_id: story._id }),
+      StoryReaction.deleteMany({ story_id: story._id })
+    ]);
+  }
 
-  db.run("INSERT OR REPLACE INTO story_reactions (story_id, username, reaction_type) VALUES (?, ?, ?)",
-    [id, username, reaction_type], err => {
-      if (err) return res.status(500).send("Failed to react");
-      res.json({ success: true });
-    });
-});
-
-// --- Comment on a Story ---
-app.post('/stories/:id/comment', (req, res) => {
-  const { id } = req.params;
-  const { comment } = req.body;
-  const username = req.session.user?.username;
-
-  if (!username || !comment?.trim()) return res.status(400).send("Login required or empty comment");
-
-  const timestamp = new Date().toISOString();
-  db.run("INSERT INTO story_comments (story_id, username, comment, timestamp) VALUES (?, ?, ?, ?)",
-    [id, username, comment.trim(), timestamp], err => {
-      if (err) return res.status(500).send("Failed to comment");
-      res.redirect('/');
-    });
-});
-
-// --- Delete a Story ---
-app.post('/stories/delete/:id', (req, res) => {
-  const storyId = req.params.id;
-  db.get("SELECT * FROM stories WHERE id = ?", [storyId], (err, story) => {
-    if (err || !story) return res.status(404).send("Story not found");
-    const imagePath = path.join(__dirname, 'public', story.image);
-    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-    db.run("DELETE FROM stories WHERE id = ?", [storyId], err => {
-      if (err) return res.status(500).send("Failed to delete story");
-      res.redirect('/');
-    });
-  });
-});
+  if (oldStories.length) console.log(`🗑️ Cleaned ${oldStories.length} old stories`);
+}, 60 * 60 * 1000);
