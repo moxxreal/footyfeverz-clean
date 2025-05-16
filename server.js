@@ -9,31 +9,15 @@ const dayjs = require('dayjs');
 const relativeTime = require('dayjs/plugin/relativeTime');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
-const mongoose = require('mongoose');
 const admin = require('firebase-admin');
 require('dotenv').config();
 
 dayjs.extend(relativeTime);
 
-// --- MongoDB Connect ---
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ MongoDB error:', err));
-
-// --- Firebase Admin ---
+// --- Firebase Admin Init ---
 const decoded = Buffer.from(process.env.FIREBASE_KEY_BASE64, 'base64').toString('utf8');
 admin.initializeApp({ credential: admin.credential.cert(JSON.parse(decoded)) });
-
-// --- Models ---
-const User = require('./models/user');
-const Message = require('./models/Message');
-const Story = require('./models/Story');
-const StoryComment = require('./models/StoryComment');
-const StoryReaction = require('./models/StoryReaction');
-const Battle = require('./models/Battle');
-const BattleVote = require('./models/BattleVote');
-const Comment = require('./models/Comment');
-const teamToLeagueMap = require('./teamToLeagueMap');
+const db = admin.firestore();
 
 // --- Express Setup ---
 const app = express();
@@ -66,83 +50,82 @@ const multiUpload = upload.fields([{ name: 'media', maxCount: 1 }, { name: 'prof
 // --- User Session Middleware ---
 app.use(async (req, res, next) => {
   if (req.session.user) {
-    const unreadCount = await Message.countDocuments({ receiver: req.session.user.username, seenByReceiver: false }).catch(() => 0);
-    req.session.user.unreadCount = unreadCount;
+    const msgSnap = await db.collection('messages').where('receiver', '==', req.session.user.username).where('seenByReceiver', '==', false).get();
+    req.session.user.unreadCount = msgSnap.size;
   }
   res.locals.user = req.session.user;
   res.locals.request = req;
   next();
 });
+
 // --- Home Page ---
 app.get('/', async (req, res) => {
   const cutoff = dayjs().subtract(24, 'hour').toDate();
 
   try {
-    const topFans = await Comment.aggregate([
-      { $group: { _id: "$user", comments: { $sum: 1 }, likes: { $sum: "$like_reactions" } } },
-      { $sort: { likes: -1 } },
-      { $limit: 5 },
-      { $project: { _id: 0, username: "$_id", comments: 1, likes: 1 } }
-    ]);
+    // Top Fans
+    const commentsSnap = await db.collection('comments').get();
+    const userStats = {};
+    commentsSnap.forEach(doc => {
+      const c = doc.data();
+      if (!userStats[c.user]) userStats[c.user] = { comments: 0, likes: 0 };
+      userStats[c.user].comments += 1;
+      userStats[c.user].likes += c.like_reactions || 0;
+    });
 
-    const stories = await Story.find({ createdAt: { $gte: cutoff } }).sort({ createdAt: -1 }).lean();
-    const storyIds = stories.map(s => s._id);
+    const topFans = Object.entries(userStats)
+      .sort((a, b) => b[1].likes - a[1].likes)
+      .slice(0, 5)
+      .map(([username, stats]) => ({ username, comments: stats.comments, likes: stats.likes }));
 
-    const [comments, reactions] = await Promise.all([
-      StoryComment.find({ story_id: { $in: storyIds } }).lean(),
-      StoryReaction.aggregate([
-        { $match: { story_id: { $in: storyIds } } },
-        { $group: { _id: { story_id: "$story_id", reaction_type: "$reaction_type" }, count: { $sum: 1 } } }
-      ])
-    ]);
+    // Stories & Enrich
+    const storiesSnap = await db.collection('stories').where('createdAt', '>=', cutoff).orderBy('createdAt', 'desc').get();
+    const stories = [];
+    for (const doc of storiesSnap.docs) {
+      const story = doc.data();
+      const commentsSnap = await db.collection('stories').doc(doc.id).collection('comments').get();
+      const reactionsSnap = await db.collection('stories').doc(doc.id).collection('reactions').get();
 
-    const enrichedStories = stories.map(story => ({
-      ...story,
-      relativeTime: dayjs(story.createdAt).fromNow(),
-      comments: comments.filter(c => c.story_id.toString() === story._id.toString()),
-      reactions: reactions.filter(r => r._id.story_id.toString() === story._id.toString()).map(r => ({ type: r._id.reaction_type, count: r.count }))
-    }));
+      const reactions = {};
+      reactionsSnap.forEach(r => {
+        const { reaction_type } = r.data();
+        reactions[reaction_type] = (reactions[reaction_type] || 0) + 1;
+      });
 
-    const battle = await Battle.findOne().sort({ created_at: -1 });
+      stories.push({
+        ...story,
+        relativeTime: dayjs(story.createdAt.toDate()).fromNow(),
+        comments: commentsSnap.docs.map(c => c.data()),
+        reactions: Object.entries(reactions).map(([type, count]) => ({ type, count }))
+      });
+    }
 
-    res.render('index', { stories: enrichedStories, topFans, battle });
+    const battleSnap = await db.collection('battles').orderBy('created_at', 'desc').limit(1).get();
+    const battle = battleSnap.docs[0]?.data() || null;
+
+    res.render('index', { stories, topFans, battle });
   } catch (err) {
     console.error('❌ Home load error:', err);
     res.status(500).send("Failed to load homepage");
   }
 });
 
-// --- Stories Upload ---
+// --- Upload Story ---
 app.post('/stories/upload', upload.single('storyMedia'), async (req, res) => {
-  console.log('✅ /stories/upload route hit');
-
-  if (!req.session.user) {
-    console.warn('❌ User not logged in');
-    return res.redirect('/?error=Login required');
-  }
-
-  console.log('✅ Session User:', req.session.user);
-
-  if (!req.file) {
-    console.warn('❌ No file received');
-    return res.redirect('/?error=No file uploaded');
-  }
-
-  console.log('✅ File Received:', req.file);
+  if (!req.session.user) return res.redirect('/?error=Login required');
+  if (!req.file) return res.redirect('/?error=No file uploaded');
 
   const filePath = `/uploads/${req.file.filename}`;
   const username = req.session.user.username;
   const caption = req.body.caption || '';
 
   try {
-    const newStory = await Story.create({
+    await db.collection('stories').add({
       image: filePath,
       username,
       caption,
-      createdAt: new Date()
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
-
-    console.log('✅ Story saved to DB:', newStory);
     res.redirect('/');
   } catch (err) {
     console.error('❌ Error saving story:', err);
@@ -150,7 +133,7 @@ app.post('/stories/upload', upload.single('storyMedia'), async (req, res) => {
   }
 });
 
-// --- Story React ---
+// --- React to Story ---
 app.post('/stories/:id/react', async (req, res) => {
   const { id } = req.params;
   const { reaction_type } = req.body;
@@ -159,7 +142,8 @@ app.post('/stories/:id/react', async (req, res) => {
   if (!username || !reaction_type) return res.status(400).send("Login or reaction missing");
 
   try {
-    await StoryReaction.updateOne({ story_id: id, username, reaction_type }, { $set: { story_id: id, username, reaction_type } }, { upsert: true });
+    const reactionRef = db.collection('stories').doc(id).collection('reactions').doc(`${username}_${reaction_type}`);
+    await reactionRef.set({ username, reaction_type });
     res.json({ success: true });
   } catch (err) {
     console.error('Story react error:', err);
@@ -167,7 +151,7 @@ app.post('/stories/:id/react', async (req, res) => {
   }
 });
 
-// --- Story Comment ---
+// --- Comment on Story ---
 app.post('/stories/:id/comment', async (req, res) => {
   const { id } = req.params;
   const { comment } = req.body;
@@ -176,7 +160,11 @@ app.post('/stories/:id/comment', async (req, res) => {
   if (!username || !comment?.trim()) return res.status(400).send("Login or comment missing");
 
   try {
-    await StoryComment.create({ story_id: id, username, comment: comment.trim() });
+    await db.collection('stories').doc(id).collection('comments').add({
+      username,
+      comment: comment.trim(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
     res.redirect('/');
   } catch (err) {
     console.error('Story comment error:', err);
@@ -196,7 +184,15 @@ app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
   if (!text?.trim()) return res.status(400).send("Empty comment");
 
   try {
-    await Comment.create({ team: teamname, user: req.session.user.username, text, media, profile_pic: profilePic });
+    await db.collection('comments').add({
+      team: teamname,
+      user: req.session.user.username,
+      text,
+      media,
+      profile_pic: profilePic,
+      like_reactions: 0,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
     res.redirect(`/team/${teamname}`);
   } catch (err) {
     console.error('Team comment error:', err);
@@ -204,77 +200,42 @@ app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
   }
 });
 
+const teamToLeagueMap = require('./teamToLeagueMap');
+
 // --- Team Page ---
 app.get('/team/:teamname', async (req, res) => {
   const { teamname } = req.params;
-  const sort = req.query.sort === 'top' ? { like_reactions: -1 } : { timestamp: -1 };
+  const sortField = req.query.sort === 'top' ? 'like_reactions' : 'timestamp';
 
   try {
-    const comments = await Comment.find({ team: teamname }).sort(sort);
+    const commentsSnap = await db.collection('comments').where('team', '==', teamname).orderBy(sortField, 'desc').get();
+    const comments = commentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
     const leagueInfo = teamToLeagueMap[teamname] || {};
-    res.render('team', { teamname, comments, sort: req.query.sort, useTeamHeader: true, leagueSlug: leagueInfo.slug || '', leagueName: leagueInfo.name || '' });
+    res.render('team', { 
+      teamname, 
+      comments, 
+      sort: req.query.sort, 
+      useTeamHeader: true, 
+      leagueSlug: leagueInfo.slug || '', 
+      leagueName: leagueInfo.name || '' 
+    });
   } catch (err) {
     console.error('Team page error:', err);
     res.status(500).send("Failed to load team page");
   }
 });
 
-// --- Comment React ---
-app.post('/comment/:id/react/:type', async (req, res) => {
-  const { id, type } = req.params;
-  const validTypes = ['like', 'funny', 'angry', 'love'];
-
-  if (!validTypes.includes(type)) return res.status(400).json({ success: false, message: 'Invalid reaction' });
-
-  try {
-    await Comment.updateOne({ _id: id }, { $inc: { [`${type}_reactions`]: 1 } });
-    res.json({ success: true });
-  } catch (err) {
-    console.error('React error:', err);
-    res.status(500).json({ success: false });
-  }
-});
-
-// --- Battle Vote ---
-app.post('/battle/vote', async (req, res) => {
-  const { battleId, vote } = req.body;
-  const username = req.session.user?.username;
-
-  if (!username || !vote) return res.status(400).json({ success: false, message: 'Missing data' });
-
-  try {
-    const alreadyVoted = await BattleVote.findOne({ battle_id: battleId, username });
-    if (alreadyVoted) return res.json({ success: false, message: 'Already voted' });
-
-    await BattleVote.create({ battle_id: battleId, username, voted_for: vote });
-    await Battle.updateOne({ _id: battleId }, { $inc: { [vote === 'team1' ? 'votes_team1' : 'votes_team2']: 1 } });
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Vote error:', err);
-    res.status(500).json({ success: false, message: 'Vote failed' });
-  }
-});
-// --- League Pages ---
-const leagues = ['laliga', 'premier', 'serie-a', 'bundesliga', 'roshn-saudi', 'eredivisie', 'liga-portugal', 'super-lig', 'ligue1'];
-leagues.forEach(league => {
-  app.get(`/${league}.html`, (req, res) => res.render(league));
-});
-
 // --- Tournament Pages ---
 const tournaments = ['champions', 'world_cup', 'euros', 'copa_america'];
-const aliases = { 'world-cup': 'world_cup', 'copa-america': 'copa_america' };
-
-Object.entries(aliases).forEach(([dashed, underscored]) => {
-  app.get(`/${dashed}.html`, (req, res) => res.redirect(`/${underscored}.html`));
-});
-
 tournaments.forEach(tournament => {
   app.get(`/${tournament}.html`, async (req, res) => {
-    const sort = req.query.sort === 'top' ? { like_reactions: -1 } : { timestamp: -1 };
+    const sortField = req.query.sort === 'top' ? 'like_reactions' : 'timestamp';
 
     try {
-      const comments = await Comment.find({ team: tournament }).sort(sort);
+      const commentsSnap = await db.collection('comments').where('team', '==', tournament).orderBy(sortField, 'desc').get();
+      const comments = commentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
       res.render('team', {
         teamname: tournament,
         comments,
@@ -290,16 +251,57 @@ tournaments.forEach(tournament => {
   });
 });
 
-// --- User Profile ---
+// --- Comment Reaction ---
+app.post('/comment/:id/react/:type', async (req, res) => {
+  const { id, type } = req.params;
+  const validTypes = ['like', 'funny', 'angry', 'love'];
+
+  if (!validTypes.includes(type)) return res.status(400).json({ success: false, message: 'Invalid reaction' });
+
+  try {
+    const commentRef = db.collection('comments').doc(id);
+    await commentRef.update({ [`${type}_reactions`]: admin.firestore.FieldValue.increment(1) });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('React error:', err);
+    res.status(500).json({ success: false });
+  }
+});
+app.post('/battle/vote', async (req, res) => {
+  const { battleId, vote } = req.body;
+  const username = req.session.user?.username;
+
+  if (!username || !vote) return res.status(400).json({ success: false, message: 'Missing data' });
+
+  try {
+    const voteRef = db.collection('battles').doc(battleId).collection('votes').doc(username);
+    const voteSnap = await voteRef.get();
+
+    if (voteSnap.exists) return res.json({ success: false, message: 'Already voted' });
+
+    await voteRef.set({ username, voted_for: vote });
+    const battleRef = db.collection('battles').doc(battleId);
+    await battleRef.update({ [vote === 'team1' ? 'votes_team1' : 'votes_team2']: admin.firestore.FieldValue.increment(1) });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Vote error:', err);
+    res.status(500).json({ success: false, message: 'Vote failed' });
+  }
+});
 app.get('/user/:username', async (req, res) => {
   const { username } = req.params;
 
   try {
-    const comments = await Comment.find({ user: username }).sort({ timestamp: -1 }).lean();
+    const commentsSnap = await db.collection('comments').where('user', '==', username).orderBy('timestamp', 'desc').get();
+    const comments = commentsSnap.docs.map(doc => ({ ...doc.data() }));
     const totalComments = comments.length;
     const totalLikes = comments.reduce((sum, c) => sum + (c.like_reactions || 0), 0);
 
-    const enrichedComments = comments.map(c => ({ ...c, relativeTime: dayjs(c.timestamp).fromNow() }));
+    const enrichedComments = comments.map(c => ({
+      ...c,
+      relativeTime: c.timestamp ? dayjs(c.timestamp.toDate()).fromNow() : ''
+    }));
 
     res.render('user', {
       profileUser: username,
@@ -312,22 +314,19 @@ app.get('/user/:username', async (req, res) => {
     res.status(500).send("Failed to load profile");
   }
 });
-
-app.get('/profile', (req, res) => {
-  if (!req.session.user) return res.redirect('/?error=Login required');
-  res.redirect(`/user/${req.session.user.username}`);
-});
-
-// --- Inbox ---
 app.get('/inbox', async (req, res) => {
   if (!req.session.user) return res.redirect('/?error=Login required');
   const username = req.session.user.username;
 
   try {
-    const messages = await Message.find({ $or: [{ sender: username }, { receiver: username }] }).sort({ timestamp: -1 });
+    const messagesSnap = await db.collection('messages')
+      .where('participants', 'array-contains', username)
+      .orderBy('timestamp', 'desc')
+      .get();
 
     const conversations = {};
-    messages.forEach(msg => {
+    messagesSnap.forEach(doc => {
+      const msg = doc.data();
       const otherUser = msg.sender === username ? msg.receiver : msg.sender;
       if (!conversations[otherUser]) {
         conversations[otherUser] = {
@@ -338,14 +337,16 @@ app.get('/inbox', async (req, res) => {
       }
     });
 
-    res.render('inbox', { conversations: Object.values(conversations), currentUser: req.session.user });
+    res.render('inbox', { 
+      conversations: Object.values(conversations), 
+      currentUser: req.session.user 
+    });
   } catch (err) {
     console.error('Inbox error:', err);
     res.status(500).send("Inbox error");
   }
 });
 
-// --- Chat Page ---
 app.get('/chat/:username', async (req, res) => {
   if (!req.session.user) return res.redirect('/?error=Login required');
   const { username: receiver } = req.params;
@@ -354,32 +355,27 @@ app.get('/chat/:username', async (req, res) => {
   if (sender === receiver) return res.redirect('/?error=Cannot chat with yourself');
 
   try {
-    const receiverUser = await User.findOne({ username: receiver });
-    if (!receiverUser) return res.status(404).send("User not found");
+    const userSnap = await db.collection('users').doc(receiver).get();
+    if (!userSnap.exists) return res.status(404).send("User not found");
 
-    await Message.updateMany({ sender: receiver, receiver: sender, seenByReceiver: false }, { $set: { seenByReceiver: true } });
+    await db.collection('messages')
+      .where('sender', '==', receiver)
+      .where('receiver', '==', sender)
+      .where('seenByReceiver', '==', false)
+      .get()
+      .then(snapshot => {
+        snapshot.forEach(doc => doc.ref.update({ seenByReceiver: true }));
+      });
 
-    res.render('chat', { receiver: receiverUser, currentUser: req.session.user });
+    res.render('chat', { 
+      receiver: userSnap.data(), 
+      currentUser: req.session.user 
+    });
   } catch (err) {
     console.error('Chat load error:', err);
     res.status(500).send("Failed to load chat");
   }
 });
-
-// --- Messaging API Auth ---
-app.use('/api/messages', (req, res, next) => {
-  if (req.session.user) {
-    req.user = { _id: req.session.user.username };
-    next();
-  } else {
-    res.status(401).json({ error: 'Not authenticated' });
-  }
-}, require('./routes/messages'));
-
-// --- FCM Routes ---
-app.use('/api/fcm', require('./routes/fcm'));
-
-// --- Socket.IO ---
 const connectedUsers = new Map();
 const lastSeenMap = new Map();
 
@@ -395,8 +391,20 @@ io.on('connection', (socket) => {
 
   socket.on('chatMessage', async ({ sender, receiver, content }) => {
     if (!content?.trim()) return;
-    const newMsg = await Message.create({ sender, receiver, content });
-    io.to([sender, receiver].sort().join('-')).emit('newMessage', newMsg);
+
+    const message = {
+      sender,
+      receiver,
+      participants: [sender, receiver],
+      content,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      seenByReceiver: false
+    };
+
+    const msgRef = await db.collection('messages').add(message);
+
+    const msgData = { id: msgRef.id, ...message, timestamp: new Date() };
+    io.to([sender, receiver].sort().join('-')).emit('newMessage', msgData);
   });
 
   socket.on('typing', ({ to, from }) => {
@@ -422,21 +430,3 @@ io.on('connection', (socket) => {
     console.log('❌ Disconnected:', socket.id);
   });
 });
-
-// --- Background Cleanup (Stories older than 24h) ---
-setInterval(async () => {
-  const cutoff = dayjs().subtract(24, 'hour').toDate();
-  const oldStories = await Story.find({ createdAt: { $lt: cutoff } });
-
-  for (const story of oldStories) {
-    const filePath = path.join(__dirname, 'public', story.image);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    await Promise.all([
-      Story.deleteOne({ _id: story._id }),
-      StoryComment.deleteMany({ story_id: story._id }),
-      StoryReaction.deleteMany({ story_id: story._id })
-    ]);
-  }
-
-  if (oldStories.length) console.log(`🗑️ Cleaned ${oldStories.length} old stories`);
-}, 60 * 60 * 1000);
