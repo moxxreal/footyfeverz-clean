@@ -28,18 +28,60 @@
       <img src="/images/footyfeverz.png" class="header-logo-img" alt="Footy Feverz Logo">
     </a>
   </div>
-<!-- Right Side -->
-<div class="header-side right">
-  <% if (!user && !useTeamHeader) { %>
-    <a href="#" class="header-link" onclick="openSignup()">Sign Up</a>
-  <% } %>
 
-  <% if (user && !useTeamHeader) { %>
-    <a href="/inbox" class="header-link">Inbox</a>
-  <% } %>
+  <!-- Right Side -->
+  <div class="header-side right">
+    <% if (!user && !useTeamHeader) { %>
+      <a href="#" class="header-link" onclick="openSignup()">Sign Up</a>
+    <% } %>
 
-  <% if (useTeamHeader && leagueSlug && leagueName) { %>
-    <a href="/<%= leagueSlug %>.html" class="header-link"><%= leagueName %></a>
-  <% } %>
-</div>
+    <% if (user && !useTeamHeader) { %>
+      <a href="/inbox" class="header-link">Inbox</a>
+    <% } %>
+
+    <% if (useTeamHeader && leagueSlug && leagueName) { %>
+      <a href="/<%= leagueSlug %>.html" class="header-link"><%= leagueName %></a>
+    <% } %>
+  </div>
 </header>
+
+<% if (!user) { %>
+  <!-- Login Modal -->
+  <div id="loginModal" class="auth-modal hidden">
+    <form action="/login" method="POST" class="auth-form">
+      <h2>Login</h2>
+      <% if (loginError) { %>
+        <p style="color:red;"><%= loginError %></p>
+      <% } %>
+      <input type="text" name="username" placeholder="Username" required>
+      <input type="password" name="password" placeholder="Password" required>
+      <button type="submit">Login</button>
+    </form>
+  </div>
+
+  <!-- Signup Modal -->
+  <div id="signupModal" class="auth-modal hidden">
+    <form action="/signup" method="POST" class="auth-form">
+      <h2>Sign Up</h2>
+      <% if (signupError) { %>
+        <p style="color:red;"><%= signupError %></p>
+      <% } %>
+      <input type="text" name="username" placeholder="Username" required>
+      <input type="password" name="password" placeholder="Password" required>
+      <input type="password" name="confirmPassword" placeholder="Confirm Password" required>
+      <button type="submit">Sign Up</button>
+    </form>
+  </div>
+<% } %>
+
+<script>
+  function openLogin() {
+    document.getElementById('loginModal').classList.remove('hidden');
+    document.getElementById('signupModal').classList.add('hidden');
+  }
+
+  function openSignup() {
+    document.getElementById('signupModal').classList.remove('hidden');
+    document.getElementById('loginModal').classList.add('hidden');
+  }
+</script>
