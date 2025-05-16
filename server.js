@@ -114,14 +114,36 @@ app.get('/', async (req, res) => {
 
 // --- Stories Upload ---
 app.post('/stories/upload', upload.single('storyMedia'), async (req, res) => {
-  if (!req.session.user || !req.file) return res.redirect('/?error=Login or file missing');
+  if (!req.session.user) {
+    console.warn('❌ Upload attempt without login');
+    return res.redirect('/?error=You must be logged in to post stories.');
+  }
+
+  if (!req.file) {
+    console.warn('❌ No file uploaded');
+    return res.redirect('/?error=No file uploaded');
+  }
+
+  console.log('✅ REQ FILE:', req.file);
+  console.log('✅ REQ BODY:', req.body);
+
+  const filePath = `/uploads/${req.file.filename}`;
+  const username = req.session.user.username;
+  const caption = req.body.caption || '';
 
   try {
-    await Story.create({ image: `/uploads/${req.file.filename}`, username: req.session.user.username, caption: req.body.caption || '' });
+    const newStory = await Story.create({
+      image: filePath,
+      username,
+      caption,
+      createdAt: new Date()
+    });
+
+    console.log('✅ Story saved:', newStory);
     res.redirect('/');
   } catch (err) {
-    console.error('Story upload error:', err);
-    res.redirect('/?error=Upload failed');
+    console.error('❌ Failed to save story:', err);
+    res.redirect('/?error=Failed to save story');
   }
 });
 

@@ -9,43 +9,37 @@
 <body>
   <%- include('partials/_header', { headerClass: 'header-home', showAuthLinks: true, showLeagueLink: false, useTeamHeader: false }) %>
 
-  <!-- Hidden Upload Form -->
+  <!-- Story Upload Form -->
   <form id="storyForm" action="/stories/upload" method="POST" enctype="multipart/form-data" style="display: none;">
-    <input type="file" id="storyFile" name="storyMedia" accept="image/*,video/*" capture="environment" required />
-  </form>  
+  <input type="file" id="storyFile" name="storyMedia" accept="image/*,video/*" capture="environment" required />
+</form>
 
   <!-- Stories Section -->
-  <section class="stories">
-    <div class="story-gallery" id="storyGallery">
-      <!-- Add Story Box -->
-      <div class="story-item add-story" onclick="document.getElementById('storyFile').click();">
-        <div class="add-story-content">
-          <div class="plus">＋</div>
-          <div>Add Story</div>
-        </div>
-      </div>      
+<section class="stories">
+  <div class="story-gallery" id="storyGallery">
+    <!-- Add Story Box -->
+    <div class="story-item add-story" onclick="document.getElementById('storyFile').click();">
+      <div class="add-story-content">
+        <div class="plus">＋</div>
+        <div>Add Story</div>
+      </div>
+    </div>
 
-      <% stories.forEach((story, index) => { %>
-        <div class="story-item" onclick="openModal(<%= index %>)">
-          <% if (story.image.endsWith('.mp4') || story.image.endsWith('.webm') || story.image.endsWith('.ogg') || story.image.endsWith('.mov')) { %>
-            <video src="<%= story.image %>" muted autoplay loop></video>
-          <% } else { %>
-            <img src="<%= story.image %>" alt="Story">
-          <% } %>
-          <small><%= story.relativeTime %></small>
-          <form action="/stories/delete/<%= story.id %>" method="POST" onsubmit="return confirm('Delete this story?');">
-            <button type="submit">🗑️</button>
-          </form>
+    <% if (stories.length) { %>
+      <% stories.forEach(story => { %>
+        <div class="story-item">
+          <img src="<%= story.image %>" alt="Story by <%= story.username %>">
+          <p><%= story.caption %></p>
 
           <!-- Reactions -->
-          <form action="/stories/<%= story.id %>/react" method="POST">
+          <form action="/stories/<%= story._id %>/react" method="POST">
             <button name="reaction_type" value="like">👍</button>
             <button name="reaction_type" value="love">❤️</button>
             <button name="reaction_type" value="funny">😂</button>
           </form>
 
           <!-- Comments -->
-          <form action="/stories/<%= story.id %>/comment" method="POST">
+          <form action="/stories/<%= story._id %>/comment" method="POST">
             <input name="comment" placeholder="Reply to story..." required>
             <button type="submit">Reply</button>
           </form>
@@ -59,8 +53,11 @@
           <% } %>
         </div>
       <% }) %>
-    </div>
-  </section>
+    <% } else { %>
+      <p>No stories found.</p>
+    <% } %>
+  </div>
+</section>
 
   <!-- Modal Viewer -->
   <div id="storyModal" class="modal" onmouseenter="pauseAutoplay()" onmouseleave="resumeAutoplay()">
@@ -147,7 +144,13 @@
       });
     }
   </script>
+<script>
+  document.getElementById('storyFile').addEventListener('change', function() {
+    document.getElementById('storyForm').submit();
+  });
+</script>
 
-  <%- include('partials/_authModals') %>
+<%- include('partials/_authModals') %>
+
 </body>
 </html>
