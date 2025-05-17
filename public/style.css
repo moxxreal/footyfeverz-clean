@@ -3,11 +3,7 @@ body {
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
-  background-image: url('/images/grass-bg.jpg');
-  background-size: cover;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-position: center;
+  background: url('/images/grass-bg.jpg') center/cover no-repeat fixed;
 }
 
 h1 {
@@ -16,23 +12,19 @@ h1 {
   color: #38003c;
 }
 
-/* --- HEADER STYLES --- */
+/* --- HEADER --- */
 header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-image: url('/images/header-bg.png');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center 30%;
+  background: url('/images/header-bg.png') center 30%/cover no-repeat;
   height: 100px;
   padding: 0 40px;
   margin: 15px 10px;
   border-radius: 12px;
 }
 
-.header-side.left,
-.header-side.right {
+.header-side.left, .header-side.right {
   width: 20%;
   display: flex;
   align-items: center;
@@ -49,24 +41,14 @@ header {
   align-items: center;
 }
 
-.auth-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-
 .header-link {
   font-family: 'Orbitron', sans-serif;
   font-weight: 600;
   font-size: 20px;
   color: white;
   text-decoration: none;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
   transition: transform 0.2s ease, color 0.2s ease;
-  display: block;
-  padding: 0;
-  margin: 0;
 }
 
 .header-link:hover {
@@ -74,168 +56,193 @@ header {
   transform: scale(1.05);
 }
 
-.header-link + .header-link {
-  margin-left: 20px;
-}
-
-.header-logo-img {
-  height: 90px;
-  width: auto;
-  display: block;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-header a.header-logo:hover img {
-  transform: scale(1.05);
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
-}
-
-/* --- AUTH MODAL --- */
-.auth-modal {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+.auth-stack {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.auth-modal.hidden {
-  display: none;
-}
-
-.auth-container {
-  position: relative;
-  background: rgba(0, 0, 0, 0.85);
-  padding: 40px;
-  border-radius: 12px;
-  max-width: 400px;
-  width: 90%;
-  color: white;
-  text-align: center;
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
-}
-
-.auth-form input {
-  width: 100%;
-  margin: 12px 0;
-  padding: 12px;
-  border: none;
-  border-radius: 6px;
-  font-size: 16px;
-}
-
-.auth-form button {
-  width: 100%;
-  padding: 12px;
-  background-color: #ffcc00;
-  color: black;
-  font-weight: bold;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.auth-form button:hover {
-  background-color: #e6b800;
-}
-
-.auth-footer {
-  margin-top: 20px;
-  font-size: 14px;
-}
-
-.auth-footer a {
-  color: #ffcc00;
-  text-decoration: none;
-}
-
-.close-btn {
-  position: absolute;
-  top: 10px;
-  right: 14px;
-  background: none;
-  color: #fff;
-  font-size: 20px;
-  border: none;
-  cursor: pointer;
-}
-
-/* --- CONDITIONAL AUTH STYLES --- */
-.team-logged-out .header-side.left {
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
 }
 
-/* --- CARDS --- */
-.card-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1cm;
-  justify-content: center;
-  padding: 20px;
+.header-logo-img {
+  height: 90px;
+  transition: transform 0.3s, box-shadow 0.3s;
 }
 
-.card,
-.card-big,
-.card-medium,
-.card-small {
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  border-radius: 20px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
-  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-}
-
-.card { width: calc(33.33% - 1cm); height: 350px; }
-.card-big { height: 450px; }
-.card-medium { height: 300px; }
-.card-small { height: 200px; }
-
-.card:hover,
-.card-big:hover,
-.card-medium:hover,
-.card-small:hover {
+header a.header-logo:hover img {
   transform: scale(1.05);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 12px rgba(255,255,255,0.4);
 }
 
-.card-content {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: white;
-  font-size: 24px;
-  font-weight: bold;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+/* --- STORIES CONTAINER --- */
+.stories-container {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 10px;
+  padding: 10px;
+  scroll-snap-type: x mandatory;
 }
 
-/* --- THREADS --- */
-.thread-list {
-  width: 80%;
-  margin: 30px auto;
+.stories-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.stories-container::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.4);
+  border-radius: 4px;
+}
+
+/* --- STORY ITEM --- */
+.story-item {
+  flex: 0 0 auto;
+  width: 150px;
+  height: 150px;
+  overflow: hidden;
+  border-radius: 8px;
+  position: relative;
+  background: #222;
+  cursor: pointer;
+  transition: transform 0.2s;
+  scroll-snap-align: start;
+}
+
+.story-item img,
+.story-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+
+/* --- ADD STORY SPECIAL STYLE --- */
+.story-item.add-story {
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.add-story-content {
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  justify-content: center;
+  align-items: center;
 }
 
-.thread-item {
-  background: #f2f2f2;
-  padding: 15px 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+.add-story-content .plus {
+  font-size: 36px;
+  font-weight: bold;
+  color: black;
 }
 
-.thread-item:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+.add-story-content div:last-child {
+  font-size: 16px;
+  font-weight: bold;
+  color: black;
+}
+
+.story-item.add-story:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* --- STORY MODAL (Snap Style) --- */
+#storyModal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.9);
+  z-index: 9999;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+#modalContent img,
+#modalContent video {
+  max-width: 100%;
+  max-height: 100vh;
+  object-fit: contain;
+}
+
+.story-progress {
+  position: absolute;
+  top: 10px;
+  left: 5%;
+  width: 90%;
+  height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
+}
+
+.story-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: #ffcc00;
+  transition: width 5s linear;
+}
+
+.story-caption {
+  position: absolute;
+  bottom: 20px;
+  width: 90%;
+  text-align: center;
+  color: white;
+  font-size: 18px;
+  text-shadow: 1px 1px 4px rgba(0,0,0,0.6);
+}
+
+.close-modal {
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+}
+.modal-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 48px;
+  color: white;
+  cursor: pointer;
+  user-select: none;
+  padding: 10px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 50%;
+  z-index: 10000;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.modal-arrow.left {
+  left: 20px;
+}
+
+.modal-arrow.right {
+  right: 20px;
+}
+
+.modal-arrow:hover {
+  background: rgba(0,0,0,0.6);
+  transform: translateY(-50%) scale(1.1);
+}
+
+@media (max-width: 768px) {
+  .modal-arrow { display: none; } /* Hide arrows on mobile */
+}
+
+/* --- Lock body when modal open --- */
+body.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
 }
 
 /* --- COMMENTS --- */
@@ -251,17 +258,17 @@ header a.header-logo:hover img {
   background: rgba(255, 255, 255, 0.9);
   padding: 20px;
   border-radius: 20px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
   border: 4px solid transparent;
   background-image: url('/images/grass-border.png');
   background-size: contain;
   background-repeat: round;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .comment-item:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-  background: #fff;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
 }
 
 .comment-item strong {
@@ -297,173 +304,62 @@ header a.header-logo:hover img {
   100% { transform: scale(1); }
 }
 
-.bounce {
-  animation: bounce 0.4s ease forwards;
-}
-
-@keyframes bounce {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.4); }
-  50% { transform: scale(0.9); }
-  70% { transform: scale(1.1); }
-  100% { transform: scale(1); }
-}
-
 /* --- COMMENT FORM --- */
 .comment-form-container {
   margin-top: 40px;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255,255,255,0.95);
   border: 4px solid transparent;
   background-image: url('/images/grass-border.png');
   background-size: contain;
   background-repeat: round;
   border-radius: 20px;
   padding: 30px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 
-/* --- STORY ITEMS --- */
-.story-item {
-  width: 150px;
-  height: 150px;
-  overflow: hidden;
-  border-radius: 8px;
-  margin: 10px;
-  display: inline-block;
-  position: relative;
-  transition: transform 0.2s;
-  cursor: pointer;
-  background: #222;
-}
-
-.story-item.add-story {
-  background: #f0f0f0 !important;
-  border: 1px solid #ccc;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.add-story-content {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background: #f0f0f0 !important;
+/* --- FAN BATTLE --- */
+.fan-battle {
+  max-width: 600px;
+  margin: 40px auto;
   text-align: center;
-}
-
-.add-story-content .plus {
-  font-size: 36px;
-  font-weight: bold;
-  color: black;
-  margin-bottom: 4px;
-}
-
-.add-story-content div:last-child {
-  font-size: 16px;
-  font-weight: bold;
-  color: black;
-}
-
-.story-item.add-story:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-/* --- LEAGUE GRIDS --- */
-.la-liga-container,
-.premier-league-container,
-.serie-a-container,
-.bundesliga-container,
-.roshn-saudi-container,
-.eredivisie-container,
-.liga-portugal-container,
-.super-lig-container,
-.ligue1-container {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1cm;
-  padding: 20px;
-  margin-top: 20px;
-}
-
-.la-liga-container a,
-.premier-league-container a,
-.serie-a-container a,
-.bundesliga-container a,
-.roshn-saudi-container a,
-.eredivisie-container a,
-.liga-portugal-container a,
-.super-lig-container a,
-.ligue1-container a {
+  background: rgba(0,0,0,0.75);
+  padding: 30px;
   border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  transition: transform 0.3s, box-shadow 0.3s;
-  height: 350px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-}
-
-.la-liga-container a:hover,
-.premier-league-container a:hover,
-.serie-a-container a:hover,
-.bundesliga-container a:hover,
-.roshn-saudi-container a:hover,
-.eredivisie-container a:hover,
-.liga-portugal-container a:hover,
-.super-lig-container a:hover,
-.ligue1-container a:hover {
-  transform: scale(1.05);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-}
-
-/* --- RESPONSIVE DESIGN --- */
-@media (max-width: 900px) {
-  .card { width: calc(50% - 1cm); height: 300px; }
-}
-
-@media (max-width: 600px) {
-  .card { width: 100%; height: 250px; }
-}
-.user-dropdown-container {
-  position: relative;
-  display: inline-block;
-}
-
-.user-dropdown-container:hover .user-dropdown {
-  display: block;
-}
-
-.username-toggle {
-  cursor: pointer;
-}
-
-.user-dropdown {
-  display: none;
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: #222;
-  border-radius: 8px;
-  padding: 10px;
-  z-index: 10;
-  min-width: 120px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-}
-
-.user-dropdown a {
-  display: block;
-  padding: 6px 12px;
   color: white;
-  text-decoration: none;
+  box-shadow: 0 0 15px rgba(255,255,255,0.15);
+  font-family: 'Orbitron', sans-serif;
 }
 
-.user-dropdown a:hover {
-  background-color: #444;
+.fan-battle h2 {
+  font-size: 26px;
+  margin-bottom: 20px;
 }
+
+.fan-battle form button {
+  background: #ffcc00;
+  border: none;
+  color: black;
+  font-weight: bold;
+  font-size: 18px;
+  padding: 12px 20px;
+  margin: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.fan-battle form button:hover {
+  background-color: #e6b800;
+  transform: scale(1.05);
+}
+
+.fan-battle p {
+  margin-top: 20px;
+  font-size: 16px;
+  color: #ddd;
+}
+
+/* --- LEADERBOARD --- */
 .leaderboard {
   margin: 40px auto;
   text-align: center;
@@ -496,47 +392,8 @@ header a.header-logo:hover img {
 .leaderboard-table td:first-child {
   font-weight: bold;
 }
-/* --- Fan Battle Styling --- */
-.fan-battle {
-  max-width: 600px;
-  margin: 40px auto;
-  text-align: center;
-  background: rgba(0, 0, 0, 0.75);
-  padding: 30px;
-  border-radius: 20px;
-  color: white;
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
-  font-family: 'Orbitron', sans-serif;
-}
 
-.fan-battle h2 {
-  font-size: 26px;
-  margin-bottom: 20px;
-}
-
-.fan-battle form button {
-  background: #ffcc00;
-  border: none;
-  color: black;
-  font-weight: bold;
-  font-size: 18px;
-  padding: 12px 20px;
-  margin: 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
-}
-
-.fan-battle form button:hover {
-  background-color: #e6b800;
-  transform: scale(1.05);
-}
-
-.fan-battle p {
-  margin-top: 20px;
-  font-size: 16px;
-  color: #ddd;
-}
+/* --- USER PROFILE --- */
 .user-profile {
   max-width: 800px;
   margin: 30px auto;
@@ -575,6 +432,141 @@ header a.header-logo:hover img {
   text-align: center;
   margin-bottom: 20px;
 }
+
+/* --- HOMEPAGE LEAGUE CARDS --- */
+.card-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1cm;
+  justify-content: center;
+  padding: 20px;
+}
+
+.card {
+  width: calc(33.33% - 1cm);
+  height: 350px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* --- Responsive adjustments --- */
+@media (max-width: 900px) {
+  .card { width: calc(50% - 1cm); height: 300px; }
+}
+
+@media (max-width: 600px) {
+  .card { width: 100%; height: 250px; }
+}
+
+/* --- USER DROPDOWN --- */
+.user-dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
+.user-dropdown-container:hover .user-dropdown {
+  display: block;
+}
+
+.username-toggle {
+  cursor: pointer;
+}
+
+.user-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #222;
+  border-radius: 8px;
+  padding: 10px;
+  z-index: 10;
+  min-width: 120px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.user-dropdown a {
+  display: block;
+  padding: 6px 12px;
+  color: white;
+  text-decoration: none;
+}
+
+.user-dropdown a:hover {
+  background-color: #444;
+}
+
+/* --- STORY MODAL --- */
+#storyModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 9999;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+#modalContent img,
+#modalContent video {
+  max-width: 100%;
+  max-height: 100vh;
+  object-fit: contain;
+}
+
+body.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+/* --- Close Button --- */
+.close-modal {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  font-size: 30px;
+  color: white;
+  cursor: pointer;
+  z-index: 10000;
+}
+
+/* --- Progress Bar in Modal --- */
+.story-progress {
+  position: absolute;
+  top: 10px;
+  width: 90%;
+  left: 5%;
+  height: 4px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.story-progress-bar {
+  width: 0%;
+  height: 100%;
+  background: #ffcc00;
+  transition: width 5s linear;
+}
+
+/* --- Extra UX --- */
 .login-warning {
   margin-top: 10px;
   font-size: 14px;
@@ -585,17 +577,8 @@ header a.header-logo:hover img {
   display: none;
 }
 
-.comment-submit-btn.shake {
-  animation: shake 0.4s;
-}
-
-@keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-6px); }
-  50% { transform: translateX(6px); }
-  75% { transform: translateX(-6px); }
-  100% { transform: translateX(0); }
-}
+/* --- Shaking Buttons --- */
+.comment-submit-btn.shake,
 .shake {
   animation: shake 0.4s;
 }
@@ -607,10 +590,12 @@ header a.header-logo:hover img {
   75% { transform: translateX(-5px); }
   100% { transform: translateX(0); }
 }
+
+/* --- Username Links --- */
 .username-link {
   color: white;
   font-weight: bold;
-  font-size: 19px; /* bumped up from 18px */
+  font-size: 19px;
   margin-left: 15px;
   text-decoration: none;
   transition: transform 0.2s ease, color 0.2s ease;

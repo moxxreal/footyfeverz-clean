@@ -1,0 +1,159 @@
+<section class="stories">
+  <div class="stories-container">
+    <!-- Add Story Box -->
+    <div class="story-item add-story" onclick="handleAddStoryClick()">
+      <div class="add-story-content">
+        <div class="plus">＋</div>
+        <div>Add Story</div>
+      </div>
+    </div>
+
+    <!-- User Stories -->
+    <% if (stories.length) { %>
+      <% stories.forEach((story, index) => { %>
+        <div class="story-item" onclick="openStoryModal(<%= index %>)">
+          <% if (/\.(mp4|webm|ogg)$/i.test(story.image)) { %>
+            <video src="<%= story.image %>" muted autoplay loop playsinline preload="metadata"></video>
+          <% } else { %>
+            <img src="<%= story.image %>" alt="Story by <%= story.username %>">
+          <% } %>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <p>No stories found.</p>
+    <% } %>
+
+    <!-- Hidden Upload Form -->
+    <form id="storyForm" action="/stories/upload" method="POST" enctype="multipart/form-data" style="display:none;">
+      <input type="file" id="storyFile" name="storyMedia" accept="image/*,video/*" required />
+    </form>
+  </div>
+</section>
+
+<!-- Story Modal -->
+<div id="storyModal" style="display:none;">
+  <div class="story-progress">
+    <div class="story-progress-bar" id="progressBar"></div>
+  </div>
+  <div class="modal-content" id="modalContent"></div>
+  <div class="story-caption" id="storyCaption"></div>
+  <div class="close-modal" onclick="closeStoryModal()">✖</div>
+  <div class="modal-arrow left" onclick="prevStory()">❮</div>
+<div class="modal-arrow right" onclick="nextStory()">❯</div>
+</div>
+
+<script>
+  const stories = <%- JSON.stringify(stories) %>;
+  let currentIndex = 0;
+  let autoCloseTimeout;
+
+  function handleAddStoryClick() {
+    <% if (user) { %>
+      document.getElementById('storyFile').click();
+    <% } else { %>
+      alert('Please log in to upload a story.');
+    <% } %>
+  }
+
+  function openStoryModal(index) {
+    currentIndex = index;
+    const story = stories[currentIndex];
+    if (!story) return;
+
+    document.body.classList.add('modal-open');
+    const modal = document.getElementById('storyModal');
+    const modalContent = document.getElementById('modalContent');
+    const caption = document.getElementById('storyCaption');
+    const isVideo = /\.(mp4|webm|ogg)$/i.test(story.image);
+
+    modalContent.innerHTML = isVideo
+      ? `<video src="${story.image}" autoplay muted playsinline controls></video>`
+      : `<img src="${story.image}" alt="Story">`;
+
+    caption.textContent = story.caption || '';
+    modal.style.display = 'flex';
+
+    animateProgressBar();
+    clearTimeout(autoCloseTimeout);
+    autoCloseTimeout = setTimeout(nextStory, 5000);
+  }
+
+  function closeStoryModal() {
+    document.body.classList.remove('modal-open');
+    const modal = document.getElementById('storyModal');
+    modal.style.display = 'none';
+    document.getElementById('progressBar').style.transition = 'none';
+    document.getElementById('progressBar').style.width = '0%';
+
+    const video = document.querySelector('#modalContent video');
+    if (video) video.pause();
+
+    clearTimeout(autoCloseTimeout);
+  }
+
+  function nextStory() {
+    if (currentIndex < stories.length - 1) {
+      openStoryModal(currentIndex + 1);
+    } else {
+      closeStoryModal();
+    }
+  }
+
+  function prevStory() {
+    if (currentIndex > 0) {
+      openStoryModal(currentIndex - 1);
+    }
+  }
+
+  function animateProgressBar() {
+    const progressBar = document.getElementById('progressBar');
+    progressBar.style.transition = 'none';
+    progressBar.style.width = '0%';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        progressBar.style.transition = 'width 5s linear';
+        progressBar.style.width = '100%';
+      });
+    });
+  }
+
+  // Swipe Navigation
+  let touchStartX = null;
+  let touchStartY = null;
+
+  document.getElementById('storyModal').addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  });
+
+  document.getElementById('storyModal').addEventListener('touchend', e => {
+    if (touchStartX === null || touchStartY === null) return;
+
+    const diffX = e.changedTouches[0].screenX - touchStartX;
+    const diffY = e.changedTouches[0].screenY - touchStartY;
+
+    if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 50) {
+      if (diffY > 0) closeStoryModal();
+    } else if (Math.abs(diffX) > 50) {
+      diffX < 0 ? nextStory() : prevStory();
+    }
+
+    touchStartX = null;
+    touchStartY = null;
+  });
+
+  // Tap outside to close
+  document.getElementById('storyModal').addEventListener('click', function(e) {
+    if (e.target === this) closeStoryModal();
+  });
+
+  // Escape key to close
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeStoryModal();
+  });
+
+  // Auto-submit after file select
+  document.getElementById('storyFile')?.addEventListener('change', function() {
+    if (this.files.length) document.getElementById('storyForm').submit();
+  });
+</script>

@@ -591,3 +591,7 @@ app.get('/test-write', async (req, res) => {
     res.status(500).send('Failed');
   }
 });
+
+app.get('/stories-demo', (req, res) => {
+  res.render('stories-demo');
+});
