@@ -88,6 +88,16 @@
       });
     }
   </script>
+  <form id="storyForm" action="/stories/upload" method="POST" enctype="multipart/form-data">
+  <input
+    type="file"
+    id="storyFile"
+    name="storyMedia"
+    accept="image/*,video/*"
+    style="display: none;"
+  >
+  <button type="button" onclick="document.getElementById('storyFile').click()">Add Story</button>
+</form>
 <script>
   document.getElementById('storyFile').addEventListener('change', function() {
     document.getElementById('storyForm').submit();

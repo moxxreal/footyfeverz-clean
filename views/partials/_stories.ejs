@@ -67,8 +67,8 @@
     const isVideo = /\.(mp4|webm|ogg)$/i.test(story.image);
 
     modalContent.innerHTML = isVideo
-      <video src="${story.image}" controls playsinline style="max-width: 100%; max-height: 80vh;"></video>
-      : `<img src="${story.image}" alt="Story">`;
+  ? `<video src="${story.image}" controls playsinline style="max-width: 100%; max-height: 80vh;"></video>`
+  : `<img src="${story.image}" alt="Story">`;
 
     caption.textContent = story.caption || '';
     modal.style.display = 'flex';
