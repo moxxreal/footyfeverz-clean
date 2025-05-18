@@ -8,11 +8,13 @@
 </head>
 <body>
   <%- include('partials/_header', {
-    headerClass: 'header-home',
-    showAuthLinks: true,
-    showLeagueLink: false,
-    useTeamHeader: false
-  }) %>    
+  headerClass: 'header-home',
+  showAuthLinks: true,
+  showLeagueLink: false,
+  useTeamHeader: false,
+  loginError: null,
+  signupError: null
+}) %>    
   <div class="ligue1-container">
     <!-- Big Clubs -->
     <a href="/team/psg" class="card-big" style="background-image: url('/ligue1-images/psg.jpg');"></a>

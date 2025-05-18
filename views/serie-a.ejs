@@ -8,11 +8,13 @@
 </head>
 <body>
   <%- include('partials/_header', {
-    headerClass: 'header-home',
-    showAuthLinks: true,
-    showLeagueLink: false,
-    useTeamHeader: false
-  }) %>     
+  headerClass: 'header-home',
+  showAuthLinks: true,
+  showLeagueLink: false,
+  useTeamHeader: false,
+  loginError: null,
+  signupError: null
+}) %>     
   <div class="serie-a-container">
     <a href="/team/inter-milan" class="card-big" style="background-image: url('/serie-a-images/inter-milan.png');"></a>
     <a href="/team/juventus" class="card-big" style="background-image: url('/serie-a-images/juventus.png');"></a>

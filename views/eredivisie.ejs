@@ -8,11 +8,13 @@
 </head>
 <body>
   <%- include('partials/_header', {
-    headerClass: 'header-home',
-    showAuthLinks: true,
-    showLeagueLink: false,
-    useTeamHeader: false
-  }) %>
+  headerClass: 'header-home',
+  showAuthLinks: true,
+  showLeagueLink: false,
+  useTeamHeader: false,
+  loginError: null,
+  signupError: null
+}) %>
   
   <div class="eredivisie-container">
     <a href="/team/ajax" class="card-big" style="background-image: url('/eredivisie-images/ajax.jpg');"></a>

@@ -363,31 +363,6 @@ app.get('/team/:teamname', async (req, res) => {
   }
 });
 
-// --- Tournament Pages ---
-const tournaments = ['champions', 'world_cup', 'euros', 'copa_america'];
-tournaments.forEach(tournament => {
-  app.get(`/${tournament}.html`, async (req, res) => {
-    const sortField = req.query.sort === 'top' ? 'like_reactions' : 'timestamp';
-
-    try {
-      const commentsSnap = await db.collection('comments').where('team', '==', tournament).orderBy(sortField, 'desc').get();
-      const comments = commentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      res.render('team', {
-        teamname: tournament,
-        comments,
-        sort: req.query.sort,
-        useTeamHeader: false,
-        leagueSlug: tournament,
-        leagueName: tournament.replace('_', ' ').toUpperCase()
-      });
-    } catch (err) {
-      console.error('Tournament page error:', err);
-      res.status(500).send("Failed to load tournament page");
-    }
-  });
-});
-
 // --- Comment Reaction ---
 app.post('/comment/:id/react/:type', async (req, res) => {
   const { id, type } = req.params;
@@ -520,6 +495,7 @@ app.get('/chat/:username', async (req, res) => {
   }
 });
 
+
 // --- WebSocket Handling ---
 const connectedUsers = new Map();
 const lastSeenMap = new Map();
@@ -595,3 +571,15 @@ app.get('/test-write', async (req, res) => {
 app.get('/stories-demo', (req, res) => {
   res.render('stories-demo');
 });
+
+//Leagues 
+app.get('/premier.html', (req, res) => res.render('premier'));
+app.get('/laliga.html', (req, res) => res.render('laliga'));
+app.get('/serie-a.html', (req, res) => res.render('serie-a'));
+app.get('/bundesliga.html', (req, res) => res.render('bundesliga'));
+app.get('/ligue1.html', (req, res) => res.render('ligue1'));
+app.get('/roshn-saudi.html', (req, res) => res.render('roshn-saudi'));
+app.get('/eredivisie.html', (req, res) => res.render('eredivisie'));
+app.get('/liga-portugal.html', (req, res) => res.render('liga-portugal'));
+app.get('/super-lig.html', (req, res) => res.render('super-lig'));
+

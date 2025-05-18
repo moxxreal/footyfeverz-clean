@@ -8,11 +8,13 @@
 </head>
 <body>
   <%- include('partials/_header', {
-    headerClass: 'header-home',
-    showAuthLinks: true,
-    showLeagueLink: false,
-    useTeamHeader: false
-  }) %>
+  headerClass: 'header-home',
+  showAuthLinks: true,
+  showLeagueLink: false,
+  useTeamHeader: false,
+  loginError: null,
+  signupError: null
+}) %>
    
   <div class="super-lig-container">
     <a href="/team/galatasaray" class="card-big" style="background-image: url('/super-lig-images/galatasaray.png');"></a>

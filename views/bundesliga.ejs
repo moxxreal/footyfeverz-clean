@@ -7,12 +7,14 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <%- include('partials/_header', {
-    headerClass: 'header-home',
-    showAuthLinks: true,
-    showLeagueLink: false,
-    useTeamHeader: false
-  }) %>   
+ <%- include('partials/_header', {
+  headerClass: 'header-home',
+  showAuthLinks: true,
+  showLeagueLink: false,
+  useTeamHeader: false,
+  loginError: null,
+  signupError: null
+}) %> 
   <div class="bundesliga-container">
     <a href="/team/bayern-munich" class="card-big" style="background-image: url('/bundesliga-images/bayern-munich.jpg');"></a>
     <a href="/team/borussia-dortmund" class="card-big" style="background-image: url('/bundesliga-images/borussia-dortmund.jpg');"></a>

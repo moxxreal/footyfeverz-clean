@@ -8,11 +8,13 @@
 </head>
 <body>
   <%- include('partials/_header', {
-    headerClass: 'header-home',
-    showAuthLinks: true,
-    showLeagueLink: false,
-    useTeamHeader: false
-  }) %>    
+  headerClass: 'header-home',
+  showAuthLinks: true,
+  showLeagueLink: false,
+  useTeamHeader: false,
+  loginError: null,
+  signupError: null
+}) %>    
   <div class="liga-portugal-container">
     <a href="/team/sporting-cp" class="card-big" style="background-image: url('/liga-portugal-images/sporting-cp.png');"></a>
     <a href="/team/sl-benfica" class="card-big" style="background-image: url('/liga-portugal-images/sl-benfica.png');"></a>
