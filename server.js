@@ -51,6 +51,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
 const multiUpload = upload.fields([{ name: 'media', maxCount: 1 }, { name: 'profile_pic', maxCount: 1 }]);
 
+// ✅ First middleware: fetch unread messages
 app.use(async (req, res, next) => {
   try {
     if (req.session.user?.username) {
@@ -63,10 +64,19 @@ app.use(async (req, res, next) => {
   } catch (err) {
     console.error('User session middleware error:', err);
   }
+  next(); // ✅ don't forget this!
+});
+
+// ✅ Second middleware: locals for all views
+app.use((req, res, next) => {
   res.locals.user = req.session.user;
   res.locals.request = req;
+  res.locals.loginError = null;
+  res.locals.signupError = null;
+  res.locals.hideAuthModals = false; // ✅ This line fixes your current issue
   next();
 });
+
 // --- Reusable Homepage Error Renderer ---
 async function renderHomeWithError(res, errorType, errorMsg) {
   try {
@@ -241,7 +251,14 @@ app.get('/', async (req, res) => {
     const battleSnap = await db.collection('battles').orderBy('created_at', 'desc').limit(1).get();
     const battle = battleSnap.docs[0]?.data() || null;
 
-    res.render('index', { stories, topFans, battle, signupError: null, loginError: null });
+    res.render('index', { 
+  user: req.session.user || null, // ✅ now it works!
+  stories, 
+  topFans, 
+  battle, 
+  signupError: null, 
+  loginError: null 
+});
   } catch (err) {
     console.error('❌ Home load error:', err);
     res.status(500).send("Failed to load homepage");

@@ -7,7 +7,12 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <%- include('partials/_header', { headerClass: 'header-home', showAuthLinks: true, showLeagueLink: false, useTeamHeader: false }) %>
+ <%- include('partials/_header', {
+  headerClass: 'header-default',
+  useTeamHeader: typeof useTeamHeader !== 'undefined' ? useTeamHeader : false,
+  leagueSlug: typeof leagueSlug !== 'undefined' ? leagueSlug : '',
+  leagueName: typeof leagueName !== 'undefined' ? leagueName : ''
+}) %>
   <%- include('partials/_stories', { stories, user }) %>
 
   <!-- League Cards -->
@@ -103,8 +108,5 @@
     document.getElementById('storyForm').submit();
   });
 </script>
-
-<%- include('partials/_authModals') %>
-
 </body>
 </html>

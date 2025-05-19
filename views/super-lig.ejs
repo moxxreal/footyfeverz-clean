@@ -2,41 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Süper Lig Teams 2024/2025</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <%- include('partials/_header', {
-  headerClass: 'header-home',
-  showAuthLinks: true,
-  showLeagueLink: false,
-  useTeamHeader: false,
-  loginError: null,
-  signupError: null
-}) %>
-   
-  <div class="super-lig-container">
-    <a href="/team/galatasaray" class="card-big" style="background-image: url('/super-lig-images/galatasaray.png');"></a>
-    <a href="/team/fenerbahce" class="card-big" style="background-image: url('/super-lig-images/fenerbahce.png');"></a>
-    <a href="/team/besiktas" class="card-big" style="background-image: url('/super-lig-images/besiktas.png');"></a>
-    <a href="/team/trabzonspor" class="card-medium" style="background-image: url('/super-lig-images/trabzonspor.png');"></a>
-    <a href="/team/istanbul-basaksehir" class="card-medium" style="background-image: url('/super-lig-images/istanbul-basaksehir.png');"></a>
-    <a href="/team/kasimpasa" class="card-medium" style="background-image: url('/super-lig-images/kasimpasa.png');"></a>
-    <a href="/team/eyupspor" class="card-medium" style="background-image: url('/super-lig-images/eyupspor.png');"></a>
-    <a href="/team/goztepe" class="card-medium" style="background-image: url('/super-lig-images/goztepe.png');"></a>
-    <a href="/team/bodrum-fk" class="card-medium" style="background-image: url('/super-lig-images/bodrum-fk.png');"></a>
-    <a href="/team/samsunspor" class="card-medium" style="background-image: url('/super-lig-images/samsunspor.png');"></a>
-    <a href="/team/konyaspor" class="card-medium" style="background-image: url('/super-lig-images/konyaspor.png');"></a>
-    <a href="/team/antalyaspor" class="card-medium" style="background-image: url('/super-lig-images/antalyaspor.png');"></a>
-    <a href="/team/sivasspor" class="card-medium" style="background-image: url('/super-lig-images/sivasspor.png');"></a>
-    <a href="/team/alanyaspor" class="card-medium" style="background-image: url('/super-lig-images/alanyaspor.png');"></a>
-    <a href="/team/caykur-rizespor" class="card-medium" style="background-image: url('/super-lig-images/caykur-rizespor.png');"></a>
-    <a href="/team/gaziantep-fk" class="card-medium" style="background-image: url('/super-lig-images/gaziantep-fk.png');"></a>
-    <a href="/team/kayserispor" class="card-medium" style="background-image: url('/super-lig-images/kayserispor.png');"></a>
-    <a href="/team/hatayspor" class="card-medium" style="background-image: url('/super-lig-images/hatayspor.png');"></a>
-    <a href="/team/adana-demirspor" class="card-medium" style="background-image: url('/super-lig-images/adana-demirspor.png');"></a>
+    headerClass: 'header-home',
+    showAuthLinks: true,
+    showLeagueLink: false,
+    useTeamHeader: false,
+    hideAuthModals: true
+  }) %>
+
+  <div class="card-container">
+    <a href="/team/galatasaray" class="card" style="background-image: url('/super-lig-images/galatasaray.png');"></a>
+    <a href="/team/fenerbahce" class="card" style="background-image: url('/super-lig-images/fenerbahce.png');"></a>
+    <a href="/team/besiktas" class="card" style="background-image: url('/super-lig-images/besiktas.png');"></a>
+    <a href="/team/trabzonspor" class="card" style="background-image: url('/super-lig-images/trabzonspor.png');"></a>
+    <a href="/team/istanbul-basaksehir" class="card" style="background-image: url('/super-lig-images/istanbul-basaksehir.png');"></a>
+    <a href="/team/kasimpasa" class="card" style="background-image: url('/super-lig-images/kasimpasa.png');"></a>
+    <a href="/team/eyupspor" class="card" style="background-image: url('/super-lig-images/eyupspor.png');"></a>
+    <a href="/team/goztepe" class="card" style="background-image: url('/super-lig-images/goztepe.png');"></a>
+    <a href="/team/bodrum-fk" class="card" style="background-image: url('/super-lig-images/bodrum-fk.png');"></a>
+    <a href="/team/samsunspor" class="card" style="background-image: url('/super-lig-images/samsunspor.png');"></a>
+    <a href="/team/konyaspor" class="card" style="background-image: url('/super-lig-images/konyaspor.png');"></a>
+    <a href="/team/antalyaspor" class="card" style="background-image: url('/super-lig-images/antalyaspor.png');"></a>
+    <a href="/team/sivasspor" class="card" style="background-image: url('/super-lig-images/sivasspor.png');"></a>
+    <a href="/team/alanyaspor" class="card" style="background-image: url('/super-lig-images/alanyaspor.png');"></a>
+    <a href="/team/caykur-rizespor" class="card" style="background-image: url('/super-lig-images/caykur-rizespor.png');"></a>
+    <a href="/team/gaziantep-fk" class="card" style="background-image: url('/super-lig-images/gaziantep-fk.png');"></a>
+    <a href="/team/kayserispor" class="card" style="background-image: url('/super-lig-images/kayserispor.png');"></a>
+    <a href="/team/hatayspor" class="card" style="background-image: url('/super-lig-images/hatayspor.png');"></a>
+    <a href="/team/adana-demirspor" class="card" style="background-image: url('/super-lig-images/adana-demirspor.png');"></a>
   </div>
-  <%- include('partials/_authModals') %>
 </body>
 </html>

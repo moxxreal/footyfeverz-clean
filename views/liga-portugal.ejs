@@ -2,39 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Liga Portugal Teams 2024/2025</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <%- include('partials/_header', {
-  headerClass: 'header-home',
-  showAuthLinks: true,
-  showLeagueLink: false,
-  useTeamHeader: false,
-  loginError: null,
-  signupError: null
-}) %>    
-  <div class="liga-portugal-container">
-    <a href="/team/sporting-cp" class="card-big" style="background-image: url('/liga-portugal-images/sporting-cp.png');"></a>
-    <a href="/team/sl-benfica" class="card-big" style="background-image: url('/liga-portugal-images/sl-benfica.png');"></a>
-    <a href="/team/fc-porto" class="card-big" style="background-image: url('/liga-portugal-images/fc-porto.png');"></a>
-    <a href="/team/sc-braga" class="card-medium" style="background-image: url('/liga-portugal-images/sc-braga.png');"></a>
-    <a href="/team/vitoria-guimaraes" class="card-medium" style="background-image: url('/liga-portugal-images/vitoria-guimaraes.png');"></a>
-    <a href="/team/cd-santa-clara" class="card-medium" style="background-image: url('/liga-portugal-images/cd-santa-clara.png');"></a>
-    <a href="/team/fc-famalicao" class="card-medium" style="background-image: url('/liga-portugal-images/fc-famalicao.png');"></a>
-    <a href="/team/casa-pia" class="card-medium" style="background-image: url('/liga-portugal-images/casa-pia.png');"></a>
-    <a href="/team/gd-estoril-praia" class="card-medium" style="background-image: url('/liga-portugal-images/gd-estoril-praia.png');"></a>
-    <a href="/team/rio-ave" class="card-medium" style="background-image: url('/liga-portugal-images/rio-ave.png');"></a>
-    <a href="/team/moreirense" class="card-medium" style="background-image: url('/liga-portugal-images/moreirense.png');"></a>
-    <a href="/team/cd-nacional" class="card-medium" style="background-image: url('/liga-portugal-images/cd-nacional.png');"></a>
-    <a href="/team/gil-vicente" class="card-medium" style="background-image: url('/liga-portugal-images/gil-vicente.png');"></a>
-    <a href="/team/fc-arouca" class="card-medium" style="background-image: url('/liga-portugal-images/fc-arouca.png');"></a>
-    <a href="/team/sc-farense" class="card-medium" style="background-image: url('/liga-portugal-images/sc-farense.png');"></a>
-    <a href="/team/cf-estrela-amadora" class="card-medium" style="background-image: url('/liga-portugal-images/cf-estrela-amadora.png');"></a>
-    <a href="/team/boavista" class="card-medium" style="background-image: url('/liga-portugal-images/boavista.png');"></a>
-    <a href="/team/afs" class="card-medium" style="background-image: url('/liga-portugal-images/afs.png');"></a>
+    headerClass: 'header-home',
+    showAuthLinks: true,
+    showLeagueLink: false,
+    useTeamHeader: false,
+    hideAuthModals: true
+  }) %>
+
+  <div class="card-container">
+    <a href="/team/sporting-cp" class="card" style="background-image: url('/liga-portugal-images/sporting-cp.png');"></a>
+    <a href="/team/sl-benfica" class="card" style="background-image: url('/liga-portugal-images/sl-benfica.png');"></a>
+    <a href="/team/fc-porto" class="card" style="background-image: url('/liga-portugal-images/fc-porto.png');"></a>
+    <a href="/team/sc-braga" class="card" style="background-image: url('/liga-portugal-images/sc-braga.png');"></a>
+    <a href="/team/vitoria-guimaraes" class="card" style="background-image: url('/liga-portugal-images/vitoria-guimaraes.png');"></a>
+    <a href="/team/cd-santa-clara" class="card" style="background-image: url('/liga-portugal-images/cd-santa-clara.png');"></a>
+    <a href="/team/fc-famalicao" class="card" style="background-image: url('/liga-portugal-images/fc-famalicao.png');"></a>
+    <a href="/team/casa-pia" class="card" style="background-image: url('/liga-portugal-images/casa-pia.png');"></a>
+    <a href="/team/gd-estoril-praia" class="card" style="background-image: url('/liga-portugal-images/gd-estoril-praia.png');"></a>
+    <a href="/team/rio-ave" class="card" style="background-image: url('/liga-portugal-images/rio-ave.png');"></a>
+    <a href="/team/moreirense" class="card" style="background-image: url('/liga-portugal-images/moreirense.png');"></a>
+    <a href="/team/cd-nacional" class="card" style="background-image: url('/liga-portugal-images/cd-nacional.png');"></a>
+    <a href="/team/gil-vicente" class="card" style="background-image: url('/liga-portugal-images/gil-vicente.png');"></a>
+    <a href="/team/fc-arouca" class="card" style="background-image: url('/liga-portugal-images/fc-arouca.png');"></a>
+    <a href="/team/sc-farense" class="card" style="background-image: url('/liga-portugal-images/sc-farense.png');"></a>
+    <a href="/team/cf-estrela-amadora" class="card" style="background-image: url('/liga-portugal-images/cf-estrela-amadora.png');"></a>
+    <a href="/team/boavista" class="card" style="background-image: url('/liga-portugal-images/boavista.png');"></a>
+    <a href="/team/afs" class="card" style="background-image: url('/liga-portugal-images/afs.png');"></a>
   </div>
-  <%- include('partials/_authModals') %>
 </body>
 </html>

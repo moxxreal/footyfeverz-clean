@@ -1,42 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Serie A Teams</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <%- include('partials/_header', {
-  headerClass: 'header-home',
-  showAuthLinks: true,
-  showLeagueLink: false,
-  useTeamHeader: false,
-  loginError: null,
-  signupError: null
-}) %>     
-  <div class="serie-a-container">
-    <a href="/team/inter-milan" class="card-big" style="background-image: url('/serie-a-images/inter-milan.png');"></a>
-    <a href="/team/juventus" class="card-big" style="background-image: url('/serie-a-images/juventus.png');"></a>
-    <a href="/team/ac-milan" class="card-big" style="background-image: url('/serie-a-images/ac-milan.png');"></a>
-    <a href="/team/napoli" class="card-medium" style="background-image: url('/serie-a-images/napoli.png');"></a>
-    <a href="/team/roma" class="card-medium" style="background-image: url('/serie-a-images/roma.png');"></a>
-    <a href="/team/fiorentina" class="card-medium" style="background-image: url('/serie-a-images/fiorentina.png');"></a>
-    <a href="/team/atalanta" class="card-small" style="background-image: url('/serie-a-images/atalanta.png');"></a>
-    <a href="/team/lazio" class="card-small" style="background-image: url('/serie-a-images/lazio.png');"></a>
-    <a href="/team/bologna" class="card-small" style="background-image: url('/serie-a-images/bologna.png');"></a>
-    <a href="/team/como" class="card-small" style="background-image: url('/serie-a-images/como.png');"></a>
-    <a href="/team/torino" class="card-small" style="background-image: url('/serie-a-images/torino.png');"></a>
-    <a href="/team/udinese" class="card-small" style="background-image: url('/serie-a-images/udinese.png');"></a>
-    <a href="/team/genoa" class="card-small" style="background-image: url('/serie-a-images/genoa.png');"></a>
-    <a href="/team/cagliari" class="card-small" style="background-image: url('/serie-a-images/cagliari.png');"></a>
-    <a href="/team/verona" class="card-small" style="background-image: url('/serie-a-images/verona.png');"></a>
-    <a href="/team/parma" class="card-small" style="background-image: url('/serie-a-images/parma.png');"></a>
-    <a href="/team/lecce" class="card-small" style="background-image: url('/serie-a-images/lecce.png');"></a>
-    <a href="/team/venezia" class="card-small" style="background-image: url('/serie-a-images/venezia.png');"></a>
-    <a href="/team/empoli" class="card-small" style="background-image: url('/serie-a-images/empoli.png');"></a>
-    <a href="/team/monza" class="card-small" style="background-image: url('/serie-a-images/monza.png');"></a>
+    headerClass: 'header-home',
+    showAuthLinks: true,
+    showLeagueLink: false,
+    useTeamHeader: false,
+    hideAuthModals: true
+  }) %>
+
+  <div class="card-container">
+    <a href="/team/inter-milan" class="card" style="background-image: url('/serie-a-images/inter-milan.png');"></a>
+    <a href="/team/juventus" class="card" style="background-image: url('/serie-a-images/juventus.png');"></a>
+    <a href="/team/ac-milan" class="card" style="background-image: url('/serie-a-images/ac-milan.png');"></a>
+    <a href="/team/napoli" class="card" style="background-image: url('/serie-a-images/napoli.png');"></a>
+    <a href="/team/roma" class="card" style="background-image: url('/serie-a-images/roma.png');"></a>
+    <a href="/team/fiorentina" class="card" style="background-image: url('/serie-a-images/fiorentina.png');"></a>
+    <a href="/team/atalanta" class="card" style="background-image: url('/serie-a-images/atalanta.png');"></a>
+    <a href="/team/lazio" class="card" style="background-image: url('/serie-a-images/lazio.png');"></a>
+    <a href="/team/bologna" class="card" style="background-image: url('/serie-a-images/bologna.png');"></a>
+    <a href="/team/como" class="card" style="background-image: url('/serie-a-images/como.png');"></a>
+    <a href="/team/torino" class="card" style="background-image: url('/serie-a-images/torino.png');"></a>
+    <a href="/team/udinese" class="card" style="background-image: url('/serie-a-images/udinese.png');"></a>
+    <a href="/team/genoa" class="card" style="background-image: url('/serie-a-images/genoa.png');"></a>
+    <a href="/team/cagliari" class="card" style="background-image: url('/serie-a-images/cagliari.png');"></a>
+    <a href="/team/verona" class="card" style="background-image: url('/serie-a-images/verona.png');"></a>
+    <a href="/team/parma" class="card" style="background-image: url('/serie-a-images/parma.png');"></a>
+    <a href="/team/lecce" class="card" style="background-image: url('/serie-a-images/lecce.png');"></a>
+    <a href="/team/venezia" class="card" style="background-image: url('/serie-a-images/venezia.png');"></a>
+    <a href="/team/empoli" class="card" style="background-image: url('/serie-a-images/empoli.png');"></a>
+    <a href="/team/monza" class="card" style="background-image: url('/serie-a-images/monza.png');"></a>
   </div>
-  <%- include('partials/_authModals') %>
 </body>
 </html>

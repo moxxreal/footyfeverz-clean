@@ -1,43 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Premier League Teams</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <%- include('partials/_header', {
-  headerClass: 'header-home',
-  showAuthLinks: true,
-  showLeagueLink: false,
-  useTeamHeader: false,
-  loginError: null,
-  signupError: null
-}) %>   
-  <div class="premier-league-container">
-    <!-- Big Clubs -->
-    <a href="/team/manchester-united" class="card-medium" style="background-image: url('/premier-images/man-united.png');"></a>
-    <a href="/team/liverpool" class="card-big" style="background-image: url('/premier-images/liverpool.png');"></a>
-    <a href="/team/manchester-city" class="card-big" style="background-image: url('/premier-images/man-city.png');"></a>
-    <a href="/team/arsenal" class="card-big" style="background-image: url('/premier-images/arsenal.png');"></a>
-    <a href="/team/chelsea" class="card-medium" style="background-image: url('/premier-images/chelsea.png');"></a>
-    <a href="/team/tottenham" class="card-medium" style="background-image: url('/premier-images/tottenham.png');"></a>
-    <a href="/team/newcastle" class="card-medium" style="background-image: url('/premier-images/newcastle.png');"></a>
-    <a href="/team/aston-villa" class="card-small" style="background-image: url('/premier-images/aston-villa.png');"></a>
-    <a href="/team/west-ham" class="card-small" style="background-image: url('/premier-images/west-ham.png');"></a>
-    <a href="/team/brighton" class="card-small" style="background-image: url('/premier-images/brighton.png');"></a>
-    <a href="/team/brentford" class="card-small" style="background-image: url('/premier-images/brentford.png');"></a>
-    <a href="/team/wolves" class="card-small" style="background-image: url('/premier-images/wolves.png');"></a>
-    <a href="/team/everton" class="card-small" style="background-image: url('/premier-images/everton.png');"></a>
-    <a href="/team/crystal-palace" class="card-small" style="background-image: url('/premier-images/crystal-palace.png');"></a>
-    <a href="/team/fulham" class="card-small" style="background-image: url('/premier-images/fulham.png');"></a>
-    <a href="/team/bournemouth" class="card-small" style="background-image: url('/premier-images/bournemouth.png');"></a>
-    <a href="/team/leicester-city" class="card-small" style="background-image: url('/premier-images/leicester-city.png');"></a>
-    <a href="/team/nottingham-forest" class="card-small" style="background-image: url('/premier-images/nottingham-forest.png');"></a>
-    <a href="/team/ipswich-town" class="card-small" style="background-image: url('/premier-images/ipswich-town.png');"></a>
-    <a href="/team/southampton" class="card-small" style="background-image: url('/premier-images/southampton.png');"></a>
+  headerClass: 'header-default',
+  useTeamHeader: typeof useTeamHeader !== 'undefined' ? useTeamHeader : false,
+  leagueSlug: typeof leagueSlug !== 'undefined' ? leagueSlug : '',
+  leagueName: typeof leagueName !== 'undefined' ? leagueName : ''
+}) %>
+
+  <div class="card-container">
+    <a href="/team/manchester-united" class="card" style="background-image: url('/premier-images/man-united.png');"></a>
+    <a href="/team/liverpool" class="card" style="background-image: url('/premier-images/liverpool.png');"></a>
+    <a href="/team/manchester-city" class="card" style="background-image: url('/premier-images/man-city.png');"></a>
+    <a href="/team/arsenal" class="card" style="background-image: url('/premier-images/arsenal.png');"></a>
+    <a href="/team/chelsea" class="card" style="background-image: url('/premier-images/chelsea.png');"></a>
+    <a href="/team/tottenham" class="card" style="background-image: url('/premier-images/tottenham.png');"></a>
+    <a href="/team/newcastle" class="card" style="background-image: url('/premier-images/newcastle.png');"></a>
+    <a href="/team/aston-villa" class="card" style="background-image: url('/premier-images/aston-villa.png');"></a>
+    <a href="/team/west-ham" class="card" style="background-image: url('/premier-images/west-ham.png');"></a>
+    <a href="/team/brighton" class="card" style="background-image: url('/premier-images/brighton.png');"></a>
+    <a href="/team/brentford" class="card" style="background-image: url('/premier-images/brentford.png');"></a>
+    <a href="/team/wolves" class="card" style="background-image: url('/premier-images/wolves.png');"></a>
+    <a href="/team/everton" class="card" style="background-image: url('/premier-images/everton.png');"></a>
+    <a href="/team/crystal-palace" class="card" style="background-image: url('/premier-images/crystal-palace.png');"></a>
+    <a href="/team/fulham" class="card" style="background-image: url('/premier-images/fulham.png');"></a>
+    <a href="/team/bournemouth" class="card" style="background-image: url('/premier-images/bournemouth.png');"></a>
+    <a href="/team/leicester-city" class="card" style="background-image: url('/premier-images/leicester-city.png');"></a>
+    <a href="/team/nottingham-forest" class="card" style="background-image: url('/premier-images/nottingham-forest.png');"></a>
+    <a href="/team/ipswich-town" class="card" style="background-image: url('/premier-images/ipswich-town.png');"></a>
+    <a href="/team/southampton" class="card" style="background-image: url('/premier-images/southampton.png');"></a>
   </div>
-  <%- include('partials/_authModals') %>
 </body>
 </html>

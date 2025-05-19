@@ -2,44 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ligue 1 Teams 2024/2025</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <%- include('partials/_header', {
-  headerClass: 'header-home',
-  showAuthLinks: true,
-  showLeagueLink: false,
-  useTeamHeader: false,
-  loginError: null,
-  signupError: null
-}) %>    
-  <div class="ligue1-container">
-    <!-- Big Clubs -->
-    <a href="/team/psg" class="card-big" style="background-image: url('/ligue1-images/psg.jpg');"></a>
-    <a href="/team/olympique-marseille" class="card-big" style="background-image: url('/ligue1-images/olympique-marseille.jpg');"></a>
-    <a href="/team/monaco" class="card-big" style="background-image: url('/ligue1-images/monaco.jpg');"></a>
+    headerClass: 'header-home',
+    showAuthLinks: true,
+    showLeagueLink: false,
+    useTeamHeader: false,
+    hideAuthModals: true
+  }) %>
 
-    <!-- Medium Clubs -->
-    <a href="/team/lyon" class="card-medium" style="background-image: url('/ligue1-images/lyon.jpg');"></a>
-    <a href="/team/lille" class="card-medium" style="background-image: url('/ligue1-images/lille.jpg');"></a>
-    <a href="/team/nice" class="card-medium" style="background-image: url('/ligue1-images/nice.jpg');"></a>
-    <a href="/team/rennes" class="card-medium" style="background-image: url('/ligue1-images/rennes.jpg');"></a>
-    <a href="/team/lens" class="card-medium" style="background-image: url('/ligue1-images/lens.jpg');"></a>
-
-    <!-- Small Clubs -->
-    <a href="/team/strasbourg" class="card-small" style="background-image: url('/ligue1-images/strasbourg.jpg');"></a>
-    <a href="/team/reims" class="card-small" style="background-image: url('/ligue1-images/reims.jpg');"></a>
-    <a href="/team/brest" class="card-small" style="background-image: url('/ligue1-images/brest.jpg');"></a>
-    <a href="/team/toulouse" class="card-small" style="background-image: url('/ligue1-images/toulouse.jpg');"></a>
-    <a href="/team/montpellier" class="card-small" style="background-image: url('/ligue1-images/montpellier.jpg');"></a>
-    <a href="/team/nantes" class="card-small" style="background-image: url('/ligue1-images/nantes.jpg');"></a>
-    <a href="/team/le-havre" class="card-small" style="background-image: url('/ligue1-images/le-havre.jpg');"></a>
-    <a href="/team/auxerre" class="card-small" style="background-image: url('/ligue1-images/auxerre.jpg');"></a>
-    <a href="/team/angers" class="card-small" style="background-image: url('/ligue1-images/angers.jpg');"></a>
-    <a href="/team/saint-etienne" class="card-small" style="background-image: url('/ligue1-images/saint-etienne.jpg');"></a>
+  <div class="card-container">
+    <a href="/team/psg" class="card" style="background-image: url('/ligue1-images/psg.jpg');"></a>
+    <a href="/team/olympique-marseille" class="card" style="background-image: url('/ligue1-images/olympique-marseille.jpg');"></a>
+    <a href="/team/monaco" class="card" style="background-image: url('/ligue1-images/monaco.jpg');"></a>
+    <a href="/team/lyon" class="card" style="background-image: url('/ligue1-images/lyon.jpg');"></a>
+    <a href="/team/lille" class="card" style="background-image: url('/ligue1-images/lille.jpg');"></a>
+    <a href="/team/nice" class="card" style="background-image: url('/ligue1-images/nice.jpg');"></a>
+    <a href="/team/rennes" class="card" style="background-image: url('/ligue1-images/rennes.jpg');"></a>
+    <a href="/team/lens" class="card" style="background-image: url('/ligue1-images/lens.jpg');"></a>
+    <a href="/team/strasbourg" class="card" style="background-image: url('/ligue1-images/strasbourg.jpg');"></a>
+    <a href="/team/reims" class="card" style="background-image: url('/ligue1-images/reims.jpg');"></a>
+    <a href="/team/brest" class="card" style="background-image: url('/ligue1-images/brest.jpg');"></a>
+    <a href="/team/toulouse" class="card" style="background-image: url('/ligue1-images/toulouse.jpg');"></a>
+    <a href="/team/montpellier" class="card" style="background-image: url('/ligue1-images/montpellier.jpg');"></a>
+    <a href="/team/nantes" class="card" style="background-image: url('/ligue1-images/nantes.jpg');"></a>
+    <a href="/team/le-havre" class="card" style="background-image: url('/ligue1-images/le-havre.jpg');"></a>
+    <a href="/team/auxerre" class="card" style="background-image: url('/ligue1-images/auxerre.jpg');"></a>
+    <a href="/team/angers" class="card" style="background-image: url('/ligue1-images/angers.jpg');"></a>
+    <a href="/team/saint-etienne" class="card" style="background-image: url('/ligue1-images/saint-etienne.jpg');"></a>
   </div>
-  <%- include('partials/_authModals') %>
 </body>
 </html>

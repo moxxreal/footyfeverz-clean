@@ -1,40 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bundesliga Teams</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
- <%- include('partials/_header', {
-  headerClass: 'header-home',
-  showAuthLinks: true,
-  showLeagueLink: false,
-  useTeamHeader: false,
-  loginError: null,
-  signupError: null
-}) %> 
-  <div class="bundesliga-container">
-    <a href="/team/bayern-munich" class="card-big" style="background-image: url('/bundesliga-images/bayern-munich.jpg');"></a>
-    <a href="/team/borussia-dortmund" class="card-big" style="background-image: url('/bundesliga-images/borussia-dortmund.jpg');"></a>
-    <a href="/team/bayer-leverkusen" class="card-medium" style="background-image: url('/bundesliga-images/bayer-leverkusen.jpg');"></a>
-    <a href="/team/rb-leipzig" class="card-big" style="background-image: url('/bundesliga-images/rb-leipzig.jpg');"></a>
-    <a href="/team/eintracht-frankfurt" class="card-medium" style="background-image: url('/bundesliga-images/eintracht-frankfurt.jpg');"></a>
-    <a href="/team/borussia-monchengladbach" class="card-medium" style="background-image: url('/bundesliga-images/borussia-monchengladbach.jpg');"></a>
-    <a href="/team/union-berlin" class="card-small" style="background-image: url('/bundesliga-images/union-berlin.jpg');"></a>
-    <a href="/team/vfl-wolfsburg" class="card-small" style="background-image: url('/bundesliga-images/vfl-wolfsburg.jpg');"></a>
-    <a href="/team/freiburg" class="card-small" style="background-image: url('/bundesliga-images/freiburg.jpg');"></a>
-    <a href="/team/mainz" class="card-small" style="background-image: url('/bundesliga-images/mainz.jpg');"></a>
-    <a href="/team/augsburg" class="card-small" style="background-image: url('/bundesliga-images/augsburg.jpg');"></a>
-    <a href="/team/hoffenheim" class="card-small" style="background-image: url('/bundesliga-images/hoffenheim.jpg');"></a>
-    <a href="/team/vfl-bochum" class="card-small" style="background-image: url('/bundesliga-images/vfl-bochum.jpg');"></a>
-    <a href="/team/stuttgart" class="card-small" style="background-image: url('/bundesliga-images/stuttgart.jpg');"></a>
-    <a href="/team/heidenheim" class="card-small" style="background-image: url('/bundesliga-images/heidenheim.jpg');"></a>
-    <a href="/team/st-pauli" class="card-small" style="background-image: url('/bundesliga-images/st-pauli.jpg');"></a>
-    <a href="/team/werder-bremen" class="card-small" style="background-image: url('/bundesliga-images/werder-bremen.jpg');"></a>
-    <a href="/team/holstein" class="card-small" style="background-image: url('/bundesliga-images/holstein.jpg');"></a>
+  <%- include('partials/_header', {
+    headerClass: 'header-home',
+    showAuthLinks: true,
+    showLeagueLink: false,
+    useTeamHeader: false,
+    hideAuthModals: true
+  }) %>
+
+  <div class="card-container">
+    <a href="/team/bayern-munich" class="card" style="background-image: url('/bundesliga-images/bayern-munich.jpg');"></a>
+    <a href="/team/borussia-dortmund" class="card" style="background-image: url('/bundesliga-images/borussia-dortmund.jpg');"></a>
+    <a href="/team/bayer-leverkusen" class="card" style="background-image: url('/bundesliga-images/bayer-leverkusen.jpg');"></a>
+    <a href="/team/rb-leipzig" class="card" style="background-image: url('/bundesliga-images/rb-leipzig.jpg');"></a>
+    <a href="/team/eintracht-frankfurt" class="card" style="background-image: url('/bundesliga-images/eintracht-frankfurt.jpg');"></a>
+    <a href="/team/borussia-monchengladbach" class="card" style="background-image: url('/bundesliga-images/borussia-monchengladbach.jpg');"></a>
+    <a href="/team/union-berlin" class="card" style="background-image: url('/bundesliga-images/union-berlin.jpg');"></a>
+    <a href="/team/vfl-wolfsburg" class="card" style="background-image: url('/bundesliga-images/vfl-wolfsburg.jpg');"></a>
+    <a href="/team/freiburg" class="card" style="background-image: url('/bundesliga-images/freiburg.jpg');"></a>
+    <a href="/team/mainz" class="card" style="background-image: url('/bundesliga-images/mainz.jpg');"></a>
+    <a href="/team/augsburg" class="card" style="background-image: url('/bundesliga-images/augsburg.jpg');"></a>
+    <a href="/team/hoffenheim" class="card" style="background-image: url('/bundesliga-images/hoffenheim.jpg');"></a>
+    <a href="/team/vfl-bochum" class="card" style="background-image: url('/bundesliga-images/vfl-bochum.jpg');"></a>
+    <a href="/team/stuttgart" class="card" style="background-image: url('/bundesliga-images/stuttgart.jpg');"></a>
+    <a href="/team/heidenheim" class="card" style="background-image: url('/bundesliga-images/heidenheim.jpg');"></a>
+    <a href="/team/st-pauli" class="card" style="background-image: url('/bundesliga-images/st-pauli.jpg');"></a>
+    <a href="/team/werder-bremen" class="card" style="background-image: url('/bundesliga-images/werder-bremen.jpg');"></a>
+    <a href="/team/holstein" class="card" style="background-image: url('/bundesliga-images/holstein.jpg');"></a>
   </div>
-  <%- include('partials/_authModals') %>
 </body>
 </html>
