@@ -9,6 +9,8 @@ const relativeTime = require('dayjs/plugin/relativeTime');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
 const admin = require('firebase-admin');
+const teamToLeagueMap = require('./teamToLeagueMap');
+
 require('dotenv').config();
 
 dayjs.extend(relativeTime);
@@ -354,29 +356,41 @@ app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
   }
 });
 
-const teamToLeagueMap = require('./teamToLeagueMap');
-
 // --- Team Page ---
 app.get('/team/:teamname', async (req, res) => {
   const { teamname } = req.params;
   const sortField = req.query.sort === 'top' ? 'like_reactions' : 'timestamp';
 
-  try {
-    const commentsSnap = await db.collection('comments').where('team', '==', teamname).orderBy(sortField, 'desc').get();
-    const comments = commentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const leagueInfo = teamToLeagueMap[teamname];
+  if (!leagueInfo) {
+    console.error('❌ Unknown team:', teamname);
+    return res.status(404).send('Team not found');
+  }
 
-    const leagueInfo = teamToLeagueMap[teamname] || {};
+  try {
+    let commentsRef = db.collection('comments').where('team', '==', teamname);
+
+    // Only add ordering if field is guaranteed to exist on all docs
+    if (sortField === 'like_reactions') {
+      commentsRef = commentsRef.orderBy('like_reactions', 'desc');
+    } else {
+      commentsRef = commentsRef.orderBy('timestamp', 'desc');
+    }
+
+    const snapshot = await commentsRef.get();
+    const comments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
     res.render('team', {
       teamname,
       comments,
       sort: req.query.sort,
       useTeamHeader: true,
-      leagueSlug: leagueInfo.slug || '',
-      leagueName: leagueInfo.name || ''
+      leagueSlug: leagueInfo.slug,
+      leagueName: leagueInfo.name
     });
   } catch (err) {
-    console.error('Team page error:', err);
-    res.status(500).send("Failed to load team page");
+    console.error('❌ Team page error:', err.message);
+    res.status(500).send('Failed to load team page');
   }
 });
 
@@ -425,7 +439,10 @@ app.get('/user/:username', async (req, res) => {
   const { username } = req.params;
 
   try {
-    const commentsSnap = await db.collection('comments').where('user', '==', username).orderBy('timestamp', 'desc').get();
+    const commentsSnap = await db.collection('comments')
+  .where('user', '==', username)
+  .get(); // removed .orderBy
+
     const comments = commentsSnap.docs.map(doc => ({ ...doc.data() }));
     const totalComments = comments.length;
     const totalLikes = comments.reduce((sum, c) => sum + (c.like_reactions || 0), 0);
@@ -453,30 +470,38 @@ app.get('/inbox', async (req, res) => {
   const username = req.session.user.username;
 
   try {
-    const messagesSnap = await db.collection('messages')
+    const snapshot = await db.collection('messages')
       .where('participants', 'array-contains', username)
-      .orderBy('timestamp', 'desc')
       .get();
 
     const conversations = {};
-    messagesSnap.forEach(doc => {
+
+    snapshot.forEach(doc => {
       const msg = doc.data();
       const otherUser = msg.sender === username ? msg.receiver : msg.sender;
-      if (!conversations[otherUser]) {
+
+      if (
+        !conversations[otherUser] ||
+        (msg.timestamp?.toMillis?.() > conversations[otherUser].timestamp?.toMillis?.())
+      ) {
         conversations[otherUser] = {
           user: otherUser,
           lastMessage: msg.content,
-          timestamp: msg.timestamp
+          timestamp: msg.timestamp?.toDate?.() || new Date(0),
+          seenByReceiver: msg.seenByReceiver || false,
+          profile_pic: msg.profile_pic || null
         };
       }
     });
 
+    const sorted = Object.values(conversations).sort((a, b) => b.timestamp - a.timestamp);
+
     res.render('inbox', {
-      conversations: Object.values(conversations),
+      conversations: sorted,
       currentUser: req.session.user
     });
   } catch (err) {
-    console.error('Inbox error:', err);
+    console.error('❌ Inbox error:', err);
     res.status(500).send("Inbox error");
   }
 });
@@ -484,34 +509,66 @@ app.get('/inbox', async (req, res) => {
 // --- Chat Page ---
 app.get('/chat/:username', async (req, res) => {
   if (!req.session.user) return res.redirect('/?error=Login required');
-  const { username: receiver } = req.params;
-  const sender = req.session.user.username;
 
-  if (sender === receiver) return res.redirect('/?error=Cannot chat with yourself');
+  const sender = req.session.user.username;
+  const receiver = req.params.username;
+
+  if (sender === receiver) {
+    return res.redirect('/?error=Cannot chat with yourself');
+  }
 
   try {
     const userSnap = await db.collection('users').doc(receiver).get();
     if (!userSnap.exists) return res.status(404).send("User not found");
 
-    await db.collection('messages')
+    // Mark receiver's messages as seen
+    const unseen = await db.collection('messages')
       .where('sender', '==', receiver)
       .where('receiver', '==', sender)
       .where('seenByReceiver', '==', false)
-      .get()
-      .then(snapshot => {
-        snapshot.forEach(doc => doc.ref.update({ seenByReceiver: true }));
-      });
+      .get();
+
+    await Promise.all(unseen.docs.map(doc => doc.ref.update({ seenByReceiver: true })));
 
     res.render('chat', {
       receiver: userSnap.data(),
       currentUser: req.session.user
     });
   } catch (err) {
-    console.error('Chat load error:', err);
+    console.error('❌ Chat load error:', err);
     res.status(500).send("Failed to load chat");
   }
 });
 
+// --- Chat API: Fetch conversation ---
+// --- Chat API: Send a message ---
+app.post('/api/messages/send', async (req, res) => {
+  const sender = req.session.user?.username;
+  const { receiver, content } = req.body;
+
+  if (!sender || !receiver || !content?.trim()) {
+    return res.status(400).json({ success: false, message: 'Missing data' });
+  }
+
+  try {
+    const message = {
+      sender,
+      receiver,
+      participants: [sender, receiver],
+      content: content.trim(),
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      seenByReceiver: false
+    };
+
+    const ref = await db.collection('messages').add(message);
+    const newMessage = { id: ref.id, ...message };
+
+    res.json({ success: true, message: newMessage });
+  } catch (err) {
+    console.error('❌ Failed to send message:', err);
+    res.status(500).json({ success: false, message: 'Failed to send message' });
+  }
+});
 
 // --- WebSocket Handling ---
 const connectedUsers = new Map();
@@ -539,10 +596,11 @@ io.on('connection', (socket) => {
       seenByReceiver: false
     };
 
-    const msgRef = await db.collection('messages').add(message);
+    const ref = await db.collection('messages').add(message);
+    const msgData = { id: ref.id, ...message, timestamp: new Date() };
 
-    const msgData = { id: msgRef.id, ...message, timestamp: new Date() };
-    io.to([sender, receiver].sort().join('-')).emit('newMessage', msgData);
+    const room = [sender, receiver].sort().join('-');
+    io.to(room).emit('newMessage', msgData);
   });
 
   socket.on('typing', ({ to, from }) => {
@@ -599,4 +657,3 @@ app.get('/roshn-saudi.html', (req, res) => res.render('roshn-saudi'));
 app.get('/eredivisie.html', (req, res) => res.render('eredivisie'));
 app.get('/liga-portugal.html', (req, res) => res.render('liga-portugal'));
 app.get('/super-lig.html', (req, res) => res.render('super-lig'));
-
