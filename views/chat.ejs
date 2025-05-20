@@ -29,6 +29,64 @@
       flex-direction: column;
     }
 
+    .message {
+      display: flex;
+      flex-direction: column;
+      margin: 10px 0;
+      max-width: 70%;
+    }
+
+    .message.sent {
+      align-self: flex-end;
+      text-align: right;
+    }
+
+    .message.received {
+      align-self: flex-start;
+      text-align: left;
+    }
+
+    .avatar-name {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .username-label {
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .bubble {
+      background: #f8d7da;
+      padding: 10px;
+      border-radius: 10px;
+      word-wrap: break-word;
+    }
+
+    .sent .bubble {
+      background: #d1e7dd;
+    }
+
+    .media {
+      max-width: 100%;
+      margin-top: 10px;
+      border-radius: 8px;
+    }
+
+    .timestamp {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+
     #chat-form {
       margin-top: 20px;
       display: flex;
@@ -74,7 +132,8 @@
   }) %>
 
   <section class="chat-container">
-    <h2>Chat with <%= receiver.username %>
+    <h2>
+      Chat with <%= receiver.username %>
       <span id="online-status" style="font-size: 16px; margin-left: 10px; color: #888;">Checking...</span>
     </h2>
 
@@ -88,12 +147,13 @@
   </section>
 
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs/plugin/relativeTime.js"></script>
+  <script>
+    dayjs.extend(window.dayjs_plugin_relativeTime);
+  </script>
   <script src="/socket.io/socket.io.js"></script>
 
   <script>
-    dayjs.extend(window.dayjs_plugin_relativeTime);
-
     const currentUsername = '<%= currentUser.username %>';
     const receiverUsername = '<%= receiver.username %>';
     const chatBox = document.getElementById('chat-box');
@@ -102,7 +162,6 @@
     const statusElement = document.getElementById('online-status');
     const socket = io();
 
-    const room = [currentUsername, receiverUsername].sort().join('-');
     socket.emit('joinRoom', { sender: currentUsername, receiver: receiverUsername });
     socket.emit('checkOnlineStatus', { userToCheck: receiverUsername });
 
@@ -125,51 +184,66 @@
       try {
         const res = await fetch(`/api/messages/conversation/${receiverUsername}`);
         const messages = await res.json();
-        renderMessages(messages);
+        chatBox.innerHTML = '';
+        messages.forEach(renderMessage);
+        scrollToBottom();
       } catch (err) {
         console.error('❌ Failed to load messages:', err);
       }
     }
 
-    function renderMessages(messages) {
-      chatBox.innerHTML = '';
-      messages.forEach(msg => {
-        const wrapper = document.createElement('div');
-        wrapper.style.display = 'flex';
-        wrapper.style.flexDirection = 'column';
-        wrapper.style.margin = '10px 0';
+    function renderMessage(msg) {
+      const container = document.createElement('div');
+      container.className = 'message ' + (msg.sender === currentUsername ? 'sent' : 'received');
 
-        const msgDiv = document.createElement('div');
-        msgDiv.textContent = msg.content;
-        msgDiv.style.padding = '10px';
-        msgDiv.style.borderRadius = '8px';
-        msgDiv.style.maxWidth = '70%';
-        msgDiv.style.wordWrap = 'break-word';
+      const userRow = document.createElement('div');
+      userRow.className = 'avatar-name';
 
-        const time = document.createElement('div');
-        const timestamp = msg.timestamp?.seconds
-          ? dayjs.unix(msg.timestamp.seconds).format('HH:mm')
-          : 'now';
-        time.textContent = timestamp;
-        time.style.fontSize = '12px';
-        time.style.color = '#888';
-        time.style.marginTop = '4px';
+      const avatar = document.createElement('img');
+      avatar.className = 'avatar';
+      avatar.src = msg.profile_pic || '/default-avatar.png';
 
-        if (msg.sender === currentUsername) {
-          msgDiv.style.background = '#d1e7dd';
-          wrapper.style.alignItems = 'flex-end';
-          msgDiv.style.textAlign = 'right';
+      const username = document.createElement('span');
+      username.className = 'username-label';
+      username.textContent = msg.sender;
+
+      userRow.appendChild(avatar);
+      userRow.appendChild(username);
+      container.appendChild(userRow);
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = msg.content;
+      container.appendChild(bubble);
+
+      if (msg.media) {
+        const isVideo = msg.media.endsWith('.mp4') || msg.media.endsWith('.webm') || msg.media.endsWith('.ogg');
+        const mediaElem = document.createElement(isVideo ? 'video' : 'img');
+        mediaElem.className = 'media';
+        mediaElem.src = msg.media;
+        if (isVideo) mediaElem.controls = true;
+        container.appendChild(mediaElem);
+      }
+
+      const time = document.createElement('div');
+      time.className = 'timestamp';
+      try {
+        if (msg.timestamp?.seconds) {
+          time.textContent = dayjs.unix(msg.timestamp.seconds).fromNow();
+        } else if (msg.timestamp?.toDate) {
+          time.textContent = dayjs(msg.timestamp.toDate()).fromNow();
         } else {
-          msgDiv.style.background = '#f8d7da';
-          wrapper.style.alignItems = 'flex-start';
-          msgDiv.style.textAlign = 'left';
+          time.textContent = dayjs(msg.timestamp).fromNow();
         }
+      } catch {
+        time.textContent = 'just now';
+      }
+      container.appendChild(time);
 
-        wrapper.appendChild(msgDiv);
-        wrapper.appendChild(time);
-        chatBox.appendChild(wrapper);
-      });
+      chatBox.appendChild(container);
+    }
 
+    function scrollToBottom() {
       chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
     }
 
@@ -185,15 +259,9 @@
           body: JSON.stringify({ receiver: receiverUsername, content })
         });
 
-        socket.emit('chatMessage', {
-          sender: currentUsername,
-          receiver: receiverUsername,
-          content
-        });
-
+        socket.emit('chatMessage', { sender: currentUsername, receiver: receiverUsername, content });
         messageInput.value = '';
         socket.emit('stopTyping', { to: receiverUsername, from: currentUsername });
-        loadMessages();
       } catch (err) {
         console.error('❌ Failed to send message:', err);
       }
@@ -204,7 +272,8 @@
         (msg.sender === currentUsername && msg.receiver === receiverUsername) ||
         (msg.sender === receiverUsername && msg.receiver === currentUsername)
       ) {
-        loadMessages();
+        renderMessage(msg);
+        scrollToBottom();
       }
     });
 

@@ -464,26 +464,80 @@ app.get('/user/:username', async (req, res) => {
   }
 });
 
-// --- Inbox Page ---
+// ✅ Helper: Save message to Firestore
+async function saveMessage({ sender, receiver, content }) {
+  const timestamp = new Date();
+
+  const message = {
+    sender,
+    receiver,
+    participants: [sender, receiver],
+    content: content.trim(),
+    timestamp: admin.firestore.Timestamp.fromDate(timestamp),
+    seenByReceiver: false
+  };
+
+  const ref = await db.collection('messages').add(message);
+  return { id: ref.id, ...message };
+}
+
+// ✅ API: Send message
+app.post('/api/messages/send', async (req, res) => {
+  const sender = req.session.user?.username;
+  const { receiver, content } = req.body;
+  if (!sender || !receiver || !content?.trim()) {
+    return res.status(400).json({ success: false });
+  }
+
+  try {
+    const saved = await saveMessage({ sender, receiver, content });
+    res.json({ success: true, message: saved });
+  } catch (err) {
+    console.error('❌ Failed to send message:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
+// ✅ API: Get conversation
+app.get('/api/messages/conversation/:username', async (req, res) => {
+  const currentUser = req.session.user?.username;
+  const otherUser = req.params.username;
+
+  if (!currentUser) return res.status(401).json({ success: false });
+
+  try {
+    const snapshot = await db.collection('messages')
+      .where('sender', 'in', [currentUser, otherUser])
+      .where('receiver', 'in', [currentUser, otherUser])
+      .orderBy('timestamp', 'asc')
+      .get();
+
+    const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json(messages);
+  } catch (err) {
+    console.error('❌ Failed to fetch messages:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
+// ✅ Inbox
 app.get('/inbox', async (req, res) => {
   if (!req.session.user) return res.redirect('/?error=Login required');
   const username = req.session.user.username;
+  const currentUser = req.session.user;
 
   try {
     const snapshot = await db.collection('messages')
       .where('participants', 'array-contains', username)
+      .orderBy('timestamp', 'desc')
       .get();
 
     const conversations = {};
-
     snapshot.forEach(doc => {
       const msg = doc.data();
       const otherUser = msg.sender === username ? msg.receiver : msg.sender;
 
-      if (
-        !conversations[otherUser] ||
-        (msg.timestamp?.toMillis?.() > conversations[otherUser].timestamp?.toMillis?.())
-      ) {
+      if (!conversations[otherUser] || msg.timestamp?.toMillis?.() > conversations[otherUser].timestamp?.toMillis?.()) {
         conversations[otherUser] = {
           user: otherUser,
           lastMessage: msg.content,
@@ -495,33 +549,25 @@ app.get('/inbox', async (req, res) => {
     });
 
     const sorted = Object.values(conversations).sort((a, b) => b.timestamp - a.timestamp);
-
-    res.render('inbox', {
-      conversations: sorted,
-      currentUser: req.session.user
-    });
+    res.render('inbox', { conversations: sorted, currentUser });
   } catch (err) {
     console.error('❌ Inbox error:', err);
     res.status(500).send("Inbox error");
   }
 });
 
-// --- Chat Page ---
+// ✅ Chat Page
 app.get('/chat/:username', async (req, res) => {
   if (!req.session.user) return res.redirect('/?error=Login required');
 
   const sender = req.session.user.username;
   const receiver = req.params.username;
-
-  if (sender === receiver) {
-    return res.redirect('/?error=Cannot chat with yourself');
-  }
+  if (sender === receiver) return res.redirect('/?error=Cannot chat with yourself');
 
   try {
     const userSnap = await db.collection('users').doc(receiver).get();
     if (!userSnap.exists) return res.status(404).send("User not found");
 
-    // Mark receiver's messages as seen
     const unseen = await db.collection('messages')
       .where('sender', '==', receiver)
       .where('receiver', '==', sender)
@@ -540,42 +586,11 @@ app.get('/chat/:username', async (req, res) => {
   }
 });
 
-// --- Chat API: Fetch conversation ---
-// --- Chat API: Send a message ---
-app.post('/api/messages/send', async (req, res) => {
-  const sender = req.session.user?.username;
-  const { receiver, content } = req.body;
-
-  if (!sender || !receiver || !content?.trim()) {
-    return res.status(400).json({ success: false, message: 'Missing data' });
-  }
-
-  try {
-    const message = {
-      sender,
-      receiver,
-      participants: [sender, receiver],
-      content: content.trim(),
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      seenByReceiver: false
-    };
-
-    const ref = await db.collection('messages').add(message);
-    const newMessage = { id: ref.id, ...message };
-
-    res.json({ success: true, message: newMessage });
-  } catch (err) {
-    console.error('❌ Failed to send message:', err);
-    res.status(500).json({ success: false, message: 'Failed to send message' });
-  }
-});
-
-// --- WebSocket Handling ---
+// ✅ WebSocket
 const connectedUsers = new Map();
-const lastSeenMap = new Map();
 
 io.on('connection', (socket) => {
-  console.log('🔌 Connected:', socket.id);
+  console.log('🔌 Socket connected:', socket.id);
 
   socket.on('joinRoom', ({ sender, receiver }) => {
     const room = [sender, receiver].sort().join('-');
@@ -585,22 +600,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chatMessage', async ({ sender, receiver, content }) => {
-    if (!content?.trim()) return;
-
-    const message = {
-      sender,
-      receiver,
-      participants: [sender, receiver],
-      content,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      seenByReceiver: false
-    };
-
-    const ref = await db.collection('messages').add(message);
-    const msgData = { id: ref.id, ...message, timestamp: new Date() };
-
+    if (!sender || !receiver || !content?.trim()) return;
     const room = [sender, receiver].sort().join('-');
-    io.to(room).emit('newMessage', msgData);
+
+    try {
+      const saved = await saveMessage({ sender, receiver, content });
+      io.to(room).emit('newMessage', saved);
+    } catch (err) {
+      console.error('❌ Socket message save error:', err);
+    }
   });
 
   socket.on('typing', ({ to, from }) => {
@@ -617,34 +625,12 @@ io.on('connection', (socket) => {
     for (const [username, id] of connectedUsers.entries()) {
       if (id === socket.id) {
         connectedUsers.delete(username);
-        const lastSeen = new Date().toISOString();
-        lastSeenMap.set(username, lastSeen);
-        socket.broadcast.emit('userOffline', { username, lastSeen });
+        socket.broadcast.emit('userOffline', { username });
         break;
       }
     }
-    console.log('❌ Disconnected:', socket.id);
+    console.log('❌ Socket disconnected:', socket.id);
   });
-});
-
-// --- Firestore Test Write ---
-app.get('/test-write', async (req, res) => {
-  try {
-    await db.collection('stories').add({
-      username: 'testuser',
-      caption: 'Test Story',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      image: '/uploads/test.png'
-    });
-    res.send('✅ Test write to Firestore succeeded');
-  } catch (err) {
-    console.error('Firestore write failed:', err);
-    res.status(500).send('Failed');
-  }
-});
-
-app.get('/stories-demo', (req, res) => {
-  res.render('stories-demo');
 });
 
 //Leagues 
