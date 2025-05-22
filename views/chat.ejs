@@ -29,64 +29,6 @@
       flex-direction: column;
     }
 
-    .message {
-      display: flex;
-      flex-direction: column;
-      margin: 10px 0;
-      max-width: 70%;
-    }
-
-    .message.sent {
-      align-self: flex-end;
-      text-align: right;
-    }
-
-    .message.received {
-      align-self: flex-start;
-      text-align: left;
-    }
-
-    .avatar-name {
-      display: flex;
-      align-items: center;
-      margin-bottom: 5px;
-    }
-
-    .avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      margin-right: 8px;
-    }
-
-    .username-label {
-      font-weight: bold;
-      font-size: 14px;
-    }
-
-    .bubble {
-      background: #f8d7da;
-      padding: 10px;
-      border-radius: 10px;
-      word-wrap: break-word;
-    }
-
-    .sent .bubble {
-      background: #d1e7dd;
-    }
-
-    .media {
-      max-width: 100%;
-      margin-top: 10px;
-      border-radius: 8px;
-    }
-
-    .timestamp {
-      font-size: 12px;
-      color: #888;
-      margin-top: 4px;
-    }
-
     #chat-form {
       margin-top: 20px;
       display: flex;
@@ -147,10 +89,6 @@
   </section>
 
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dayjs/plugin/relativeTime.js"></script>
-  <script>
-    dayjs.extend(window.dayjs_plugin_relativeTime);
-  </script>
   <script src="/socket.io/socket.io.js"></script>
 
   <script>
@@ -193,54 +131,51 @@
     }
 
     function renderMessage(msg) {
-      const container = document.createElement('div');
-      container.className = 'message ' + (msg.sender === currentUsername ? 'sent' : 'received');
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.margin = '10px 0';
 
-      const userRow = document.createElement('div');
-      userRow.className = 'avatar-name';
-
-      const avatar = document.createElement('img');
-      avatar.className = 'avatar';
-      avatar.src = msg.profile_pic || '/default-avatar.png';
-
-      const username = document.createElement('span');
-      username.className = 'username-label';
-      username.textContent = msg.sender;
-
-      userRow.appendChild(avatar);
-      userRow.appendChild(username);
-      container.appendChild(userRow);
-
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.textContent = msg.content;
-      container.appendChild(bubble);
-
-      if (msg.media) {
-        const isVideo = msg.media.endsWith('.mp4') || msg.media.endsWith('.webm') || msg.media.endsWith('.ogg');
-        const mediaElem = document.createElement(isVideo ? 'video' : 'img');
-        mediaElem.className = 'media';
-        mediaElem.src = msg.media;
-        if (isVideo) mediaElem.controls = true;
-        container.appendChild(mediaElem);
-      }
+      const msgDiv = document.createElement('div');
+      msgDiv.textContent = msg.content;
+      msgDiv.style.padding = '10px';
+      msgDiv.style.borderRadius = '8px';
+      msgDiv.style.maxWidth = '70%';
+      msgDiv.style.wordWrap = 'break-word';
 
       const time = document.createElement('div');
-      time.className = 'timestamp';
+      let timestamp = 'now';
+
       try {
         if (msg.timestamp?.seconds) {
-          time.textContent = dayjs.unix(msg.timestamp.seconds).fromNow();
+          timestamp = dayjs.unix(msg.timestamp.seconds).format('HH:mm');
         } else if (msg.timestamp?.toDate) {
-          time.textContent = dayjs(msg.timestamp.toDate()).fromNow();
+          timestamp = dayjs(msg.timestamp.toDate()).format('HH:mm');
         } else {
-          time.textContent = dayjs(msg.timestamp).fromNow();
+          timestamp = dayjs(msg.timestamp).format('HH:mm');
         }
-      } catch {
-        time.textContent = 'just now';
+      } catch (err) {
+        console.error('Failed to parse timestamp:', msg.timestamp);
       }
-      container.appendChild(time);
 
-      chatBox.appendChild(container);
+      time.textContent = timestamp;
+      time.style.fontSize = '12px';
+      time.style.color = '#888';
+      time.style.marginTop = '4px';
+
+      if (msg.sender === currentUsername) {
+        msgDiv.style.background = '#d1e7dd';
+        wrapper.style.alignItems = 'flex-end';
+        msgDiv.style.textAlign = 'right';
+      } else {
+        msgDiv.style.background = '#f8d7da';
+        wrapper.style.alignItems = 'flex-start';
+        msgDiv.style.textAlign = 'left';
+      }
+
+      wrapper.appendChild(msgDiv);
+      wrapper.appendChild(time);
+      chatBox.appendChild(wrapper);
     }
 
     function scrollToBottom() {
@@ -259,7 +194,12 @@
           body: JSON.stringify({ receiver: receiverUsername, content })
         });
 
-        socket.emit('chatMessage', { sender: currentUsername, receiver: receiverUsername, content });
+        socket.emit('chatMessage', {
+          sender: currentUsername,
+          receiver: receiverUsername,
+          content
+        });
+
         messageInput.value = '';
         socket.emit('stopTyping', { to: receiverUsername, from: currentUsername });
       } catch (err) {

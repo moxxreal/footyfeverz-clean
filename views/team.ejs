@@ -16,6 +16,8 @@
     leagueName
   }) %>
 
+  <%- include('partials/_tactical-board') %>
+
   <h1 style="text-align: center;"><%= teamname.toUpperCase() %> Fan Comments</h1>
 
   <div class="sort-comments" style="text-align: center; margin-bottom: 20px;">
@@ -35,14 +37,14 @@
       <% comments.forEach(comment => { %>
         <div class="comment-item">
           <strong>
-          <a href="/chat/<%= comment.user %>">
-          <%= comment.user %>
-           </a>
+            <a href="/chat/<%= comment.user %>"><%= comment.user %></a>
           </strong>
 
           <img src="<%= comment.profile_pic || '/default-avatar.png' %>" alt="Avatar" class="comment-avatar" />
 
-          <p><%= comment.text %></p>
+          <% if (comment.text && comment.text.trim()) { %>
+            <p><%= comment.text %></p>
+          <% } %>
 
           <% if (comment.media) {
             const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg');
@@ -50,7 +52,7 @@
             <% if (isVideo) { %>
               <video src="<%= comment.media %>" controls style="max-width: 300px; border-radius: 10px; margin-top: 10px;"></video>
             <% } else { %>
-              <img src="<%= comment.media %>" style="max-width: 200px; border-radius: 10px; margin-top: 10px;" />
+              <img src="<%= comment.media %>" class="comment-image-clickable" style="max-width: 600px; border-radius: 12px; margin-top: 12px; cursor: pointer;" />
             <% } %>
           <% } %>
 
@@ -68,66 +70,96 @@
   </div>
 
   <!-- Comment Form -->
-<div class="comments-container" style="margin-top: 40px;">
-  <div class="comment-form-container" style="
-  background: rgba(245, 245, 245, 0.95);
-  border: 4px solid transparent;
-  background-image: url('/images/grass-border.png');
-  background-repeat: round;
-  background-size: 40px; /* keep this consistent */
-  border-radius: 20px;
-  padding: 30px 70px 30px 40px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-">
-    <form id="commentForm" action="/team/<%= teamname %>/comment" method="POST" enctype="multipart/form-data">
-      <textarea
-        id="commentText"
-        name="text"
-        placeholder="Write your comment..."
-        required
-        style="
-          width: 100%;
-          height: 220px;
-          font-size: 18px;
-          padding: 15px;
-          border-radius: 12px;
-          border: 1px solid #ccc;
-          background: #fff;
-          resize: vertical;
-          margin-bottom: 15px;
-        "
-      ></textarea>
+  <div class="comments-container" style="margin-top: 40px;">
+    <div class="comment-form-container" style="
+      background: rgba(245, 245, 245, 0.95);
+      border: 4px solid transparent;
+      background-image: url('/images/grass-border.png');
+      background-repeat: round;
+      background-size: 40px;
+      border-radius: 20px;
+      padding: 30px 70px 30px 40px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    ">
+      <form id="commentForm" action="/team/<%= teamname %>/comment" method="POST" enctype="multipart/form-data">
+        <textarea
+          id="commentText"
+          name="text"
+          placeholder="Write your comment..."
+          style="
+            width: 100%;
+            height: 220px;
+            font-size: 18px;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #ccc;
+            background: #fff;
+            resize: vertical;
+            margin-bottom: 15px;
+          "
+        ></textarea>
 
-      <input type="file" name="media" accept="image/*,video/*" style="margin-bottom: 15px;" />
+        <input type="file" name="media" accept="image/*,video/*" style="margin-bottom: 15px;" />
+        <input type="file" name="tacticImage" id="tacticImageInput" style="display: none;" />
+        <img id="mediaPreview" style="max-width: 200px; display: none; margin-top: 10px;" />
 
-      <div>
-        <button
-          type="submit"
-          id="submitBtn"
-          class="comment-submit-btn"
-          style="margin-right: 10px;"
-        >
-          Post Comment
-        </button>
-        <button type="button" id="emoji-button">😊</button>
-      </div>
+        <div>
+          <button type="button" onclick="openTacticalBoard()" style="
+            padding: 12px 20px;
+            background: url('/images/tactical-button-bg.jpg') center/cover no-repeat;
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+            text-shadow: 1px 1px 3px black;
+          ">
+            ⚽ Tactical Board
+          </button>
 
-      <% if (!user) { %>
-        <p id="unauthMessage" class="hidden login-warning" style="margin-top: 12px;">
-          You must <span onclick="openLogin()" style="text-decoration: underline; cursor: pointer;">login</span> to post a comment.
-        </p>
-      <% } %>
-    </form>
+          <button type="submit" id="submitBtn" class="comment-submit-btn" style="margin-right: 10px;">
+            Post Comment
+          </button>
+
+          <button type="button" id="emoji-button">😊</button>
+        </div>
+
+        <% if (!user) { %>
+          <p id="unauthMessage" class="hidden login-warning" style="margin-top: 12px;">
+            You must <span onclick="openLogin()" style="text-decoration: underline; cursor: pointer;">login</span> to post a comment.
+          </p>
+        <% } %>
+      </form>
+    </div>
   </div>
-</div>
 
   <!-- Emoji Picker -->
   <script>
-    const picker = new EmojiButton();
-    const emojiBtn = document.querySelector('#emoji-button');
-    const input = document.querySelector('#commentText');
+  const picker = new EmojiButton();
+  const emojiBtn = document.querySelector('#emoji-button');
+  const input = document.querySelector('#commentText');
+
+  if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
+    emojiBtn.style.display = 'none';
+  } else {
     emojiBtn.addEventListener('click', () => picker.togglePicker(emojiBtn));
     picker.on('emoji', emoji => input.value += emoji);
+  }
+  </script>
+
+  <!-- Image Preview -->
+  <script>
+  document.querySelector('input[name="media"]').addEventListener('change', function () {
+    const file = this.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      const img = document.getElementById('mediaPreview');
+      img.src = url;
+      img.style.display = 'block';
+    }
+  });
   </script>
 
   <!-- Reactions -->
@@ -150,7 +182,7 @@
     }
   </script>
 
-  <!-- Auth Warning -->
+  <!-- Auth Warning (only block submit if no text AND no image) -->
   <script>
     document.getElementById('commentForm').addEventListener('submit', function(e) {
       <% if (!user) { %>
@@ -160,6 +192,14 @@
         msg.classList.remove('hidden');
         btn.classList.add('shake');
         setTimeout(() => btn.classList.remove('shake'), 500);
+      <% } else { %>
+        const text = document.getElementById('commentText').value.trim();
+        const media = document.querySelector('input[name="media"]').files.length > 0;
+        const tactic = document.querySelector('input[name="tacticImage"]').files.length > 0;
+        if (!text && !media && !tactic) {
+          e.preventDefault();
+          alert("Please write a comment or attach media.");
+        }
       <% } %>
     });
   </script>

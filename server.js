@@ -51,7 +51,11 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => cb(null, `${Date.now()}-${Math.random().toString(36).substring(7)}${path.extname(file.originalname)}`)
 });
 const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
-const multiUpload = upload.fields([{ name: 'media', maxCount: 1 }, { name: 'profile_pic', maxCount: 1 }]);
+const multiUpload = upload.fields([
+  { name: 'media', maxCount: 1 },
+  { name: 'profile_pic', maxCount: 1 },
+  { name: 'tacticImage', maxCount: 1 } // ✅ required for tactical board
+]);
 
 // ✅ First middleware: fetch unread messages
 app.use(async (req, res, next) => {
@@ -334,7 +338,10 @@ app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
 
   const { teamname } = req.params;
   const { text } = req.body;
-  const media = req.files?.media ? `/uploads/${req.files.media[0].filename}` : '';
+  const media =
+  req.files?.media?.[0]?.path?.includes('uploads') ? `/uploads/${req.files.media[0].filename}` :
+  req.files?.tacticImage?.[0] ? `/uploads/${req.files.tacticImage[0].filename}` :
+  '';
   const profilePic = req.files?.profile_pic ? `/uploads/${req.files.profile_pic[0].filename}` : '';
 
   if (!text?.trim()) return res.status(400).send("Empty comment");
@@ -503,20 +510,26 @@ app.get('/api/messages/conversation/:username', async (req, res) => {
   const currentUser = req.session.user?.username;
   const otherUser = req.params.username;
 
-  if (!currentUser) return res.status(401).json({ success: false });
+  if (!currentUser) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
 
   try {
     const snapshot = await db.collection('messages')
       .where('sender', 'in', [currentUser, otherUser])
       .where('receiver', 'in', [currentUser, otherUser])
-      .orderBy('timestamp', 'asc')
+      .orderBy('timestamp', 'asc')  // <-- MUST match index direction
       .get();
 
-    const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const messages = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
     res.json(messages);
   } catch (err) {
     console.error('❌ Failed to fetch messages:', err);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: 'Failed to fetch messages' });
   }
 });
 
