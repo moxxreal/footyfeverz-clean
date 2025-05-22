@@ -6,6 +6,42 @@
   <title><%= teamname %> Fan Page | Footy Feverz</title>
   <link rel="stylesheet" href="/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.2/dist/emoji-button.min.js"></script>
+  <style>
+    .comment-image-clickable {
+      width: 100%;
+      max-width: 90vw;
+      height: auto;
+      border-radius: 12px;
+      margin-top: 12px;
+      cursor: zoom-in;
+    }
+
+    @media (min-width: 768px) {
+      .comment-image-clickable {
+        max-width: 600px;
+      }
+    }
+
+    #imageModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    #modalImage {
+      max-width: 95%;
+      max-height: 95%;
+      border-radius: 10px;
+      box-shadow: 0 0 20px black;
+    }
+  </style>
 </head>
 <body>
   <%- include('partials/_header', {
@@ -50,9 +86,9 @@
             const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg');
           %>
             <% if (isVideo) { %>
-              <video src="<%= comment.media %>" controls style="max-width: 300px; border-radius: 10px; margin-top: 10px;"></video>
+              <video src="<%= comment.media %>" controls style="max-width: 100%; border-radius: 10px; margin-top: 10px;"></video>
             <% } else { %>
-              <img src="<%= comment.media %>" class="comment-image-clickable" style="max-width: 600px; border-radius: 12px; margin-top: 12px; cursor: pointer;" />
+              <img src="<%= comment.media %>" class="comment-image-clickable" />
             <% } %>
           <% } %>
 
@@ -69,6 +105,29 @@
     <% } %>
   </div>
 
+  <div id="imageModal" class="hidden">
+    <img id="modalImage" src="" />
+  </div>
+
+  <!-- Image Preview Modal Script -->
+  <script>
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImage');
+
+    document.addEventListener('click', function(e) {
+      const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+      if (!isMobile && e.target.tagName === 'IMG' && e.target.classList.contains('comment-image-clickable')) {
+        modalImg.src = e.target.src;
+        modal.classList.remove('hidden');
+      }
+    });
+
+    modal.addEventListener('click', () => {
+      modal.classList.add('hidden');
+      modalImg.src = '';
+    });
+  </script>
+  
   <!-- Comment Form -->
   <div class="comments-container" style="margin-top: 40px;">
     <div class="comment-form-container" style="
