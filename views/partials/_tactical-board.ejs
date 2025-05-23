@@ -1,15 +1,6 @@
 <!-- html2canvas CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-<!-- SVG Marker for Arrows -->
-<svg height="0" width="0">
-  <defs>
-    <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto" markerUnits="strokeWidth">
-      <polygon points="0 0, 6 2, 0 4" id="arrowHeadShape" fill="white" />
-    </marker>
-  </defs>
-</svg>
-
 <style>
   .grid-line {
     position: absolute;
@@ -23,36 +14,27 @@
     50% { transform: scale(1.4); opacity: 0.4; }
     100% { transform: scale(1); opacity: 0; }
   }
-
-  @media screen and (orientation: portrait) {
-    body, html {
-      display: none !important;
-      overflow: hidden !important;
-      height: 100vh;
-      width: 100vw;
-    }
-    html::before {
-      content: "Please rotate your device to landscape to use the Tactical Board.";
-      display: block;
-      color: white;
-      background: #000;
-      padding: 30px;
-      text-align: center;
-      font-size: 20px;
-    }
-  }
 </style>
+
+<!-- SVG Marker -->
+<svg height="0" width="0">
+  <defs>
+    <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto" markerUnits="strokeWidth">
+      <polygon points="0 0, 6 2, 0 4" id="arrowHeadShape" fill="white" />
+    </marker>
+  </defs>
+</svg>
+
 <!-- Modal -->
-<div id="tacticalModal" class="hidden auth-modal" onclick="handleModalBackgroundClick(event)" style="overflow: hidden;">
+<div id="tacticalModal" class="hidden auth-modal" onclick="handleModalBackgroundClick(event)" style="overflow-y: auto;">
   <div class="auth-form tactical-inner" style="max-width: 1000px; width: 95%; background: white; position: relative; padding: 1rem; margin: 40px auto;" onclick="event.stopPropagation()">
     <button onclick="closeTacticalBoard()" style="position: fixed; top: 20px; right: 20px; z-index: 10000; font-size: 18px; padding: 8px 12px; background-color: #ccc; border: none; border-radius: 5px; cursor: pointer;">✖ Exit</button>
 
     <h2 style="color: #002147; text-align: center;">Tactical Board</h2>
 
-    <div id="tacticalControls" style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 10px; color: #002147; font-weight: bold; justify-content: center;">
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 10px; color: #002147; font-weight: bold; justify-content: center;">
       <label>Home Color: <input type="color" id="homeColor" value="#ffffff"></label>
       <label>Away Color: <input type="color" id="awayColor" value="#ff0000"></label>
-
       <label>Home Template:
         <select id="homeTemplate">
           <option value="442">4-4-2 Classic</option>
@@ -65,7 +47,6 @@
           <option value="4222">4-2-2-2</option>
         </select>
       </label>
-
       <label>Away Template:
         <select id="awayTemplate">
           <option value="442">4-4-2 Classic</option>
@@ -74,53 +55,29 @@
           <option value="343">3-4-3</option>
         </select>
       </label>
-
       <label>Show Teams:
         <select id="teamDisplay">
           <option value="home">Home Only</option>
           <option value="both">Both Teams</option>
         </select>
       </label>
-
       <button type="button" onclick="resetPlayers()">Reset</button>
       <button type="button" id="arrowToggleBtn">➤ Add Arrow</button>
     </div>
+
     <div style="text-align: center; margin-bottom: 10px;">
       <button onclick="saveTacticalBoard()" style="padding: 12px 20px; background-color: #28a745; color: white; font-weight: bold; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; margin-right: 10px;">✅ Submit Formation</button>
       <button onclick="clearAllArrows()" style="padding: 12px 20px; background-color: #dc3545; color: white; font-weight: bold; border: none; border-radius: 10px; font-size: 16px; cursor: pointer;">🗑️ Clear All Arrows</button>
     </div>
 
-    <div id="tacticalBoard" style="position: relative; width: 100%; max-width: 900px; height: 500px; margin: 0 auto; background: url('/images/tactical-pitch.png') center/cover no-repeat; border: 2px solid #333; border-radius: 12px; overflow: hidden; touch-action: none;">
+    <div id="tacticalBoard" style="position: relative; width: 100%; max-width: 900px; height: 500px; margin: 0 auto; background: url('/images/tactical-pitch.png') center/cover no-repeat; border: 2px solid #333; border-radius: 12px; overflow: hidden;">
       <svg id="arrowLayer" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></svg>
     </div>
+
+    <button onclick="undoLastArrow()" style="position: absolute; bottom: 10px; left: 10px; padding: 10px 16px; background: #007bff; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; z-index: 9999;">↩️ Undo</button>
+    <button onclick="redoLastArrow()" style="position: absolute; bottom: 10px; left: 100px; padding: 10px 16px; background: #6f42c1; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; z-index: 9999;">↪️ Redo</button>
   </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('openTacticalBoardBtn');
-  if (btn) {
-    btn.addEventListener('click', async () => {
-      const modal = document.getElementById('tacticalModal');
-      const controls = document.getElementById('tacticalControls');
-
-      if (typeof window.openTacticalBoard === 'function') {
-        if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
-          try {
-            await modal.requestFullscreen();
-          } catch (err) {
-            console.warn('Fullscreen not supported', err);
-          }
-        }
-        controls.style.display = 'flex';
-        window.openTacticalBoard();
-      } else {
-        alert('⚠️ Tactical board script not ready yet.');
-      }
-    });
-  }
-});
-</script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const tacticalModal = document.getElementById('tacticalModal');
@@ -138,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let arrowStart = null;
   let liveArrow = null;
   let arrowModeEnabled = false;
+  let undoStack = [];
 
   const templates = {
     '442': ['GK', 'RB', 'CB', 'CB', 'LB', 'RM', 'CM', 'CM', 'LM', 'ST', 'ST'],
@@ -176,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.style.left = `${snappedLeft}%`;
     el.style.top = `${snappedTop}%`;
   }
+
   function createPlayer(team, color, label) {
     const el = document.createElement('div');
     el.className = 'tactical-player';
@@ -227,33 +186,172 @@ document.addEventListener('DOMContentLoaded', () => {
     return el;
   }
 
+  board.ondragover = e => e.preventDefault();
+  board.ondrop = e => {
+    e.preventDefault();
+    const idx = e.dataTransfer.getData('text/plain');
+    const el = playerElements[idx];
+    const rect = board.getBoundingClientRect();
+    const x = ((e.clientX - rect.left - el.offsetWidth / 2) / rect.width) * 100;
+    const y = ((e.clientY - rect.top - el.offsetHeight / 2) / rect.height) * 100;
+    el.style.left = `${x}%`;
+    el.style.top = `${y}%`;
+  };
+
+  function updateTeamColor(team, color) {
+    playerElements.forEach(p => {
+      if (p.dataset.team === team) p.style.backgroundColor = color;
+    });
+  }
+
+  homeColorPicker.addEventListener('input', () => updateTeamColor('home', homeColorPicker.value));
+  awayColorPicker.addEventListener('input', () => updateTeamColor('away', awayColorPicker.value));
+  homeTemplate.addEventListener('change', resetPlayers);
+  awayTemplate.addEventListener('change', resetPlayers);
+  teamDisplay.addEventListener('change', resetPlayers);
+  function drawGridLines() {
+    const spacing = 5;
+    board.querySelectorAll('.grid-line').forEach(line => line.remove());
+    for (let i = spacing; i < 100; i += spacing) {
+      const v = document.createElement('div');
+      Object.assign(v.style, {
+        position: 'absolute',
+        left: `${i}%`,
+        top: 0,
+        bottom: 0,
+        width: '1px',
+        background: 'rgba(0,0,0,0.1)',
+        pointerEvents: 'none',
+        zIndex: 0
+      });
+      const h = document.createElement('div');
+      Object.assign(h.style, {
+        position: 'absolute',
+        top: `${i}%`,
+        left: 0,
+        right: 0,
+        height: '1px',
+        background: 'rgba(0,0,0,0.1)',
+        pointerEvents: 'none',
+        zIndex: 0
+      });
+      board.appendChild(v);
+      board.appendChild(h);
+    }
+  }
+
   function resetPlayers() {
+    drawGridLines();
     board.querySelectorAll('.tactical-player').forEach(el => el.remove());
     arrowLayer.innerHTML = '';
     playerElements = [];
-
-    const createTeam = (team, color, template, baseLeft) => {
-      template.forEach((label, i) => {
-        const el = createPlayer(team, color, label);
-        el.style.left = `${baseLeft + (i % 4) * 10}%`;
+    if (teamDisplay.value === 'home' || teamDisplay.value === 'both')
+      templates[homeTemplate.value].forEach((label, i) => {
+        const el = createPlayer('home', homeColorPicker.value, label);
+        el.style.left = `${15 + (i % 4) * 10}%`;
         el.style.top = `${10 + Math.floor(i / 4) * 25}%`;
         board.appendChild(el);
         playerElements.push(el);
       });
+    if (teamDisplay.value === 'both')
+      templates[awayTemplate.value].forEach((label, i) => {
+        const el = createPlayer('away', awayColorPicker.value, label);
+        el.style.left = `${85 - (i % 4) * 10}%`;
+        el.style.top = `${10 + Math.floor(i / 4) * 25}%`;
+        board.appendChild(el);
+        playerElements.push(el);
+      });
+  }
+
+  function enableArrowMode() {
+    arrowModeEnabled = true;
+    arrowBtn.textContent = '🛑 Stop Arrows';
+    board.style.cursor = 'crosshair';
+
+    function startArrow(x, y) {
+      arrowStart = { x, y };
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      liveArrow = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      liveArrow.setAttribute('stroke-width', '2');
+      const color = teamDisplay.value === 'home' ? homeColorPicker.value : awayColorPicker.value;
+      liveArrow.setAttribute('stroke', color);
+      liveArrow.setAttribute('marker-end', 'url(#arrowhead)');
+      document.getElementById('arrowHeadShape').setAttribute('fill', color);
+      liveArrow.classList.add('user-arrow');
+      g.appendChild(liveArrow);
+      arrowLayer.appendChild(g);
+      arrowElements.push(g);
+      g.addEventListener('click', () => {
+        if (confirm('Delete this arrow?')) {
+          g.remove();
+          arrowElements = arrowElements.filter(a => a !== g);
+        }
+      });
+      return g;
+    }
+
+    function draw(x, y) {
+      if (!liveArrow || !arrowStart) return;
+      liveArrow.setAttribute('x1', arrowStart.x);
+      liveArrow.setAttribute('y1', arrowStart.y);
+      liveArrow.setAttribute('x2', x);
+      liveArrow.setAttribute('y2', y);
+    }
+
+    board.onmousedown = e => {
+      const rect = board.getBoundingClientRect();
+      startArrow(e.clientX - rect.left, e.clientY - rect.top);
+      board.onmousemove = evt => {
+        const r = board.getBoundingClientRect();
+        draw(evt.clientX - r.left, evt.clientY - r.top);
+      };
+      board.onmouseup = () => {
+        board.onmousemove = null;
+        board.onmouseup = null;
+        if (liveArrow) {
+          const x1 = parseFloat(liveArrow.getAttribute('x1'));
+          const x2 = parseFloat(liveArrow.getAttribute('x2'));
+          const y1 = parseFloat(liveArrow.getAttribute('y1'));
+          const y2 = parseFloat(liveArrow.getAttribute('y2'));
+          if (Math.abs(x2 - x1) < 5 && Math.abs(y2 - y1) < 5) {
+            arrowElements.pop().remove();
+          }
+        }
+        liveArrow = null;
+        arrowStart = null;
+      };
     };
 
-    if (teamDisplay.value === 'home' || teamDisplay.value === 'both') {
-      createTeam('home', homeColorPicker.value, templates[homeTemplate.value], 15);
-    }
-
-    if (teamDisplay.value === 'both') {
-      createTeam('away', awayColorPicker.value, templates[awayTemplate.value], 55);
-    }
+    board.ontouchstart = e => {
+      const t = e.touches[0];
+      const rect = board.getBoundingClientRect();
+      startArrow(t.clientX - rect.left, t.clientY - rect.top);
+      board.ontouchmove = evt => {
+        const m = evt.touches[0];
+        const r = board.getBoundingClientRect();
+        draw(m.clientX - r.left, m.clientY - r.top);
+      };
+      board.ontouchend = () => {
+        board.ontouchmove = null;
+        board.ontouchend = null;
+        if (liveArrow) {
+          const x1 = parseFloat(liveArrow.getAttribute('x1'));
+          const x2 = parseFloat(liveArrow.getAttribute('x2'));
+          const y1 = parseFloat(liveArrow.getAttribute('y1'));
+          const y2 = parseFloat(liveArrow.getAttribute('y2'));
+          if (Math.abs(x2 - x1) < 5 && Math.abs(y2 - y1) < 5) {
+            arrowElements.pop().remove();
+          }
+        }
+        liveArrow = null;
+        arrowStart = null;
+      };
+    };
   }
 
   function clearAllArrows() {
     if (confirm('Clear all arrows?')) {
-      arrowElements.forEach(a => a.remove());
+      arrowElements.forEach(el => el.remove());
       arrowElements = [];
     }
   }
@@ -287,12 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Blob([u8arr], { type: mime });
   }
 
-  homeColorPicker.addEventListener('input', () => updateTeamColor('home', homeColorPicker.value));
-  awayColorPicker.addEventListener('input', () => updateTeamColor('away', awayColorPicker.value));
-  homeTemplate.addEventListener('change', resetPlayers);
-  awayTemplate.addEventListener('change', resetPlayers);
-  teamDisplay.addEventListener('change', resetPlayers);
-
+  // Global access
   window.openTacticalBoard = openTacticalBoard;
   window.closeTacticalBoard = closeTacticalBoard;
   window.saveTacticalBoard = saveTacticalBoard;
@@ -300,10 +393,31 @@ document.addEventListener('DOMContentLoaded', () => {
   window.resetPlayers = resetPlayers;
   window.handleModalBackgroundClick = handleModalBackgroundClick;
 
+  // Toggle arrow button
   arrowBtn.addEventListener('click', () => {
-    arrowModeEnabled = !arrowModeEnabled;
-    arrowBtn.textContent = arrowModeEnabled ? '🛑 Stop Arrows' : '➤ Add Arrow';
-    board.style.cursor = arrowModeEnabled ? 'crosshair' : 'default';
+    if (!arrowModeEnabled) {
+      enableArrowMode();
+    } else {
+      arrowModeEnabled = false;
+      arrowBtn.textContent = '➤ Add Arrow';
+      board.style.cursor = 'default';
+      board.onmousedown = null;
+      board.ontouchstart = null;
+    }
   });
 });
+</script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('openTacticalBoardBtn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        if (typeof window.openTacticalBoard === 'function') {
+          window.openTacticalBoard();
+        } else {
+          alert('⚠️ Tactical board script not ready yet.');
+        }
+      });
+    }
+  });
 </script>
