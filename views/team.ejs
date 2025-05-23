@@ -108,6 +108,8 @@
   <div id="imageModal" class="hidden">
     <img id="modalImage" src="" />
   </div>
+  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <!-- Image Preview Modal Script -->
   <script>
@@ -127,7 +129,7 @@
       modalImg.src = '';
     });
   </script>
-  
+
   <!-- Comment Form -->
   <div class="comments-container" style="margin-top: 40px;">
     <div class="comment-form-container" style="
@@ -224,15 +226,15 @@
   <!-- Reactions -->
   <script>
     async function reactToComment(id, type) {
-      const key = `reacted-${id}`;
+      const key = reacted-${id};
       if (localStorage.getItem(key)) {
         alert("You already reacted!");
         return;
       }
 
-      const res = await fetch(`/comment/${id}/react/${type}`, { method: 'POST' });
+      const res = await fetch(/comment/${id}/react/${type}, { method: 'POST' });
       if (res.ok) {
-        const span = document.getElementById(`${type}-${id}`);
+        const span = document.getElementById(${type}-${id});
         span.textContent = parseInt(span.textContent || 0) + 1;
         span.classList.add('bounce');
         setTimeout(() => span.classList.remove('bounce'), 500);

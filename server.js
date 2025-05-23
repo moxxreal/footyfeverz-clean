@@ -338,24 +338,34 @@ app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
 
   const { teamname } = req.params;
   const { text } = req.body;
-  const media =
-  req.files?.media?.[0]?.path?.includes('uploads') ? `/uploads/${req.files.media[0].filename}` :
-  req.files?.tacticImage?.[0] ? `/uploads/${req.files.tacticImage[0].filename}` :
-  '';
-  const profilePic = req.files?.profile_pic ? `/uploads/${req.files.profile_pic[0].filename}` : '';
 
-  if (!text?.trim()) return res.status(400).send("Empty comment");
+  const media =
+    req.files?.media?.[0]?.path?.includes('uploads')
+      ? `/uploads/${req.files.media[0].filename}`
+      : req.files?.tacticImage?.[0]
+      ? `/uploads/${req.files.tacticImage[0].filename}`
+      : '';
+
+  const profilePic = req.files?.profile_pic
+    ? `/uploads/${req.files.profile_pic[0].filename}`
+    : '';
+
+  // ✅ Allow comment if text or media is present
+  if (!text?.trim() && !media) {
+    return res.status(400).send("Comment must include text or an image");
+  }
 
   try {
     await db.collection('comments').add({
       team: teamname,
       user: req.session.user.username,
-      text,
+      text: text?.trim() || '', // ensure string even if empty
       media,
       profile_pic: profilePic,
       like_reactions: 0,
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
+
     res.redirect(`/team/${teamname}`);
   } catch (err) {
     console.error('Team comment error:', err);
