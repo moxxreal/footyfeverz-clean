@@ -105,15 +105,34 @@ document.addEventListener('DOMContentLoaded', () => {
     '4231': ['GK', 'RB', 'CB', 'CB', 'LB', 'CDM', 'CDM', 'CAM', 'RW', 'LW', 'ST'],
     '4222': ['GK', 'RB', 'CB', 'CB', 'LB', 'CDM', 'CDM', 'CAM', 'CAM', 'ST', 'ST']
   };
+function enforceLandscapeOnly() {
+  const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+  const warning = document.getElementById("rotateWarning");
+  const modal = document.getElementById("tacticalModal");
+
+  if (isPortrait) {
+    warning.style.display = "flex";
+    modal.classList.add("hidden");
+    document.exitFullscreen?.();
+  } else {
+    warning.style.display = "none";
+    modal.classList.remove("hidden");
+    modal.requestFullscreen?.();
+  }
+}
+window.addEventListener("orientationchange", enforceLandscapeOnly);
+window.addEventListener("resize", enforceLandscapeOnly);
 
   function openTacticalBoard() {
   const modal = document.getElementById('tacticalModal');
+  const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+
   modal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 
-  // Force fullscreen on mobile
-  const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+  // Force fullscreen and landscape mode on mobile
   if (isMobile) {
+    // Attempt to lock landscape if supported
     if (window.screen.orientation && window.screen.orientation.lock) {
       window.screen.orientation.lock('landscape').catch(() => {
         alert('Please rotate your phone to landscape mode for the best experience.');
@@ -122,7 +141,11 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Please rotate your phone to landscape mode.');
     }
 
+    // Try fullscreen
     modal.requestFullscreen?.();
+
+    // Enforce hiding board if still in portrait
+    enforceLandscapeOnly();
   }
 
   teamDisplay.value = 'home';
