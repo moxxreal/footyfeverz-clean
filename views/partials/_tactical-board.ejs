@@ -8,11 +8,13 @@
     pointer-events: none;
     z-index: 0;
   }
-
   @keyframes pulse {
     0% { transform: scale(1); opacity: 0.8; }
     50% { transform: scale(1.4); opacity: 0.4; }
     100% { transform: scale(1); opacity: 0; }
+  }
+  #tacticalBoard {
+    touch-action: none;
   }
 </style>
 
@@ -24,6 +26,22 @@
     </marker>
   </defs>
 </svg>
+
+<!-- Rotate Warning -->
+<div id="rotateWarning" style="
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: #111; color: #fff;
+  align-items: center; justify-content: center;
+  text-align: center;
+  z-index: 99999;
+  font-size: 1.5em;
+  padding: 2em;">
+  📱 Please rotate your phone to <b>landscape</b> to use the tactical board.
+</div>
+
 <!-- Modal -->
 <div id="tacticalModal" class="hidden auth-modal" onclick="handleModalBackgroundClick(event)" style="overflow-y: auto;">
   <div class="auth-form tactical-inner" style="max-width: 1000px; width: 95%; background: white; position: relative; padding: 1rem; margin: 40px auto;" onclick="event.stopPropagation()">
@@ -63,6 +81,7 @@
       <button type="button" onclick="resetPlayers()">Reset</button>
       <button type="button" id="arrowToggleBtn">➤ Add Arrow</button>
     </div>
+
     <div style="text-align: center; margin-bottom: 10px;">
       <button onclick="saveTacticalBoard()" style="padding: 12px 20px; background-color: #28a745; color: white; font-weight: bold; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; margin-right: 10px;">✅ Submit Formation</button>
       <button onclick="clearAllArrows()" style="padding: 12px 20px; background-color: #dc3545; color: white; font-weight: bold; border: none; border-radius: 10px; font-size: 16px; cursor: pointer;">🗑️ Clear All Arrows</button>
@@ -76,35 +95,18 @@
     <button onclick="redoLastArrow()" style="position: absolute; bottom: 10px; left: 100px; padding: 10px 16px; background: #6f42c1; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; z-index: 9999;">↪️ Redo</button>
   </div>
 </div>
+
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const tacticalModal = document.getElementById('tacticalModal');
-  const board = document.getElementById('tacticalBoard');
-  const arrowLayer = document.getElementById('arrowLayer');
-  const homeColorPicker = document.getElementById('homeColor');
-  const awayColorPicker = document.getElementById('awayColor');
-  const homeTemplate = document.getElementById('homeTemplate');
-  const awayTemplate = document.getElementById('awayTemplate');
-  const teamDisplay = document.getElementById('teamDisplay');
-  const arrowBtn = document.getElementById('arrowToggleBtn');
+function showRotateWarning() {
+  const warning = document.getElementById("rotateWarning");
+  if (warning) warning.style.display = "flex";
+}
 
-  let playerElements = [];
-  let arrowElements = [];
-  let arrowStart = null;
-  let liveArrow = null;
-  let arrowModeEnabled = false;
-  let undoStack = [];
+function hideRotateWarning() {
+  const warning = document.getElementById("rotateWarning");
+  if (warning) warning.style.display = "none";
+}
 
-  const templates = {
-    '442': ['GK', 'RB', 'CB', 'CB', 'LB', 'RM', 'CM', 'CM', 'LM', 'ST', 'ST'],
-    '433': ['GK', 'RB', 'CB', 'CB', 'LB', 'CDM', 'CM', 'CAM', 'RW', 'LW', 'ST'],
-    '352': ['GK', 'RCB', 'CB', 'LCB', 'RM', 'CM', 'CM', 'CAM', 'LM', 'ST', 'ST'],
-    '343': ['GK', 'RCB', 'CB', 'LCB', 'RM', 'CM', 'CM', 'LM', 'RW', 'LW', 'ST'],
-    '451': ['GK', 'RB', 'CB', 'CB', 'LB', 'RM', 'CM', 'CM', 'CM', 'LM', 'ST'],
-    '532': ['GK', 'RWB', 'RCB', 'CB', 'LCB', 'LWB', 'CDM', 'CM', 'CM', 'ST', 'ST'],
-    '4231': ['GK', 'RB', 'CB', 'CB', 'LB', 'CDM', 'CDM', 'CAM', 'RW', 'LW', 'ST'],
-    '4222': ['GK', 'RB', 'CB', 'CB', 'LB', 'CDM', 'CDM', 'CAM', 'CAM', 'ST', 'ST']
-  };
 function enforceLandscapeOnly() {
   const isPortrait = window.matchMedia("(orientation: portrait)").matches;
   const warning = document.getElementById("rotateWarning");
@@ -120,37 +122,34 @@ function enforceLandscapeOnly() {
     modal.requestFullscreen?.();
   }
 }
-window.addEventListener("orientationchange", enforceLandscapeOnly);
-window.addEventListener("resize", enforceLandscapeOnly);
 
-  function openTacticalBoard() {
+function openTacticalBoard() {
   const modal = document.getElementById('tacticalModal');
   const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
 
   modal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 
-  // Force fullscreen and landscape mode on mobile
   if (isMobile) {
-    // Attempt to lock landscape if supported
-    if (window.screen.orientation && window.screen.orientation.lock) {
-      window.screen.orientation.lock('landscape').catch(() => {
-        alert('Please rotate your phone to landscape mode for the best experience.');
-      });
-    } else {
-      alert('Please rotate your phone to landscape mode.');
-    }
-
-    // Try fullscreen
-    modal.requestFullscreen?.();
-
-    // Enforce hiding board if still in portrait
-    enforceLandscapeOnly();
+    modal.requestFullscreen?.().then(() => {
+      if (screen.orientation?.lock) {
+        screen.orientation.lock("landscape").catch(() => {
+          showRotateWarning();
+        });
+      } else {
+        showRotateWarning();
+      }
+    }).catch(() => {
+      showRotateWarning();
+    });
   }
 
   teamDisplay.value = 'home';
   resetPlayers();
 }
+
+window.addEventListener("orientationchange", enforceLandscapeOnly);
+window.addEventListener("resize", enforceLandscapeOnly);
 
   function closeTacticalBoard() {
     tacticalModal.classList.add('hidden');
