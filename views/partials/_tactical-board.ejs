@@ -24,7 +24,6 @@
     </marker>
   </defs>
 </svg>
-
 <!-- Modal -->
 <div id="tacticalModal" class="hidden auth-modal" onclick="handleModalBackgroundClick(event)" style="overflow-y: auto;">
   <div class="auth-form tactical-inner" style="max-width: 1000px; width: 95%; background: white; position: relative; padding: 1rem; margin: 40px auto;" onclick="event.stopPropagation()">
@@ -64,7 +63,6 @@
       <button type="button" onclick="resetPlayers()">Reset</button>
       <button type="button" id="arrowToggleBtn">➤ Add Arrow</button>
     </div>
-
     <div style="text-align: center; margin-bottom: 10px;">
       <button onclick="saveTacticalBoard()" style="padding: 12px 20px; background-color: #28a745; color: white; font-weight: bold; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; margin-right: 10px;">✅ Submit Formation</button>
       <button onclick="clearAllArrows()" style="padding: 12px 20px; background-color: #dc3545; color: white; font-weight: bold; border: none; border-radius: 10px; font-size: 16px; cursor: pointer;">🗑️ Clear All Arrows</button>
@@ -125,7 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function handleModalBackgroundClick(e) {
     if (e.target === tacticalModal) closeTacticalBoard();
   }
-
   function snapToGrid(el) {
     const left = parseFloat(el.style.left);
     const top = parseFloat(el.style.top);
@@ -209,6 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
   homeTemplate.addEventListener('change', resetPlayers);
   awayTemplate.addEventListener('change', resetPlayers);
   teamDisplay.addEventListener('change', resetPlayers);
+
   function drawGridLines() {
     const spacing = 5;
     board.querySelectorAll('.grid-line').forEach(line => line.remove());
@@ -262,7 +260,6 @@ document.addEventListener('DOMContentLoaded', () => {
         playerElements.push(el);
       });
   }
-
   function enableArrowMode() {
     arrowModeEnabled = true;
     arrowBtn.textContent = '🛑 Stop Arrows';
@@ -287,7 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
           arrowElements = arrowElements.filter(a => a !== g);
         }
       });
-      return g;
     }
 
     function draw(x, y) {
@@ -363,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const file = new File([blob], `tactic-${Date.now()}.png`, { type: 'image/png' });
       const dt = new DataTransfer();
       dt.items.add(file);
-      const input = document.querySelector('input[name="media"]');
+      const input = document.querySelector('input[name=\"media\"]');
       const preview = document.getElementById('mediaPreview');
       if (!input || !preview) return alert('❌ Error: Cannot preview or attach');
       input.files = dt.files;
@@ -407,17 +403,18 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
+
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('openTacticalBoardBtn');
-    if (btn) {
-      btn.addEventListener('click', () => {
-        if (typeof window.openTacticalBoard === 'function') {
-          window.openTacticalBoard();
-        } else {
-          alert('⚠️ Tactical board script not ready yet.');
-        }
-      });
-    }
-  });
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('openTacticalBoardBtn');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      if (typeof window.openTacticalBoard === 'function') {
+        window.openTacticalBoard();
+      } else {
+        alert('⚠️ Tactical board script not ready yet.');
+      }
+    });
+  }
+});
 </script>
