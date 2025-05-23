@@ -107,13 +107,27 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   function openTacticalBoard() {
-    tacticalModal.classList.remove('hidden');
-    teamDisplay.value = 'home';
-    resetPlayers();
-    if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
-      tacticalModal.requestFullscreen?.();
+  const modal = document.getElementById('tacticalModal');
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  // Force fullscreen on mobile
+  const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+  if (isMobile) {
+    if (window.screen.orientation && window.screen.orientation.lock) {
+      window.screen.orientation.lock('landscape').catch(() => {
+        alert('Please rotate your phone to landscape mode for the best experience.');
+      });
+    } else {
+      alert('Please rotate your phone to landscape mode.');
     }
+
+    modal.requestFullscreen?.();
   }
+
+  teamDisplay.value = 'home';
+  resetPlayers();
+}
 
   function closeTacticalBoard() {
     tacticalModal.classList.add('hidden');
