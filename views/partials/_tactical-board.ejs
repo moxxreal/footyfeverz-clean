@@ -43,9 +43,8 @@
   </defs>
 </svg>
 
-<!-- Rotate Warning -->
 <div id="rotateWarning">
-  🔄 Please rotate your phone to use the tactical board.
+  <span>🔄 Please rotate your phone to use tactical board</span>
 </div>
 
 <!-- Modal -->
@@ -100,13 +99,11 @@
       <button onclick="clearAllArrows()" style="padding: 12px 20px; background-color: #dc3545; color: white; font-weight: bold; border: none; border-radius: 10px; font-size: 16px; cursor: pointer;">🗑️ Clear All Arrows</button>
     </div>
 
-    <div id="tacticalBoard"
-         style="position: relative; width: 100%; max-width: 900px; height: 500px;
-                margin: 0 auto; background: url('/images/tactical-pitch.png') center/cover no-repeat;
-                border: 2px solid #333; border-radius: 12px; overflow: hidden;">
-      <svg id="arrowLayer"
-           style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></svg>
-    </div>
+    <div style="width: 100%; display: flex; justify-content: center;">
+  <div id="tacticalBoard" style="position: relative; width: 100%; max-width: 900px; aspect-ratio: 16/9; background: url('/images/tactical-pitch.png') center/cover no-repeat; border: 2px solid #333; border-radius: 12px; overflow: hidden;">
+    <svg id="arrowLayer" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></svg>
+  </div>
+</div>
 
     <button onclick="undoLastArrow()"
             style="position: absolute; bottom: 10px; left: 10px; padding: 10px 16px;
@@ -161,6 +158,21 @@ function openTacticalBoard() {
   document.body.style.overflow = 'hidden';
   teamDisplay.value = 'home';
   resetPlayers();
+
+  function enforceLandscapeOnly() {
+  const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+  const warning = document.getElementById("rotateWarning");
+  const modal = document.getElementById("tacticalModal");
+
+  if (isPortrait) {
+    warning.style.display = "flex";
+    closeTacticalBoard(); // force close
+  } else {
+    warning.style.display = "none";
+    modal.classList.remove("hidden");
+    modal.requestFullscreen?.();
+  }
+}
 }
 
 function closeTacticalBoard() {
@@ -290,6 +302,7 @@ function enableArrowMode() {
     liveArrow.setAttribute('y2', y);
   }
 
+  // Desktop
   board.onmousedown = e => {
     const rect = board.getBoundingClientRect();
     startArrow(e.clientX - rect.left, e.clientY - rect.top);
@@ -300,6 +313,34 @@ function enableArrowMode() {
     board.onmouseup = () => {
       board.onmousemove = null;
       board.onmouseup = null;
+      if (liveArrow) {
+        const x1 = parseFloat(liveArrow.getAttribute('x1'));
+        const x2 = parseFloat(liveArrow.getAttribute('x2'));
+        const y1 = parseFloat(liveArrow.getAttribute('y1'));
+        const y2 = parseFloat(liveArrow.getAttribute('y2'));
+        if (Math.abs(x2 - x1) < 5 && Math.abs(y2 - y1) < 5) {
+          arrowElements.pop().remove();
+        }
+      }
+      liveArrow = null;
+      arrowStart = null;
+    };
+  };
+
+  // Mobile touch
+  board.ontouchstart = e => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const rect = board.getBoundingClientRect();
+    startArrow(touch.clientX - rect.left, touch.clientY - rect.top);
+    board.ontouchmove = evt => {
+      const moveTouch = evt.touches[0];
+      const r = board.getBoundingClientRect();
+      draw(moveTouch.clientX - r.left, moveTouch.clientY - r.top);
+    };
+    board.ontouchend = () => {
+      board.ontouchmove = null;
+      board.ontouchend = null;
       if (liveArrow) {
         const x1 = parseFloat(liveArrow.getAttribute('x1'));
         const x2 = parseFloat(liveArrow.getAttribute('x2'));
