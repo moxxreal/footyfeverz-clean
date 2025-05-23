@@ -16,9 +16,29 @@
   #tacticalBoard {
     touch-action: none;
   }
+  #rotateWarning {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: white;
+    color: #007BFF;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    z-index: 99999;
+    font-size: 1.4em;
+    font-weight: bold;
+    padding: 2em;
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 </style>
 
-<!-- SVG Arrow Marker -->
+<!-- SVG Marker -->
 <svg height="0" width="0">
   <defs>
     <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto" markerUnits="strokeWidth">
@@ -28,13 +48,13 @@
 </svg>
 
 <!-- Rotate Warning -->
-<div id="rotateWarning" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; color: #fff; align-items: center; justify-content: center; text-align: center; z-index: 99999; font-size: 1.5em; padding: 2em;">
-  📱 Please rotate your phone to <b>landscape</b> to use the tactical board.
+<div id="rotateWarning">
+  🔄 Please rotate your phone to continue using the tactical board
 </div>
 
 <!-- Tactical Modal -->
-<div id="tacticalModal" class="hidden auth-modal" onclick="handleModalBackgroundClick(event)" style="overflow-y: auto;">
-  <div class="auth-form tactical-inner" style="max-width: 1000px; width: 95%; background: white; position: relative; padding: 1rem; margin: 40px auto;" onclick="event.stopPropagation()">
+<div id="tacticalModal" class="hidden auth-modal" onclick="handleModalBackgroundClick(event)" style="overflow-y: auto; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 10000;">
+  <div class="auth-form tactical-inner" style="max-width: 1000px; width: 95%; background: white; position: relative; padding: 1rem; margin: 40px auto; max-height: 95vh; overflow-y: auto;" onclick="event.stopPropagation()">
     <button onclick="closeTacticalBoard()" style="position: fixed; top: 20px; right: 20px; z-index: 10000; font-size: 18px; padding: 8px 12px; background-color: #ccc; border: none; border-radius: 5px; cursor: pointer;">✖ Exit</button>
 
     <h2 style="color: #002147; text-align: center;">Tactical Board</h2>
@@ -161,20 +181,14 @@ function enforceLandscapeOnly() {
 
   if (isPortrait) {
     warning.style.display = "flex";
-    modal.classList.add("hidden");
+    modal.style.display = "none";
     document.exitFullscreen?.();
   } else {
     warning.style.display = "none";
-    modal.classList.remove("hidden");
+    modal.style.display = "block";
     modal.requestFullscreen?.();
   }
 }
-function handleModalBackgroundClick(e) {
-  if (e.target === document.getElementById('tacticalModal')) {
-    closeTacticalBoard();
-  }
-}
-
 window.addEventListener("orientationchange", enforceLandscapeOnly);
 window.addEventListener("resize", enforceLandscapeOnly);
 function snapToGrid(el) {
