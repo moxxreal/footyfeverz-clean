@@ -77,27 +77,28 @@
 </div>
 
 <!-- Tactical Board Modal -->
-<div id="tacticalModal" style="
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100dvh;
-  background: rgba(0, 0, 0, 0.85);
-  z-index: 10000;
-  display: none;
-  overflow-y: auto; /* ✅ must be auto */
-  -webkit-overflow-scrolling: touch;
-">
-  <div class="auth-form tactical-inner" style="
-  width: 95%;
-  max-width: 1000px;
-  margin: auto;
-  background: white;
-  padding: 1rem;
-  overflow-y: auto;
-  max-height: 100%;
-  position: relative;
-">
+<div id="tacticalModal" class="hidden auth-modal" onclick="handleModalBackgroundClick(event)"
+     style="
+       position: fixed;
+       inset: 0;
+       z-index: 10000;
+       display: none;
+       background: rgba(0, 0, 0, 0.85);
+       overflow: hidden;
+       width: 100vw;
+       height: 100dvh;
+     ">
+  <div class="auth-form tactical-inner"
+     style="
+       position: relative;
+       width: 95%;
+       max-width: 1000px;
+       margin: auto;
+       background: white;
+       padding: 1rem;
+       max-height: 100%;
+       overflow-y: auto;
+     "
      onclick="event.stopPropagation()">
     <button onclick="closeTacticalBoard()" style="position: fixed; top: 20px; right: 20px;
             z-index: 10000; font-size: 18px; padding: 8px 12px; background-color: #ccc;

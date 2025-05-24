@@ -912,17 +912,16 @@ body.modal-open {
 
 /* Pitch layout - prevent squashing */
 #tacticalBoard {
-  touch-action: auto; /* ✅ allow natural touch gestures */
-  -webkit-overflow-scrolling: touch; /* ✅ smooth on iOS */
+  touch-action: none;
   aspect-ratio: 16 / 9;
   width: 100%;
-  max-width: 900px;
   height: auto;
+  max-width: 900px;
   margin: 0 auto;
   background: url('/images/tactical-pitch.png') center/cover no-repeat;
   border: 2px solid #333;
   border-radius: 12px;
-  overflow: visible;
+  overflow: hidden;
 }
 
 /* Player circles */
