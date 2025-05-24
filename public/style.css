@@ -912,7 +912,8 @@ body.modal-open {
 
 /* Pitch layout - prevent squashing */
 #tacticalBoard {
-  touch-action: pan-y; /* ✅ Allow vertical scroll */
+  touch-action: auto; /* ✅ allow natural touch gestures */
+  -webkit-overflow-scrolling: touch; /* ✅ smooth on iOS */
   aspect-ratio: 16 / 9;
   width: 100%;
   max-width: 900px;
@@ -921,7 +922,7 @@ body.modal-open {
   background: url('/images/tactical-pitch.png') center/cover no-repeat;
   border: 2px solid #333;
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Player circles */
