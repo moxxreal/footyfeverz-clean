@@ -220,7 +220,15 @@ function closeTacticalBoard() {
 }
 function showRotateWarning() {
   const warning = document.getElementById("rotateWarning");
+
+  // Remove and re-add animation class to restart it
   warning.style.display = "flex";
+  warning.style.visibility = "visible";
+
+  // Force reflow to restart animation
+  warning.style.animation = "none";
+  void warning.offsetWidth; // 🔄 trigger reflow
+  warning.style.animation = "fadeIn 0.6s ease-in-out";
 }
 
 function hideRotateWarning() {
