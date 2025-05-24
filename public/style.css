@@ -884,24 +884,25 @@ body.modal-open {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100dvh;
   background: white;
-  color: #007BFF;
   z-index: 99999;
-  font-size: 1.5em;
-  font-weight: bold;
-  padding: 2em;
-  animation: fadeIn 0.6s ease-in-out;
 
-  /* ✅ Make it perfectly centered */
+  /* ✅ Perfect vertical + horizontal centering */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
 
-  /* 🔁 REMOVE any translateX or margin shifts */
+  /* ✅ Consistent text formatting */
+  font-size: 1.6em;
+  font-weight: 600;
+  color: #007BFF;
+  text-align: center;
+  padding: 2rem;
+
+  /* ✅ Remove any extra transform */
   transform: none !important;
 }
 @keyframes fadeIn {
