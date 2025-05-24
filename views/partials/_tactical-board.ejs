@@ -233,8 +233,11 @@ function resetPlayers() {
   arrowLayer.innerHTML = '';
   playerElements = [];
 
+  const homeValue = document.getElementById('homeTemplate').value;
+  const awayValue = document.getElementById('awayTemplate').value;
+
   if (teamDisplay.value === 'home' || teamDisplay.value === 'both') {
-    templates[homeTemplate.value].forEach((label, i) => {
+    templates[homeValue].forEach((label, i) => {
       const el = createPlayer('home', homeColorPicker.value, label);
       el.style.left = `${15 + (i % 4) * 10}%`;
       el.style.top = `${10 + Math.floor(i / 4) * 25}%`;
@@ -244,7 +247,7 @@ function resetPlayers() {
   }
 
   if (teamDisplay.value === 'both') {
-    templates[awayTemplate.value].forEach((label, i) => {
+    templates[awayValue].forEach((label, i) => {
       const el = createPlayer('away', awayColorPicker.value, label);
       el.style.left = `${85 - (i % 4) * 10}%`;
       el.style.top = `${10 + Math.floor(i / 4) * 25}%`;
@@ -470,6 +473,10 @@ window.resetPlayers = resetPlayers;
 
 // Trigger button (used in team.ejs)
 document.addEventListener('DOMContentLoaded', () => {
+  // Hide rotate warning on initial load
+  document.getElementById("rotateWarning").style.display = "none";
+
+  // Tactical board button
   const btn = document.getElementById('openTacticalBoardBtn');
   if (btn) {
     btn.addEventListener('click', () => {
@@ -480,21 +487,26 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Formation change listeners
+  const homeTemplate = document.getElementById('homeTemplate');
+  const awayTemplate = document.getElementById('awayTemplate');
+
+  if (homeTemplate) homeTemplate.addEventListener('change', resetPlayers);
+  if (awayTemplate) awayTemplate.addEventListener('change', resetPlayers);
+
+  // Handle orientation changes
   window.addEventListener("orientationchange", () => {
-  const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+    const isPortrait = window.matchMedia("(orientation: portrait)").matches;
 
-  if (!tacticalBoardActivated) return; // Don't do anything unless user clicked button
+    if (!tacticalBoardActivated) return;
 
-  if (isPortrait) {
-    closeTacticalBoard();
-    showRotateWarning();
-  } else {
-    hideRotateWarning();
-    showTacticalModal();
-  }
+    if (isPortrait) {
+      closeTacticalBoard();
+      showRotateWarning();
+    } else {
+      hideRotateWarning();
+      showTacticalModal();
+    }
+  });
 });
-});
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById("rotateWarning").style.display = "none";
-});
-</script>
