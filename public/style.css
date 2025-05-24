@@ -872,15 +872,9 @@ body.modal-open {
 #chat-form button:hover {
   background: #0056b3;
 }
-/* Mobile portrait mode force */
-@media screen and (orientation: portrait) {
-  /* Only show the warning inside the modal */
-  #tacticalModal:target #rotateWarning {
-    display: flex !important;
-  }
-}
+/* ✅ Show rotate warning ONLY when JS triggers it */
 #rotateWarning {
-  display: none;
+  display: none !important;
   position: fixed;
   top: 0;
   left: 0;
@@ -889,34 +883,46 @@ body.modal-open {
   background: white;
   z-index: 99999;
 
-  /* ✅ Perfect vertical + horizontal centering */
-  display: flex;
+  /* Perfect vertical + horizontal centering */
+  display: flex !important;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  text-align: center;
 
-  /* ✅ Consistent text formatting */
+  /* Text style */
   font-size: 1.6em;
   font-weight: 600;
   color: #007BFF;
-  text-align: center;
-  padding: 2rem;
 
-  /* ✅ Remove any extra transform */
+  /* Animation (optional, remove if buggy) */
+  animation: fadeIn 0.6s ease-in-out;
+
+  /* Clean transform */
   transform: none !important;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: rotate(-5deg); }
-  to { opacity: 1; transform: rotate(0); }
+  padding: 0;
+  margin: 0;
 }
 
-/* Pitch layout - prevent squashing */
+/* ✅ Smooth fade-in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: rotate(-5deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0);
+  }
+}
+
+/* ✅ Tactical board layout: responsive + centered */
 #tacticalBoard {
   touch-action: none;
   aspect-ratio: 16 / 9;
   width: 100%;
-  height: auto;
   max-width: 900px;
+  height: auto;
   margin: 0 auto;
   background: url('/images/tactical-pitch.png') center/cover no-repeat;
   border: 2px solid #333;
@@ -924,7 +930,7 @@ body.modal-open {
   overflow: hidden;
 }
 
-/* Player circles */
+/* ✅ Tactical player circles: styled and draggable */
 .tactical-player {
   z-index: 10;
   font-weight: bold;
@@ -942,7 +948,7 @@ body.modal-open {
   background-color: #ddd;
   color: black;
   border: 2px solid white;
-  box-shadow: 0 0 5px rgba(0,0,0,0.4);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
   cursor: grab;
   user-select: none;
 }
