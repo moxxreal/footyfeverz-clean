@@ -161,6 +161,7 @@ let arrowElements = [];
 let arrowStart = null;
 let liveArrow = null;
 let arrowModeEnabled = false;
+let tacticalBoardActivated = false;
 
 const templates = {
   '442': ['GK', 'RB', 'CB', 'CB', 'LB', 'RM', 'CM', 'CM', 'LM', 'ST', 'ST'],
@@ -174,6 +175,7 @@ const templates = {
 };
 
 function openTacticalBoard() {
+  tacticalBoardActivated = true; // ✅ Set flag
   const modal = document.getElementById('tacticalModal');
   const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
   const isPortrait = window.matchMedia("(orientation: portrait)").matches;
@@ -196,6 +198,7 @@ function closeTacticalBoard() {
   modal.classList.add('hidden');
   modal.style.display = 'none';
   document.body.style.overflow = '';
+  tacticalBoardActivated = false; // ✅ Reset flag
 }
 
 function showRotateWarning() {
@@ -207,8 +210,9 @@ function hideRotateWarning() {
   const warning = document.getElementById("rotateWarning");
   warning.style.display = "none";
 }
-
 window.addEventListener("orientationchange", () => {
+  if (!tacticalBoardActivated) return; // ✅ Do nothing unless user opened board
+
   const isPortrait = window.matchMedia("(orientation: portrait)").matches;
   if (!isPortrait && document.getElementById("rotateWarning").style.display === "flex") {
     openTacticalBoard();
@@ -217,6 +221,7 @@ window.addEventListener("orientationchange", () => {
     showRotateWarning();
   }
 });
+
 function resetPlayers() {
   board.querySelectorAll('.tactical-player').forEach(el => el.remove());
   arrowLayer.innerHTML = '';
