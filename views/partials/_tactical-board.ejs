@@ -220,15 +220,7 @@ function closeTacticalBoard() {
 }
 function showRotateWarning() {
   const warning = document.getElementById("rotateWarning");
-
-  // Remove and re-add animation class to restart it
   warning.style.display = "flex";
-  warning.style.visibility = "visible";
-
-  // Force reflow to restart animation
-  warning.style.animation = "none";
-  void warning.offsetWidth; // 🔄 trigger reflow
-  warning.style.animation = "fadeIn 0.6s ease-in-out";
 }
 
 function hideRotateWarning() {
@@ -481,10 +473,6 @@ window.resetPlayers = resetPlayers;
 
 // Trigger button (used in team.ejs)
 document.addEventListener('DOMContentLoaded', () => {
-  // Hide rotate warning on initial load
-  document.getElementById("rotateWarning").style.display = "none";
-
-  // Tactical board button
   const btn = document.getElementById('openTacticalBoardBtn');
   if (btn) {
     btn.addEventListener('click', () => {
@@ -495,26 +483,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-
-  // Formation change listeners
-  const homeTemplate = document.getElementById('homeTemplate');
-  const awayTemplate = document.getElementById('awayTemplate');
-
-  if (homeTemplate) homeTemplate.addEventListener('change', resetPlayers);
-  if (awayTemplate) awayTemplate.addEventListener('change', resetPlayers);
-
-  // Handle orientation changes
   window.addEventListener("orientationchange", () => {
-    const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+  const isPortrait = window.matchMedia("(orientation: portrait)").matches;
 
-    if (!tacticalBoardActivated) return;
+  if (!tacticalBoardActivated) return; // Don't do anything unless user clicked button
 
-    if (isPortrait) {
-      closeTacticalBoard();
-      showRotateWarning();
-    } else {
-      hideRotateWarning();
-      showTacticalModal();
-    }
-  });
+  if (isPortrait) {
+    closeTacticalBoard();
+    showRotateWarning();
+  } else {
+    hideRotateWarning();
+    showTacticalModal();
+  }
 });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById("rotateWarning").style.display = "none";
+});
+</script>
