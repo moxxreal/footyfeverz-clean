@@ -872,8 +872,15 @@ body.modal-open {
 #chat-form button:hover {
   background: #0056b3;
 }
+/* Mobile portrait mode force */
+@media screen and (orientation: portrait) {
+  /* Only show the warning inside the modal */
+  #tacticalModal:target #rotateWarning {
+    display: flex !important;
+  }
+}
 #rotateWarning {
-  display: none !important;
+  display: none;
   position: fixed;
   top: 0;
   left: 0;
@@ -881,37 +888,35 @@ body.modal-open {
   height: 100dvh;
   background: white;
   z-index: 99999;
-  display: flex !important;
+
+  /* ✅ Perfect vertical + horizontal centering */
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
+
+  /* ✅ Consistent text formatting */
   font-size: 1.6em;
   font-weight: 600;
   color: #007BFF;
-  animation: fadeIn 0.6s ease-in-out;
+  text-align: center;
+  padding: 2rem;
+
+  /* ✅ Remove any extra transform */
   transform: none !important;
-  padding: 0;
-  margin: 0;
 }
-
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: rotate(-5deg);
-  }
-  to {
-    opacity: 1;
-    transform: rotate(0);
-  }
+  from { opacity: 0; transform: rotate(-5deg); }
+  to { opacity: 1; transform: rotate(0); }
 }
 
+/* Pitch layout - prevent squashing */
 #tacticalBoard {
   touch-action: none;
   aspect-ratio: 16 / 9;
   width: 100%;
-  max-width: 900px;
   height: auto;
+  max-width: 900px;
   margin: 0 auto;
   background: url('/images/tactical-pitch.png') center/cover no-repeat;
   border: 2px solid #333;
@@ -919,6 +924,7 @@ body.modal-open {
   overflow: hidden;
 }
 
+/* Player circles */
 .tactical-player {
   z-index: 10;
   font-weight: bold;
@@ -927,6 +933,7 @@ body.modal-open {
   white-space: nowrap;
   overflow: hidden;
   touch-action: none;
+
   position: absolute;
   width: 60px;
   height: 60px;
@@ -935,7 +942,7 @@ body.modal-open {
   background-color: #ddd;
   color: black;
   border: 2px solid white;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 5px rgba(0,0,0,0.4);
   cursor: grab;
   user-select: none;
 }

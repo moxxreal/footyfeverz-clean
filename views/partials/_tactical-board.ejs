@@ -72,7 +72,7 @@
 </svg>
 
 <!-- Rotate Warning (only appears after button click if portrait) -->
-<div id="rotateWarning">
+<div id="rotateWarning" style="display: none;">
   🔄 Please rotate your phone to use the tactical board
 </div>
 
@@ -92,16 +92,15 @@
   <div class="auth-form tactical-inner"
      style="
        position: relative;
-       max-height: 100%;
-       overflow-y: auto;
        width: 95%;
        max-width: 1000px;
        margin: auto;
        background: white;
        padding: 1rem;
+       max-height: 100%;
+       overflow-y: auto;
      "
      onclick="event.stopPropagation()">
-
     <button onclick="closeTacticalBoard()" style="position: fixed; top: 20px; right: 20px;
             z-index: 10000; font-size: 18px; padding: 8px 12px; background-color: #ccc;
             border: none; border-radius: 5px; cursor: pointer;">✖ Exit</button>
@@ -205,26 +204,13 @@ function openTacticalBoard() {
   hideRotateWarning();
   showTacticalModal();
 }
-
 function showTacticalModal() {
   const modal = document.getElementById('tacticalModal');
-
-  // Show the modal
   modal.classList.remove('hidden');
   modal.style.display = 'block';
-
-  // Reset scroll positions (modal + page)
   modal.scrollTop = 0;
-  document.body.scrollTop = 0;
-  document.documentElement.scrollTop = 0;
-
-  // Prevent background scroll
   document.body.style.overflow = 'hidden';
-
-  // Reset formation view to home team
   teamDisplay.value = 'home';
-
-  // Reset player layout
   resetPlayers();
 }
 function closeTacticalBoard() {
@@ -498,7 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener("orientationchange", () => {
   const isPortrait = window.matchMedia("(orientation: portrait)").matches;
 
-  if (!tacticalBoardActivated) return;
+  if (!tacticalBoardActivated) return; // Don't do anything unless user clicked button
 
   if (isPortrait) {
     closeTacticalBoard();
@@ -507,6 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hideRotateWarning();
     showTacticalModal();
   }
+});
 });
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById("rotateWarning").style.display = "none";
