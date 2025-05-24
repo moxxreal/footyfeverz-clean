@@ -874,10 +874,8 @@ body.modal-open {
 }
 /* Mobile portrait mode force */
 @media screen and (orientation: portrait) {
-  #tacticalModal {
-    display: none !important;
-  }
-  #rotateWarning {
+  /* Only show the warning inside the modal */
+  #tacticalModal:target #rotateWarning {
     display: flex !important;
   }
 }
