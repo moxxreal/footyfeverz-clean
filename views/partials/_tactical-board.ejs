@@ -180,10 +180,25 @@ function openTacticalBoard() {
   const isPortrait = window.matchMedia("(orientation: portrait)").matches;
 
   if (isMobile && isPortrait) {
-    showRotateWarning();  // ✅ show only if user clicks
+    showRotateWarning();
+
+    // Watch orientation until fixed
+    const watch = setInterval(() => {
+      if (!window.matchMedia("(orientation: portrait)").matches) {
+        hideRotateWarning();
+        modal.classList.remove('hidden');
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        teamDisplay.value = 'home';
+        resetPlayers();
+        clearInterval(watch);
+      }
+    }, 500);
+
     return;
   }
 
+  // Desktop or already in landscape
   hideRotateWarning();
   modal.classList.remove('hidden');
   modal.style.display = 'block';
@@ -191,15 +206,14 @@ function openTacticalBoard() {
   teamDisplay.value = 'home';
   resetPlayers();
 }
-
 function closeTacticalBoard() {
   const modal = document.getElementById("tacticalModal");
   modal.classList.add('hidden');
   modal.style.display = 'none';
   document.body.style.overflow = '';
-  tacticalBoardActivated = false; // ✅ Reset flag
+  tacticalBoardActivated = false;
+  hideRotateWarning();
 }
-
 function showRotateWarning() {
   const warning = document.getElementById("rotateWarning");
   warning.style.display = "flex";
@@ -209,20 +223,6 @@ function hideRotateWarning() {
   const warning = document.getElementById("rotateWarning");
   warning.style.display = "none";
 }
-window.addEventListener("orientationchange", () => {
-  if (!tacticalBoardActivated) return; // ⛔ Do nothing unless tactical board is active
-
-  const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-  const warning = document.getElementById("rotateWarning");
-
-  if (!isPortrait && warning.style.display === "flex") {
-    hideRotateWarning();
-    openTacticalBoard(); // Reopen the board only after rotation back to landscape
-  } else if (isPortrait) {
-    closeTacticalBoard();
-    showRotateWarning();
-  }
-});
 
 function resetPlayers() {
   board.querySelectorAll('.tactical-player').forEach(el => el.remove());
