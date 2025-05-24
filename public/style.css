@@ -879,8 +879,6 @@ body.modal-open {
     display: flex !important;
   }
 }
-
-/* Slick rotate warning */
 #rotateWarning {
   display: none;
   position: fixed;
@@ -896,6 +894,7 @@ body.modal-open {
   font-weight: bold;
   padding: 2em;
   animation: fadeIn 0.6s ease-in-out;
+  transform: translateX(-10px); /* ✅ Shift left slightly */
 }
 
 @keyframes fadeIn {

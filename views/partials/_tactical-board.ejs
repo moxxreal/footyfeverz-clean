@@ -175,31 +175,20 @@ const templates = {
 };
 function openTacticalBoard() {
   tacticalBoardActivated = true;
-  const modal = document.getElementById('tacticalModal');
+
   const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
   const isPortrait = window.matchMedia("(orientation: portrait)").matches;
 
   if (isMobile && isPortrait) {
     showRotateWarning();
-
-    // Watch orientation until fixed
-    const watch = setInterval(() => {
-      if (!window.matchMedia("(orientation: portrait)").matches) {
-        hideRotateWarning();
-        modal.classList.remove('hidden');
-        modal.style.display = 'block';
-        document.body.style.overflow = 'hidden';
-        teamDisplay.value = 'home';
-        resetPlayers();
-        clearInterval(watch);
-      }
-    }, 500);
-
     return;
   }
 
-  // Desktop or already in landscape
   hideRotateWarning();
+  showTacticalModal();
+}
+function showTacticalModal() {
+  const modal = document.getElementById('tacticalModal');
   modal.classList.remove('hidden');
   modal.style.display = 'block';
   document.body.style.overflow = 'hidden';
@@ -211,8 +200,6 @@ function closeTacticalBoard() {
   modal.classList.add('hidden');
   modal.style.display = 'none';
   document.body.style.overflow = '';
-  tacticalBoardActivated = false;
-  hideRotateWarning();
 }
 function showRotateWarning() {
   const warning = document.getElementById("rotateWarning");
@@ -476,6 +463,19 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+  window.addEventListener("orientationchange", () => {
+  const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+
+  if (!tacticalBoardActivated) return; // Don't do anything unless user clicked button
+
+  if (isPortrait) {
+    closeTacticalBoard();
+    showRotateWarning();
+  } else {
+    hideRotateWarning();
+    showTacticalModal();
+  }
+});
 });
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById("rotateWarning").style.display = "none";
