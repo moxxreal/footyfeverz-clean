@@ -173,15 +173,14 @@ const templates = {
   '4231': ['GK', 'RB', 'CB', 'CB', 'LB', 'CDM', 'CDM', 'CAM', 'RW', 'LW', 'ST'],
   '4222': ['GK', 'RB', 'CB', 'CB', 'LB', 'CDM', 'CDM', 'CAM', 'CAM', 'ST', 'ST']
 };
-
 function openTacticalBoard() {
-  tacticalBoardActivated = true; // ✅ Set flag
+  tacticalBoardActivated = true;
   const modal = document.getElementById('tacticalModal');
   const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
   const isPortrait = window.matchMedia("(orientation: portrait)").matches;
 
   if (isMobile && isPortrait) {
-    showRotateWarning();
+    showRotateWarning();  // ✅ show only if user clicks
     return;
   }
 
@@ -211,11 +210,14 @@ function hideRotateWarning() {
   warning.style.display = "none";
 }
 window.addEventListener("orientationchange", () => {
-  if (!tacticalBoardActivated) return; // ✅ Do nothing unless user opened board
+  if (!tacticalBoardActivated) return; // ⛔ Do nothing unless tactical board is active
 
   const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-  if (!isPortrait && document.getElementById("rotateWarning").style.display === "flex") {
-    openTacticalBoard();
+  const warning = document.getElementById("rotateWarning");
+
+  if (!isPortrait && warning.style.display === "flex") {
+    hideRotateWarning();
+    openTacticalBoard(); // Reopen the board only after rotation back to landscape
   } else if (isPortrait) {
     closeTacticalBoard();
     showRotateWarning();
@@ -474,5 +476,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+});
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById("rotateWarning").style.display = "none";
 });
 </script>
