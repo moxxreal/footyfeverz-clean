@@ -912,11 +912,11 @@ body.modal-open {
 
 /* Pitch layout - prevent squashing */
 #tacticalBoard {
-  touch-action: none;
+  touch-action: pan-y; /* ✅ Allow vertical scroll */
   aspect-ratio: 16 / 9;
   width: 100%;
-  height: auto;
   max-width: 900px;
+  height: auto;
   margin: 0 auto;
   background: url('/images/tactical-pitch.png') center/cover no-repeat;
   border: 2px solid #333;
