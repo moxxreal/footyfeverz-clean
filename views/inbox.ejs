@@ -26,7 +26,7 @@
             <img src="<%= convo.profile_pic || '/default-avatar.png' %>" alt="avatar" class="avatar" />
             <div class="conversation-content">
               <div class="conversation-header">
-                <strong>@<%= convo.user %></strong>
+                <strong><%= convo.user %></strong>
                 <small><%= new Date(convo.timestamp).toLocaleString() %></small>
               </div>
               <div class="conversation-message">

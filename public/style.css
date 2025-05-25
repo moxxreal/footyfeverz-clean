@@ -965,3 +965,7 @@ a.chat-button:hover {
   background: #0062cc; /* darker blue */
   transform: translateY(-1px);
 }
+.btn-shared:hover {
+  opacity: 0.9;
+  filter: brightness(1.1);
+}

@@ -106,13 +106,12 @@
         </div>
 <% if (user && user.username === profileUser && followRequests.length > 0) { %>
   <div style="margin: 20px 0;">
-    <h3>Follow Requests</h3>
     <% followRequests.forEach(requester => { %>
       <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 15px;">
         <span><a href="/user/<%= requester %>"><%= requester %></a></span>
         <form action="/user/<%= requester %>/accept-follow" method="POST" style="display:inline;">
-  <button type="submit">Accept & Follow Back</button>
-</form>
+          <button type="submit">Accept & Follow Back</button>
+        </form>
         <form action="/user/<%= requester %>/reject-follow" method="POST" style="display:inline;">
           <button type="submit">Reject</button>
         </form>
@@ -169,45 +168,42 @@
         </button>
       </form>
     <% } %>
-
-    <a href="/chat/<%= profileUser %>" class="chat-button" style="
-      display: inline-block;
-      padding: 10px 20px;
-      min-width: 130px;
-      text-align: center;
-      background: #007bff;
-      color: white;
-      border-radius: 5px;
-      font-size: 1rem;
-      text-decoration: none;
-      cursor: pointer;
-    ">
-      Message <%= profileUser %>
-    </a>
+    <form action="/chat/<%= profileUser %>" method="GET">
+  <button type="submit" style="
+    padding: 10px 20px;
+    min-width: 130px;
+    text-align: center;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.3s;
+  " onmouseover="this.style.background='#0069d9'" onmouseout="this.style.background='#007bff'">
+    Message
+  </button>
+</form>
   </div>
 <% } %>
       </div>
     </div>
 
     <% if (stories.length > 0) { %>
-      <h2 style="margin-top: 40px;">Stories by @<%= profileUser %></h2>
       <div class="story-carousel">
         <% stories.forEach(story => { %>
-          <div class="story-item">
-            <% if (story.image.endsWith('.mp4') || story.image.endsWith('.webm') || story.image.endsWith('.ogg')) { %>
-              <video src="<%= story.image %>" controls></video>
-            <% } else { %>
-              <img src="<%= story.image %>" alt="Story" />
-            <% } %>
-            <p style="font-size: 0.9rem; margin: 5px 0;"><%= story.caption %></p>
-            <small><%= story.relativeTime %></small>
-          </div>
+          <div class="story-item" onclick="openStoryModal('<%= story.image %>', '<%= story.caption %>')" style="cursor: pointer;">
+  <% if (story.image.endsWith('.mp4') || story.image.endsWith('.webm') || story.image.endsWith('.ogg')) { %>
+    <video src="<%= story.image %>" muted playsinline></video>
+  <% } else { %>
+    <img src="<%= story.image %>" alt="Story" />
+  <% } %>
+</div>
         <% }) %>
       </div>
     <% } %>
 
     <div class="recent-activity">
-      <h2>Recent Comments</h2>
       <% if (comments.length === 0) { %>
         <p>This user hasn't posted any comments yet.</p>
       <% } else { %>
@@ -238,5 +234,43 @@
       <% } %>
     </div>
   </section>
+  <div id="storyModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:1000; justify-content:center; align-items:center;">
+  <div id="storyContent" style="max-width:90vw; max-height:90vh; text-align:center;">
+    <span onclick="closeStoryModal()" style="position:absolute; top:20px; right:30px; color:white; font-size:2rem; cursor:pointer;">✖</span>
+    <div id="storyMedia"></div>
+    <p id="storyCaption" style="color:white; margin-top:15px;"></p>
+  </div>
+</div>
+<script>
+  function openStoryModal(mediaUrl, caption) {
+    const storyModal = document.getElementById('storyModal');
+    const storyMedia = document.getElementById('storyMedia');
+    const storyCaption = document.getElementById('storyCaption');
+
+    storyMedia.innerHTML = '';
+
+    if (mediaUrl.match(/\.(mp4|webm|ogg)$/)) {
+      const video = document.createElement('video');
+      video.src = mediaUrl;
+      video.controls = true;
+      video.style.maxWidth = '100%';
+      video.style.maxHeight = '80vh';
+      storyMedia.appendChild(video);
+    } else {
+      const img = document.createElement('img');
+      img.src = mediaUrl;
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = '80vh';
+      storyMedia.appendChild(img);
+    }
+
+    storyCaption.textContent = caption;
+    storyModal.style.display = 'flex';
+  }
+
+  function closeStoryModal() {
+    document.getElementById('storyModal').style.display = 'none';
+  }
+</script>
 </body>
 </html>

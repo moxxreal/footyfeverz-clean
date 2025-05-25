@@ -75,12 +75,12 @@
 
   <section class="chat-container">
     <h2>
-  Chat with 
-  <a href="/user/<%= receiver.username %>" style="color: #007bff; text-decoration: none;">
-    <%= receiver.username %>
-  </a>
-  <span id="online-status" style="font-size: 16px; margin-left: 10px; color: #888;">Checking...</span>
-</h2>
+      Chat with 
+      <a href="/user/<%= receiver.username %>" style="color: #007bff; text-decoration: none;">
+        <%= receiver.username %>
+      </a>
+      <span id="online-status" style="font-size: 16px; margin-left: 10px; color: #888;">Checking...</span>
+    </h2>
 
     <div id="chat-box" class="chat-box"></div>
     <p id="typing-indicator">Typing...</p>
@@ -197,6 +197,7 @@
           body: JSON.stringify({ receiver: receiverUsername, content })
         });
 
+        // Do NOT render message here — wait for server confirmation below
         socket.emit('chatMessage', {
           sender: currentUsername,
           receiver: receiverUsername,
@@ -205,6 +206,7 @@
 
         messageInput.value = '';
         socket.emit('stopTyping', { to: receiverUsername, from: currentUsername });
+
       } catch (err) {
         console.error('❌ Failed to send message:', err);
       }

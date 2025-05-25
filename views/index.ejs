@@ -18,10 +18,9 @@
   <!-- League Cards -->
   <div class="card-container">
     <% const leagues = [
-      ['premier', 'premier-league'], ['laliga', 'la-liga'], ['champions', 'champions-league'], ['serie-a', 'serie-a'], ['bundesliga', 'bundesliga'],
+      ['premier', 'premier-league'], ['laliga', 'la-liga'], ['serie-a', 'serie-a'], ['champions', 'champions-league'], ['bundesliga', 'bundesliga'],
       ['ligue1', 'ligue1'], ['roshn-saudi', 'saudi-league'], ['eredivisie', 'eredivisie'],
       ['liga-portugal', 'liga-portugal'], ['super-lig', 'super-lig'],
-      ['fc25', 'fc25'],
     ]; %>
     <% leagues.forEach(([slug, image]) => { %>
       <a href="/<%= slug %>.html" class="card" style="background-image: url('/<%= image %>.jpg');"></a>
@@ -37,7 +36,7 @@
         <% topFans.forEach((fan, index) => { %>
           <tr>
             <td>#<%= index + 1 %></td>
-            <td><%= fan.username %></td>
+            <td><a href="/user/<%= fan.username %>"><%= fan.username %></a></td>
             <td><%= fan.comments %></td>
             <td><%= fan.likes %></td>
           </tr>

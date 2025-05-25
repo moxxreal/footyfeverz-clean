@@ -72,7 +72,7 @@
         <div class="comment-item">
   <div class="comment-user" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
     <img src="<%= comment.profile_pic || '/default-avatar.png' %>" alt="Avatar" class="comment-avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
-    <strong><a href="/user/<%= comment.user %>">@<%= comment.user %></a></strong>
+    <strong><a href="/user/<%= comment.user %>"><%= comment.user %></a></strong>
   </div>
 
   <% if (comment.text && comment.text.trim()) { %>
