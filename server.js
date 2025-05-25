@@ -61,16 +61,26 @@ const multiUpload = upload.fields([
 app.use(async (req, res, next) => {
   try {
     if (req.session.user?.username) {
+      const username = req.session.user.username;
+
+      // Count unread messages
       const msgSnap = await db.collection('messages')
-        .where('receiver', '==', req.session.user.username)
+        .where('receiver', '==', username)
         .where('seenByReceiver', '==', false)
         .get();
       req.session.user.unreadCount = msgSnap.size;
+
+      // Count pending follow requests (if you store them in a subcollection)
+      const followSnap = await db.collection('users')
+        .doc(username)
+        .collection('followRequests')
+        .get();
+      req.session.user.followNotifications = followSnap.size;
     }
   } catch (err) {
     console.error('User session middleware error:', err);
   }
-  next(); // ✅ don't forget this!
+  next();
 });
 
 // ✅ Second middleware: locals for all views
@@ -467,6 +477,11 @@ app.get('/user/:username', async (req, res) => {
     const followers = userData.followers || [];
     const following = userData.following || [];
     const isFollowing = currentUser ? followers.includes(currentUser) : false;
+    let requestSent = false;
+if (currentUser && currentUser !== username) {
+  const reqSnap = await db.collection('users').doc(username).collection('followRequests').doc(currentUser).get();
+  requestSent = reqSnap.exists;
+}
     const profilePic = userData.profile_pic || '/default-avatar.png';
 
     // Fetch Comments
@@ -483,6 +498,9 @@ app.get('/user/:username', async (req, res) => {
       };
     });
 
+    const totalComments = comments.length;
+    const totalLikes = comments.reduce((sum, c) => sum + (c.like_reactions || 0), 0);
+
     // Fetch Stories
     const storiesSnap = await db.collection('stories')
       .where('username', '==', username)
@@ -496,21 +514,84 @@ app.get('/user/:username', async (req, res) => {
         relativeTime: data.createdAt ? dayjs(data.createdAt.toDate()).fromNow() : ''
       };
     });
+
+    const followersCount = followers.length;
+    const followingCount = following.length;
+
+    // ✅ Get follow requests if this is the logged-in user's own profile
+    let followRequests = [];
+    if (currentUser === username) {
+      const followReqSnap = await db.collection('users')
+        .doc(username)
+        .collection('followRequests')
+        .get();
+
+      followRequests = followReqSnap.docs.map(doc => doc.id);
+    }
     res.render('user', {
   profileUser: username,
+  profilePic,
   comments,
   stories,
-  totalComments: comments.length,
-  totalLikes: comments.reduce((sum, c) => sum + (c.like_reactions || 0), 0),
-  followersCount: followers.length,
-  followingCount: following.length,
+  totalComments,
+  totalLikes,
+  followersCount,
+  followingCount,
   isFollowing,
-  profilePic // ✅ pass this to your EJS
+  followRequests,
+  requestSent  // ✅ Add this
 });
 
   } catch (err) {
     console.error('User profile error:', err);
     res.status(500).send("Failed to load profile");
+  }
+});
+// Accept follow
+app.post('/user/:fromUser/accept-follow', async (req, res) => {
+  const toUser = req.session.user?.username;
+  const fromUser = req.params.fromUser;
+
+  if (!toUser) return res.redirect('/?error=Login required');
+
+  try {
+    const userRef = db.collection('users').doc(toUser);
+
+    // Add follower
+    await userRef.update({
+      followers: admin.firestore.FieldValue.arrayUnion(fromUser)
+    });
+
+    // Add to following list of sender
+    await db.collection('users').doc(fromUser).update({
+      following: admin.firestore.FieldValue.arrayUnion(toUser)
+    });
+
+    // Remove the follow request
+    await userRef.collection('followRequests').doc(fromUser).delete();
+
+    res.redirect(`/user/${toUser}`);
+  } catch (err) {
+    console.error('Accept follow error:', err);
+    res.status(500).send('Failed to accept follow request');
+  }
+});
+
+// Reject follow
+app.post('/user/:fromUser/reject-follow', async (req, res) => {
+  const toUser = req.session.user?.username;
+  const fromUser = req.params.fromUser;
+
+  if (!toUser) return res.redirect('/?error=Login required');
+
+  try {
+    await db.collection('users').doc(toUser)
+      .collection('followRequests').doc(fromUser).delete();
+
+    res.redirect(`/user/${toUser}`);
+  } catch (err) {
+    console.error('Reject follow error:', err);
+    res.status(500).send('Failed to reject follow request');
   }
 });
 
@@ -688,6 +769,7 @@ io.on('connection', (socket) => {
     console.log('❌ Socket disconnected:', socket.id);
   });
 });
+
 // --- Follow a user ---
 app.post('/user/:username/follow', async (req, res) => {
   const currentUser = req.session.user?.username;
@@ -698,17 +780,18 @@ app.post('/user/:username/follow', async (req, res) => {
   }
 
   try {
-    await db.collection('users').doc(currentUser).update({
-      following: admin.firestore.FieldValue.arrayUnion(targetUser)
-    });
+    const targetDoc = await db.collection('users').doc(targetUser).get();
+    const targetData = targetDoc.data();
 
-    await db.collection('users').doc(targetUser).update({
-      followers: admin.firestore.FieldValue.arrayUnion(currentUser)
-    });
+    // ✅ Always use request-based flow for now
+    await db.collection('users').doc(targetUser)
+      .collection('followRequests')
+      .doc(currentUser)
+      .set({ requestedAt: admin.firestore.FieldValue.serverTimestamp() });
 
     res.redirect('/user/' + targetUser);
   } catch (err) {
-    console.error('❌ Follow error:', err);
+    console.error('❌ Follow request error:', err);
     res.redirect('/user/' + targetUser);
   }
 });

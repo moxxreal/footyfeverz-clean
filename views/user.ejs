@@ -96,7 +96,7 @@
 
       <!-- Username, Stats, Buttons -->
       <div style="flex: 1; min-width: 240px;">
-        <h1 style="margin: 0 0 10px; font-size: 1.8rem;">@<%= profileUser %></h1>
+        <h1 style="margin: 0 0 10px; font-size: 1.8rem;"><%= profileUser %></h1>
 
         <div class="stats" style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
           <div class="stat-box"><strong><%= totalComments %></strong><span>Comments</span></div>
@@ -104,37 +104,88 @@
           <div class="stat-box"><strong><%= followersCount %></strong><span>Followers</span></div>
           <div class="stat-box"><strong><%= followingCount %></strong><span>Following</span></div>
         </div>
+<% if (user && user.username === profileUser && followRequests.length > 0) { %>
+  <div style="margin: 20px 0;">
+    <h3>Follow Requests</h3>
+    <% followRequests.forEach(requester => { %>
+      <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 15px;">
+        <span><a href="/user/<%= requester %>"><%= requester %></a></span>
+        <form action="/user/<%= requester %>/accept-follow" method="POST" style="display:inline;">
+  <button type="submit">Accept & Follow Back</button>
+</form>
+        <form action="/user/<%= requester %>/reject-follow" method="POST" style="display:inline;">
+          <button type="submit">Reject</button>
+        </form>
+      </div>
+    <% }) %>
+  </div>
+<% } %>
+<% if (user && user.username !== profileUser) { %>
+  <div style="display: flex; gap: 15px; margin-top: 10px; justify-content: center;">
+    <% if (isFollowing) { %>
+      <form method="POST" action="/user/<%= profileUser %>/unfollow">
+        <button type="submit" class="follow-btn unfollow" style="
+          padding: 10px 20px;
+          min-width: 130px;
+          text-align: center;
+          background: #dc3545;
+          color: white;
+          border: none;
+          border-radius: 5px;
+          font-size: 1rem;
+          cursor: pointer;
+        ">
+          Unfollow
+        </button>
+      </form>
+    <% } else if (requestSent) { %>
+      <button disabled style="
+        padding: 10px 20px;
+        min-width: 130px;
+        text-align: center;
+        background: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 1rem;
+        cursor: not-allowed;
+      ">
+        Request Sent
+      </button>
+    <% } else { %>
+      <form method="POST" action="/user/<%= profileUser %>/follow">
+        <button type="submit" class="follow-btn" style="
+          padding: 10px 20px;
+          min-width: 130px;
+          text-align: center;
+          background: #28a745;
+          color: white;
+          border: none;
+          border-radius: 5px;
+          font-size: 1rem;
+          cursor: pointer;
+        ">
+          Follow
+        </button>
+      </form>
+    <% } %>
 
-        <% if (user && user.username !== profileUser) { %>
-          <div style="display: flex; gap: 15px; margin-top: 10px; justify-content: center;">
-            <form method="POST" action="/user/<%= profileUser %>/<%= isFollowing ? 'unfollow' : 'follow' %>">
-              <button type="submit" class="follow-btn <%= isFollowing ? 'unfollow' : '' %>" style="
-                padding: 10px 20px;
-                background: <%= isFollowing ? '#dc3545' : '#28a745' %>;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                font-size: 1rem;
-                cursor: pointer;
-              ">
-                <%= isFollowing ? 'Unfollow' : 'Follow' %>
-              </button>
-            </form>
-
-            <a href="/chat/<%= profileUser %>" class="chat-button" style="
-              display: inline-block;
-              padding: 10px 20px;
-              background: #007bff;
-              color: white;
-              border-radius: 5px;
-              font-size: 1rem;
-              text-decoration: none;
-              cursor: pointer;
-            ">
-              Message @<%= profileUser %>
-            </a>
-          </div>
-        <% } %>
+    <a href="/chat/<%= profileUser %>" class="chat-button" style="
+      display: inline-block;
+      padding: 10px 20px;
+      min-width: 130px;
+      text-align: center;
+      background: #007bff;
+      color: white;
+      border-radius: 5px;
+      font-size: 1rem;
+      text-decoration: none;
+      cursor: pointer;
+    ">
+      Message <%= profileUser %>
+    </a>
+  </div>
+<% } %>
       </div>
     </div>
 

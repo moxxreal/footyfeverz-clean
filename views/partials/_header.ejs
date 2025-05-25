@@ -1,4 +1,4 @@
-<header class="<%= headerClass %> <%= useTeamHeader && !user ? 'team-logged-out' : '' %>">
+<header class="<%= headerClass %> <%= useTeamHeader && !user ? 'team-logged-out' : '' %>"> 
   <!-- Left Side -->
   <div class="header-side left">
     <% if (!user) { %>
@@ -11,8 +11,13 @@
         <a href="#" class="header-link" onclick="openLogin()">Login</a>
       <% } %>
     <% } else { %>
-      <div class="user-dropdown-container">
-        <span class="header-link username-toggle"><%= user.username %></span>
+      <div class="user-dropdown-container" style="position: relative;">
+        <span class="header-link username-toggle">
+          <%= user.username %>
+          <% if (user.followNotifications && user.followNotifications > 0) { %>
+            <span class="notification-badge"><%= user.followNotifications %></span>
+          <% } %>
+        </span>
         <div class="user-dropdown hidden">
           <a href="/user/<%= user.username %>">My Profile</a>
           <a href="/logout?redirectTo=<%= request.originalUrl %>">Log out</a>
@@ -35,7 +40,12 @@
     <% } %>
 
     <% if (user && !useTeamHeader) { %>
-      <a href="/inbox" class="header-link">Inbox</a>
+      <a href="/inbox" class="header-link" style="position: relative;">
+        Inbox
+        <% if (user.unreadCount && user.unreadCount > 0) { %>
+          <span class="notification-badge"><%= user.unreadCount %></span>
+        <% } %>
+      </a>
     <% } %>
 
     <% if (useTeamHeader && leagueSlug && leagueName) { %>
@@ -72,6 +82,19 @@
     <button type="submit">Sign Up</button>
   </form>
 </div>
+
+<style>
+  .notification-badge {
+    background: red;
+    color: white;
+    font-size: 12px;
+    border-radius: 10px;
+    padding: 2px 6px;
+    position: absolute;
+    top: -5px;
+    right: -10px;
+  }
+</style>
 
 <script>
   function openLogin() {
