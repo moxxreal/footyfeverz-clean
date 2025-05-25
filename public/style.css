@@ -946,3 +946,22 @@ body.modal-open {
   cursor: grab;
   user-select: none;
 }
+button.follow-btn,
+a.chat-button {
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+button.follow-btn:hover {
+  background: #218838; /* darker green */
+  transform: translateY(-1px);
+}
+
+button.follow-btn.unfollow:hover {
+  background: #c82333; /* darker red */
+}
+
+a.chat-button:hover {
+  background: #0062cc; /* darker blue */
+  transform: translateY(-1px);
+}

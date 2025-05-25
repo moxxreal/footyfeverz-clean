@@ -346,9 +346,11 @@ app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
       ? `/uploads/${req.files.tacticImage[0].filename}`
       : '';
 
-  const profilePic = req.files?.profile_pic
-    ? `/uploads/${req.files.profile_pic[0].filename}`
-    : '';
+  let profilePic = '';
+const userDoc = await db.collection('users').doc(req.session.user.username).get();
+if (userDoc.exists) {
+  profilePic = userDoc.data().profile_pic || '';
+}
 
   // ✅ Allow comment if text or media is present
   if (!text?.trim() && !media) {
@@ -451,30 +453,61 @@ app.post('/battle/vote', async (req, res) => {
     res.status(500).json({ success: false, message: 'Vote failed' });
   }
 });
+
 // --- User Profile Page ---
 app.get('/user/:username', async (req, res) => {
   const { username } = req.params;
+  const currentUser = req.session.user?.username;
 
   try {
+    const userDoc = await db.collection('users').doc(username).get();
+    if (!userDoc.exists) return res.status(404).send("User not found");
+
+    const userData = userDoc.data();
+    const followers = userData.followers || [];
+    const following = userData.following || [];
+    const isFollowing = currentUser ? followers.includes(currentUser) : false;
+    const profilePic = userData.profile_pic || '/default-avatar.png';
+
+    // Fetch Comments
     const commentsSnap = await db.collection('comments')
-  .where('user', '==', username)
-  .get(); // removed .orderBy
+      .where('user', '==', username)
+      .orderBy('timestamp', 'desc')
+      .get();
 
-    const comments = commentsSnap.docs.map(doc => ({ ...doc.data() }));
-    const totalComments = comments.length;
-    const totalLikes = comments.reduce((sum, c) => sum + (c.like_reactions || 0), 0);
-
-    const enrichedComments = comments.map(c => ({
-      ...c,
-      relativeTime: c.timestamp ? dayjs(c.timestamp.toDate()).fromNow() : ''
-    }));
-
-    res.render('user', {
-      profileUser: username,
-      comments: enrichedComments,
-      totalComments,
-      totalLikes
+    const comments = commentsSnap.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        relativeTime: data.timestamp ? dayjs(data.timestamp.toDate()).fromNow() : ''
+      };
     });
+
+    // Fetch Stories
+    const storiesSnap = await db.collection('stories')
+      .where('username', '==', username)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const stories = storiesSnap.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        relativeTime: data.createdAt ? dayjs(data.createdAt.toDate()).fromNow() : ''
+      };
+    });
+    res.render('user', {
+  profileUser: username,
+  comments,
+  stories,
+  totalComments: comments.length,
+  totalLikes: comments.reduce((sum, c) => sum + (c.like_reactions || 0), 0),
+  followersCount: followers.length,
+  followingCount: following.length,
+  isFollowing,
+  profilePic // ✅ pass this to your EJS
+});
+
   } catch (err) {
     console.error('User profile error:', err);
     res.status(500).send("Failed to load profile");
@@ -654,6 +687,74 @@ io.on('connection', (socket) => {
     }
     console.log('❌ Socket disconnected:', socket.id);
   });
+});
+// --- Follow a user ---
+app.post('/user/:username/follow', async (req, res) => {
+  const currentUser = req.session.user?.username;
+  const targetUser = req.params.username;
+
+  if (!currentUser || currentUser === targetUser) {
+    return res.redirect('/user/' + targetUser);
+  }
+
+  try {
+    await db.collection('users').doc(currentUser).update({
+      following: admin.firestore.FieldValue.arrayUnion(targetUser)
+    });
+
+    await db.collection('users').doc(targetUser).update({
+      followers: admin.firestore.FieldValue.arrayUnion(currentUser)
+    });
+
+    res.redirect('/user/' + targetUser);
+  } catch (err) {
+    console.error('❌ Follow error:', err);
+    res.redirect('/user/' + targetUser);
+  }
+});
+
+// --- Unfollow a user ---
+app.post('/user/:username/unfollow', async (req, res) => {
+  const currentUser = req.session.user?.username;
+  const targetUser = req.params.username;
+
+  if (!currentUser || currentUser === targetUser) {
+    return res.redirect('/user/' + targetUser);
+  }
+
+  try {
+    await db.collection('users').doc(currentUser).update({
+      following: admin.firestore.FieldValue.arrayRemove(targetUser)
+    });
+
+    await db.collection('users').doc(targetUser).update({
+      followers: admin.firestore.FieldValue.arrayRemove(currentUser)
+    });
+
+    res.redirect('/user/' + targetUser);
+  } catch (err) {
+    console.error('❌ Unfollow error:', err);
+    res.redirect('/user/' + targetUser);
+  }
+});
+// --- Upload/change profile picture ---
+app.post('/user/upload-avatar', upload.single('profile_pic'), async (req, res) => {
+  const username = req.session.user?.username;
+  if (!username || !req.file) return res.redirect('/');
+
+  const filePath = `/uploads/${req.file.filename}`;
+
+  try {
+    await db.collection('users').doc(username).update({
+      profile_pic: filePath
+    });
+
+    req.session.user.profile_pic = filePath; // update session (optional)
+    res.redirect('/user/' + username);
+  } catch (err) {
+    console.error('❌ Avatar upload error:', err);
+    res.redirect('/user/' + username);
+  }
 });
 
 //Leagues 

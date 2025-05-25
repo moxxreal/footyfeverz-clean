@@ -70,35 +70,34 @@
     <% } else { %>
       <% comments.forEach(comment => { %>
         <div class="comment-item">
-          <strong>
-            <a href="/chat/<%= comment.user %>"><%= comment.user %></a>
-          </strong>
+  <div class="comment-user" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+    <img src="<%= comment.profile_pic || '/default-avatar.png' %>" alt="Avatar" class="comment-avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
+    <strong><a href="/user/<%= comment.user %>">@<%= comment.user %></a></strong>
+  </div>
 
-          <img src="<%= comment.profile_pic || '/default-avatar.png' %>" alt="Avatar" class="comment-avatar" />
+  <% if (comment.text && comment.text.trim()) { %>
+    <p><%= comment.text %></p>
+  <% } %>
 
-          <% if (comment.text && comment.text.trim()) { %>
-            <p><%= comment.text %></p>
-          <% } %>
+  <% if (comment.media) {
+    const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg');
+  %>
+    <% if (isVideo) { %>
+      <video src="<%= comment.media %>" controls style="max-width: 100%; border-radius: 10px; margin-top: 10px;"></video>
+    <% } else { %>
+      <img src="<%= comment.media %>" class="comment-image-clickable" />
+    <% } %>
+  <% } %>
 
-          <% if (comment.media) {
-            const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg');
-          %>
-            <% if (isVideo) { %>
-              <video src="<%= comment.media %>" controls style="max-width: 100%; border-radius: 10px; margin-top: 10px;"></video>
-            <% } else { %>
-              <img src="<%= comment.media %>" class="comment-image-clickable" />
-            <% } %>
-          <% } %>
+  <div class="reactions">
+    <button onclick="reactToComment('<%= comment.id %>', 'like')">👍 <span id="like-<%= comment.id %>"><%= comment.like_reactions || 0 %></span></button>
+    <button onclick="reactToComment('<%= comment.id %>', 'funny')">😂 <span id="funny-<%= comment.id %>"><%= comment.funny_reactions || 0 %></span></button>
+    <button onclick="reactToComment('<%= comment.id %>', 'angry')">😡 <span id="angry-<%= comment.id %>"><%= comment.angry_reactions || 0 %></span></button>
+    <button onclick="reactToComment('<%= comment.id %>', 'love')">😍 <span id="love-<%= comment.id %>"><%= comment.love_reactions || 0 %></span></button>
+  </div>
 
-          <div class="reactions">
-            <button onclick="reactToComment('<%= comment.id %>', 'like')">👍 <span id="like-<%= comment.id %>"><%= comment.like_reactions || 0 %></span></button>
-            <button onclick="reactToComment('<%= comment.id %>', 'funny')">😂 <span id="funny-<%= comment.id %>"><%= comment.funny_reactions || 0 %></span></button>
-            <button onclick="reactToComment('<%= comment.id %>', 'angry')">😡 <span id="angry-<%= comment.id %>"><%= comment.angry_reactions || 0 %></span></button>
-            <button onclick="reactToComment('<%= comment.id %>', 'love')">😍 <span id="love-<%= comment.id %>"><%= comment.love_reactions || 0 %></span></button>
-          </div>
-
-          <small style="color: #999;"><%= comment.relativeTime %></small>
-        </div>
+  <small style="color: #999;"><%= comment.relativeTime %></small>
+</div>
       <% }) %>
     <% } %>
   </div>

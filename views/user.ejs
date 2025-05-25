@@ -5,6 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title><%= profileUser %>'s Profile | Footy Feverz</title>
   <link rel="stylesheet" href="/style.css" />
+  <style>
+    .avatar-container {
+      position: relative;
+      width: 130px;
+      height: 130px;
+    }
+    .avatar-container:hover .avatar-overlay {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .avatar-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      text-align: center;
+      font-size: 0.85rem;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .avatar-overlay button,
+    .avatar-overlay div {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 0.85rem;
+      margin-top: 5px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .avatar-overlay button:hover,
+    .avatar-overlay div:hover {
+      color: #00ffff;
+    }
+    .story-carousel {
+      display: flex;
+      overflow-x: auto;
+      gap: 15px;
+      padding: 20px 0;
+      margin-bottom: 40px;
+    }
+    .story-item {
+      flex: 0 0 auto;
+      width: 150px;
+    }
+    .story-item img, .story-item video {
+      width: 100%;
+      border-radius: 10px;
+    }
+  </style>
 </head>
 <body>
   <%- include('partials/_header', {
@@ -12,28 +71,91 @@
     useTeamHeader: false
   }) %>
 
-  <section class="user-profile">
-    <div class="profile-box">
-      <h1>@<%= profileUser %>'s Profile</h1>
-      <div class="stats">
-        <div class="stat-box">
-          <strong><%= totalComments %></strong>
-          <span>Comments</span>
+  <section class="user-profile" style="padding: 40px 20px; max-width: 900px; margin: 0 auto;">
+    <div class="profile-box" style="display: flex; gap: 30px; flex-wrap: wrap; align-items: center; justify-content: flex-start;">
+      <!-- Avatar Upload -->
+      <% if (user && user.username === profileUser) { %>
+        <div class="avatar-container">
+          <form id="avatarForm" method="POST" action="/user/upload-avatar" enctype="multipart/form-data">
+            <label for="avatarInput" style="cursor: pointer;">
+              <img src="<%= profilePic %>" alt="Avatar" style="width: 130px; height: 130px; object-fit: cover; border-radius: 50%; border: 3px solid #ddd;" />
+              <div class="avatar-overlay">
+                <div><%= profilePic === '/default-avatar.png' ? 'Upload Photo' : 'Change Photo' %></div>
+                <button type="button" onclick="document.getElementById('removeAvatarForm').submit()">Remove Photo</button>
+              </div>
+            </label>
+            <input type="file" name="profile_pic" id="avatarInput" accept="image/*" style="display: none;" onchange="document.getElementById('avatarForm').submit()" />
+          </form>
+          <form id="removeAvatarForm" method="POST" action="/user/remove-avatar"></form>
         </div>
-        <div class="stat-box">
-          <strong><%= totalLikes %></strong>
-          <span>Likes Received</span>
+      <% } else { %>
+        <div>
+          <img src="<%= profilePic %>" alt="Avatar" style="width: 130px; height: 130px; object-fit: cover; border-radius: 50%; border: 3px solid #ddd;" />
         </div>
-      </div>
-
-      <% if (user && user.username !== profileUser) { %>
-        <a href="/chat/<%= profileUser %>" class="chat-button" style="margin-top: 15px; display: inline-block; padding: 10px 20px; background: #007bff; color: #fff; border-radius: 5px; text-decoration: none;">
-          Message @<%= profileUser %>
-        </a>
       <% } %>
+
+      <!-- Username, Stats, Buttons -->
+      <div style="flex: 1; min-width: 240px;">
+        <h1 style="margin: 0 0 10px; font-size: 1.8rem;">@<%= profileUser %></h1>
+
+        <div class="stats" style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
+          <div class="stat-box"><strong><%= totalComments %></strong><span>Comments</span></div>
+          <div class="stat-box"><strong><%= totalLikes %></strong><span>Likes</span></div>
+          <div class="stat-box"><strong><%= followersCount %></strong><span>Followers</span></div>
+          <div class="stat-box"><strong><%= followingCount %></strong><span>Following</span></div>
+        </div>
+
+        <% if (user && user.username !== profileUser) { %>
+          <div style="display: flex; gap: 15px; margin-top: 10px; justify-content: center;">
+            <form method="POST" action="/user/<%= profileUser %>/<%= isFollowing ? 'unfollow' : 'follow' %>">
+              <button type="submit" class="follow-btn <%= isFollowing ? 'unfollow' : '' %>" style="
+                padding: 10px 20px;
+                background: <%= isFollowing ? '#dc3545' : '#28a745' %>;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                font-size: 1rem;
+                cursor: pointer;
+              ">
+                <%= isFollowing ? 'Unfollow' : 'Follow' %>
+              </button>
+            </form>
+
+            <a href="/chat/<%= profileUser %>" class="chat-button" style="
+              display: inline-block;
+              padding: 10px 20px;
+              background: #007bff;
+              color: white;
+              border-radius: 5px;
+              font-size: 1rem;
+              text-decoration: none;
+              cursor: pointer;
+            ">
+              Message @<%= profileUser %>
+            </a>
+          </div>
+        <% } %>
+      </div>
     </div>
 
-    <div class="recent-comments">
+    <% if (stories.length > 0) { %>
+      <h2 style="margin-top: 40px;">Stories by @<%= profileUser %></h2>
+      <div class="story-carousel">
+        <% stories.forEach(story => { %>
+          <div class="story-item">
+            <% if (story.image.endsWith('.mp4') || story.image.endsWith('.webm') || story.image.endsWith('.ogg')) { %>
+              <video src="<%= story.image %>" controls></video>
+            <% } else { %>
+              <img src="<%= story.image %>" alt="Story" />
+            <% } %>
+            <p style="font-size: 0.9rem; margin: 5px 0;"><%= story.caption %></p>
+            <small><%= story.relativeTime %></small>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <div class="recent-activity">
       <h2>Recent Comments</h2>
       <% if (comments.length === 0) { %>
         <p>This user hasn't posted any comments yet.</p>
