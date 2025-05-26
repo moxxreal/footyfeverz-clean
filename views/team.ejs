@@ -41,6 +41,18 @@
       border-radius: 10px;
       box-shadow: 0 0 20px black;
     }
+
+    .shake {
+      animation: shake 0.4s;
+    }
+
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+      75% { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
+    }
   </style>
 </head>
 <body>
@@ -51,7 +63,6 @@
     leagueSlug,
     leagueName
   }) %>
-
   <h1 style="text-align: center;"><%= teamname.toUpperCase() %> Fan Comments</h1>
 
   <div class="sort-comments" style="text-align: center; margin-bottom: 20px;">
@@ -70,34 +81,34 @@
     <% } else { %>
       <% comments.forEach(comment => { %>
         <div class="comment-item">
-  <div class="comment-user" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-    <img src="<%= comment.profile_pic || '/default-avatar.png' %>" alt="Avatar" class="comment-avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
-    <strong><a href="/user/<%= comment.user %>"><%= comment.user %></a></strong>
-  </div>
+          <div class="comment-user" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <img src="<%= comment.profile_pic || '/default-avatar.png' %>" alt="Avatar" class="comment-avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
+            <strong><a href="/user/<%= comment.user %>"><%= comment.user %></a></strong>
+          </div>
 
-  <% if (comment.text && comment.text.trim()) { %>
-    <p><%= comment.text %></p>
-  <% } %>
+          <% if (comment.text && comment.text.trim()) { %>
+            <p><%= comment.text %></p>
+          <% } %>
 
-  <% if (comment.media) {
-    const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg');
-  %>
-    <% if (isVideo) { %>
-      <video src="<%= comment.media %>" controls style="max-width: 100%; border-radius: 10px; margin-top: 10px;"></video>
-    <% } else { %>
-      <img src="<%= comment.media %>" class="comment-image-clickable" />
-    <% } %>
-  <% } %>
+          <% if (comment.media) {
+            const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg');
+          %>
+            <% if (isVideo) { %>
+              <video src="<%= comment.media %>" controls style="max-width: 100%; border-radius: 10px; margin-top: 10px;"></video>
+            <% } else { %>
+              <img src="<%= comment.media %>" class="comment-image-clickable" />
+            <% } %>
+          <% } %>
 
-  <div class="reactions">
-    <button onclick="reactToComment('<%= comment.id %>', 'like')">👍 <span id="like-<%= comment.id %>"><%= comment.like_reactions || 0 %></span></button>
-    <button onclick="reactToComment('<%= comment.id %>', 'funny')">😂 <span id="funny-<%= comment.id %>"><%= comment.funny_reactions || 0 %></span></button>
-    <button onclick="reactToComment('<%= comment.id %>', 'angry')">😡 <span id="angry-<%= comment.id %>"><%= comment.angry_reactions || 0 %></span></button>
-    <button onclick="reactToComment('<%= comment.id %>', 'love')">😍 <span id="love-<%= comment.id %>"><%= comment.love_reactions || 0 %></span></button>
-  </div>
+          <div class="reactions">
+            <button onclick="reactToComment('<%= comment.id %>', 'like')">👍 <span id="like-<%= comment.id %>"><%= comment.like_reactions || 0 %></span></button>
+            <button onclick="reactToComment('<%= comment.id %>', 'funny')">😂 <span id="funny-<%= comment.id %>"><%= comment.funny_reactions || 0 %></span></button>
+            <button onclick="reactToComment('<%= comment.id %>', 'angry')">😡 <span id="angry-<%= comment.id %>"><%= comment.angry_reactions || 0 %></span></button>
+            <button onclick="reactToComment('<%= comment.id %>', 'love')">😍 <span id="love-<%= comment.id %>"><%= comment.love_reactions || 0 %></span></button>
+          </div>
 
-  <small style="color: #999;"><%= comment.relativeTime %></small>
-</div>
+          <small style="color: #999;"><%= comment.relativeTime %></small>
+        </div>
       <% }) %>
     <% } %>
   </div>
@@ -105,10 +116,9 @@
   <div id="imageModal" class="hidden">
     <img id="modalImage" src="" />
   </div>
-  
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-  <!-- Image Preview Modal Script -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
   <script>
     const modal = document.getElementById('imageModal');
     const modalImg = document.getElementById('modalImage');
@@ -126,7 +136,6 @@
       modalImg.src = '';
     });
   </script>
-
   <!-- Comment Form -->
   <div class="comments-container" style="margin-top: 40px;">
     <div class="comment-form-container" style="
@@ -156,112 +165,147 @@
             margin-bottom: 15px;
           "
         ></textarea>
-
-        <input type="file" name="media" accept="image/*,video/*" style="margin-bottom: 15px;" />
+        <input type="file" name="media" id="mediaInput" accept="image/*,video/*" style="display: none;" />
         <input type="file" name="tacticImage" id="tacticImageInput" style="display: none;" />
         <img id="mediaPreview" style="max-width: 200px; display: none; margin-top: 10px;" />
 
-        <div>
-          <!-- Replace the `onclick="..."` with an ID -->
-<button type="button" id="openTacticalBoardBtn" style="
-  padding: 12px 20px;
-  background: url('/images/tactical-button-bg.jpg') center/cover no-repeat;
-  color: white;
-  font-weight: bold;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  cursor: pointer;
-  margin-right: 10px;
-  text-shadow: 1px 1px 3px black;
-">
-  ⚽ Tactical Board
-</button>
-
-          <button type="submit" id="submitBtn" class="comment-submit-btn" style="margin-right: 10px;">
-            Post Comment
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px;">
+          <!-- Tactical Board Button -->
+          <button type="button" id="openTacticalBoardBtn" class="auth-sensitive-btn" style="
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+          ">
+            <img src="/images/tactical-board.png" alt="Tactical Board" style="
+              width: 220px;
+              height: auto;
+              display: block;
+              border-radius: 12px;
+            " />
           </button>
 
-          <button type="button" id="emoji-button">😊</button>
-        </div>
+          <!-- Attach File Button -->
+          <label for="mediaInput" class="auth-sensitive-btn" style="
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+            display: inline-block;
+          ">
+            <img src="/images/attach-file.png" alt="Attach File" style="
+              width: 220px;
+              height: auto;
+              display: block;
+              border-radius: 12px;
+            " />
+          </label>
 
-        <% if (!user) { %>
-          <p id="unauthMessage" class="hidden login-warning" style="margin-top: 12px;">
-            You must <span onclick="openLogin()" style="text-decoration: underline; cursor: pointer;">login</span> to post a comment.
-          </p>
-        <% } %>
+          <!-- Post Comment Button -->
+          <button type="submit" id="submitBtn" class="auth-sensitive-btn comment-submit-btn" style="
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+          ">
+            <img src="/images/post-commen.png" alt="Post Comment" style="
+              width: 220px;
+              height: auto;
+              display: block;
+              border-radius: 12px;
+            " />
+          </button>
+
+          <!-- Emoji Picker Button (desktop only) -->
+          <button type="button" id="emoji-button" style="
+            width: 60px;
+            height: 60px;
+            font-size: 28px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            background: url('/images/tactical-button-bg.jpg') center/cover no-repeat;
+            color: white;
+            font-weight: bold;
+            display: none;
+          ">😊</button>
+        </div>
+        <p id="unauthMessage" class="hidden login-warning" style="margin-top: 12px; font-size: 18px; font-weight: bold; color: #007BFF;">
+  You must <span onclick="openLogin()" style="text-decoration: underline; cursor: pointer;">login</span> to post a comment.
+</p>
       </form>
     </div>
   </div>
-
-  <!-- Emoji Picker -->
   <script>
-  const picker = new EmojiButton();
-  const emojiBtn = document.querySelector('#emoji-button');
-  const input = document.querySelector('#commentText');
+    document.querySelector('input[name="media"]').addEventListener('change', function () {
+      const file = this.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const url = URL.createObjectURL(file);
+        const img = document.getElementById('mediaPreview');
+        img.src = url;
+        img.style.display = 'block';
+      }
+    });
 
-  if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
-    emojiBtn.style.display = 'none';
-  } else {
-    emojiBtn.addEventListener('click', () => picker.togglePicker(emojiBtn));
-    picker.on('emoji', emoji => input.value += emoji);
-  }
-  </script>
-
-  <!-- Image Preview -->
-  <script>
-  document.querySelector('input[name="media"]').addEventListener('change', function () {
-    const file = this.files[0];
-    if (file && file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file);
-      const img = document.getElementById('mediaPreview');
-      img.src = url;
-      img.style.display = 'block';
-    }
-  });
-  </script>
-
-  <!-- Reactions -->
-  <script>
     async function reactToComment(id, type) {
-      const key = reacted-${id};
+      const key = `reacted-${id}`;
       if (localStorage.getItem(key)) {
         alert("You already reacted!");
         return;
       }
 
-      const res = await fetch(/comment/${id}/react/${type}, { method: 'POST' });
+      const res = await fetch(`/comment/${id}/react/${type}`, { method: 'POST' });
       if (res.ok) {
-        const span = document.getElementById(${type}-${id});
+        const span = document.getElementById(`${type}-${id}`);
         span.textContent = parseInt(span.textContent || 0) + 1;
         span.classList.add('bounce');
         setTimeout(() => span.classList.remove('bounce'), 500);
         localStorage.setItem(key, type);
       }
     }
-  </script>
 
-  <!-- Auth Warning (only block submit if no text AND no image) -->
-  <script>
+    const isLoggedIn = <%= user ? 'true' : 'false' %>;
+
+    function showAuthWarning(targetBtn) {
+      const msg = document.getElementById('unauthMessage');
+      msg.classList.remove('hidden');
+      targetBtn.classList.add('shake');
+      setTimeout(() => targetBtn.classList.remove('shake'), 500);
+    }
+
+    // Auth-sensitive buttons (tactical board, attach file, post comment)
+    document.querySelectorAll('.auth-sensitive-btn').forEach(button => {
+      button.addEventListener('click', function(e) {
+        if (!isLoggedIn) {
+          e.preventDefault();
+          showAuthWarning(this);
+        }
+      });
+    });
+
+    // Block form submission if not logged in or empty
     document.getElementById('commentForm').addEventListener('submit', function(e) {
-      <% if (!user) { %>
+      const text = document.getElementById('commentText').value.trim();
+      const media = document.querySelector('input[name="media"]').files.length > 0;
+      const tactic = document.querySelector('input[name="tacticImage"]').files.length > 0;
+
+      if (!isLoggedIn) {
         e.preventDefault();
         const btn = document.getElementById('submitBtn');
-        const msg = document.getElementById('unauthMessage');
-        msg.classList.remove('hidden');
-        btn.classList.add('shake');
-        setTimeout(() => btn.classList.remove('shake'), 500);
-      <% } else { %>
-        const text = document.getElementById('commentText').value.trim();
-        const media = document.querySelector('input[name="media"]').files.length > 0;
-        const tactic = document.querySelector('input[name="tacticImage"]').files.length > 0;
-        if (!text && !media && !tactic) {
-          e.preventDefault();
-          alert("Please write a comment or attach media.");
-        }
-      <% } %>
+        showAuthWarning(btn);
+        return;
+      }
+
+      if (!text && !media && !tactic) {
+        e.preventDefault();
+        alert("Please write a comment or attach media.");
+      }
     });
   </script>
+
   <%- include('partials/_tactical-board') %>
 </body>
 </html>

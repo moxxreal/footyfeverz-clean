@@ -473,31 +473,35 @@ window.resetPlayers = resetPlayers;
 
 // Trigger button (used in team.ejs)
 document.addEventListener('DOMContentLoaded', () => {
+  const isLoggedIn = <%= user ? 'true' : 'false' %>;
+
   const btn = document.getElementById('openTacticalBoardBtn');
   if (btn) {
-    btn.addEventListener('click', () => {
-      if (typeof openTacticalBoard === 'function') {
-        openTacticalBoard();
+    btn.addEventListener('click', (e) => {
+      if (!isLoggedIn) {
+        e.preventDefault();
+        const msg = document.getElementById('unauthMessage');
+        msg.classList.remove('hidden');
+        btn.classList.add('shake');
+        setTimeout(() => btn.classList.remove('shake'), 500);
       } else {
-        alert('⚠️ Tactical board script not ready yet.');
+        openTacticalBoard();
       }
     });
   }
+
   window.addEventListener("orientationchange", () => {
-  const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+    const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+    if (!tacticalBoardActivated) return;
 
-  if (!tacticalBoardActivated) return; // Don't do anything unless user clicked button
+    if (isPortrait) {
+      closeTacticalBoard();
+      showRotateWarning();
+    } else {
+      hideRotateWarning();
+      showTacticalModal();
+    }
+  });
 
-  if (isPortrait) {
-    closeTacticalBoard();
-    showRotateWarning();
-  } else {
-    hideRotateWarning();
-    showTacticalModal();
-  }
-});
-});
-document.addEventListener('DOMContentLoaded', () => {
   document.getElementById("rotateWarning").style.display = "none";
 });
-</script>

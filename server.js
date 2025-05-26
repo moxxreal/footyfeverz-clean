@@ -263,9 +263,17 @@ app.get('/', async (req, res) => {
         reactions: Object.entries(reactions).map(([type, count]) => ({ type, count }))
       });
     }
+    
+    const battleSnap = await db.collection('battles')
+  .orderBy('created_at', 'desc')
+  .limit(1)
+  .get();
 
-    const battleSnap = await db.collection('battles').orderBy('created_at', 'desc').limit(1).get();
-    const battle = battleSnap.docs[0]?.data() || null;
+let battle = null;
+if (!battleSnap.empty) {
+  const doc = battleSnap.docs[0];
+  battle = { id: doc.id, ...doc.data() };
+}
 
     res.render('index', { 
   user: req.session.user || null, // ✅ now it works!
@@ -599,34 +607,23 @@ app.post('/user/:fromUser/reject-follow', async (req, res) => {
 async function saveMessage({ sender, receiver, content }) {
   const timestamp = new Date();
 
-  const message = {
-    sender,
-    receiver,
-    participants: [sender, receiver],
-    content: content.trim(),
-    timestamp: admin.firestore.Timestamp.fromDate(timestamp),
-    seenByReceiver: false
-  };
+const message = {
+  sender,
+  receiver,
+  participants: [sender, receiver],
+  content: content.trim(),
+  timestamp: timestamp.toISOString(), // ✅ send ISO string
+  seenByReceiver: false
+};
 
   const ref = await db.collection('messages').add(message);
   return { id: ref.id, ...message };
 }
 
 // ✅ API: Send message
-app.post('/api/messages/send', async (req, res) => {
-  const sender = req.session.user?.username;
-  const { receiver, content } = req.body;
-  if (!sender || !receiver || !content?.trim()) {
-    return res.status(400).json({ success: false });
-  }
-
-  try {
-    const saved = await saveMessage({ sender, receiver, content });
-    res.json({ success: true, message: saved });
-  } catch (err) {
-    console.error('❌ Failed to send message:', err);
-    res.status(500).json({ success: false });
-  }
+app.post('/api/messages/send', (req, res) => {
+  // Since actual sending happens via socket.io, just return OK
+  res.status(200).json({ success: true });
 });
 
 // ✅ API: Get conversation
@@ -735,7 +732,21 @@ io.on('connection', (socket) => {
     connectedUsers.set(sender, socket.id);
     socket.broadcast.emit('userOnline', { username: sender });
   });
+  socket.on('checkOnlineStatus', async ({ userToCheck }) => {
+  if (!userToCheck) return;
 
+  if (connectedUsers.has(userToCheck)) {
+    socket.emit('userOnline', { username: userToCheck });
+  } else {
+    try {
+      const doc = await db.collection('users').doc(userToCheck).get();
+      const lastSeen = doc.exists ? doc.data().lastSeen : null;
+      socket.emit('userOffline', { username: userToCheck, lastSeen });
+    } catch (err) {
+      console.error('❌ Failed to check user last seen:', err);
+    }
+  }
+});
   socket.on('chatMessage', async ({ sender, receiver, content }) => {
     if (!sender || !receiver || !content?.trim()) return;
     const room = [sender, receiver].sort().join('-');
@@ -759,15 +770,24 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    for (const [username, id] of connectedUsers.entries()) {
-      if (id === socket.id) {
-        connectedUsers.delete(username);
-        socket.broadcast.emit('userOffline', { username });
-        break;
-      }
+  for (const [username, id] of connectedUsers.entries()) {
+    if (id === socket.id) {
+      connectedUsers.delete(username);
+
+      // ✅ Save last seen in Firestore
+      db.collection('users').doc(username).update({
+        lastSeen: new Date()
+      }).catch(err => {
+        console.error('❌ Failed to update lastSeen:', err);
+      });
+
+      socket.broadcast.emit('userOffline', { username });
+      break;
     }
-    console.log('❌ Socket disconnected:', socket.id);
-  });
+  }
+
+  console.log('❌ Socket disconnected:', socket.id);
+});
 });
 
 // --- Follow a user ---

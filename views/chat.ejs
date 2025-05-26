@@ -103,87 +103,97 @@
     const statusElement = document.getElementById('online-status');
     const socket = io();
 
+    function scrollToBottom() {
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
     socket.emit('joinRoom', { sender: currentUsername, receiver: receiverUsername });
     socket.emit('checkOnlineStatus', { userToCheck: receiverUsername });
 
-    socket.on('userOnline', ({ username }) => {
-      if (username === receiverUsername) {
-        statusElement.textContent = '🟢 Online';
-        statusElement.style.color = 'green';
-      }
-    });
+   socket.on('userOnline', ({ username }) => {
+  if (username === receiverUsername) {
+    statusElement.textContent = '🟢 Online';
+    statusElement.style.color = 'green';
+  }
+});
 
-    socket.on('userOffline', ({ username, lastSeen }) => {
-      if (username === receiverUsername) {
-        const relative = lastSeen ? dayjs(lastSeen).fromNow() : 'a while ago';
-        statusElement.textContent = `⚫️ Last seen ${relative}`;
-        statusElement.style.color = '#888';
-      }
-    });
-
+socket.on('userOffline', ({ username, lastSeen }) => {
+  if (username === receiverUsername) {
+    const relative = lastSeen ? dayjs(lastSeen).fromNow() : 'a while ago';
+    statusElement.textContent = `⚫️ Last seen ${relative}`;
+    statusElement.style.color = '#888';
+  }
+});
     async function loadMessages() {
-      try {
-        const res = await fetch(`/api/messages/conversation/${receiverUsername}`);
-        const messages = await res.json();
-        chatBox.innerHTML = '';
-        messages.forEach(renderMessage);
-        scrollToBottom();
-      } catch (err) {
-        console.error('❌ Failed to load messages:', err);
-      }
-    }
+  try {
+    const res = await fetch(`/api/messages/conversation/${receiverUsername}`);
+    const messages = await res.json();
+    chatBox.innerHTML = '';
+    messages.forEach(renderMessage);
 
+    // ✅ Delay scrolling to allow DOM to fully update
+    setTimeout(() => {
+      scrollToBottom();
+    }, 0);
+  } catch (err) {
+    console.error('❌ Failed to load messages:', err);
+  }
+}
+
+    const renderedMessageIds = new Set();
     function renderMessage(msg) {
-      const wrapper = document.createElement('div');
-      wrapper.style.display = 'flex';
-      wrapper.style.flexDirection = 'column';
-      wrapper.style.margin = '10px 0';
+  if (renderedMessageIds.has(msg.id)) return; // Prevent duplicate render
+  renderedMessageIds.add(msg.id);
 
-      const msgDiv = document.createElement('div');
-      msgDiv.textContent = msg.content;
-      msgDiv.style.padding = '10px';
-      msgDiv.style.borderRadius = '8px';
-      msgDiv.style.maxWidth = '70%';
-      msgDiv.style.wordWrap = 'break-word';
+  const wrapper = document.createElement('div');
+  wrapper.style.display = 'flex';
+  wrapper.style.flexDirection = 'column';
+  wrapper.style.margin = '10px 0';
 
-      const time = document.createElement('div');
-      let timestamp = 'now';
+  const msgDiv = document.createElement('div');
+  msgDiv.textContent = msg.content;
+  msgDiv.style.padding = '10px';
+  msgDiv.style.borderRadius = '8px';
+  msgDiv.style.maxWidth = '70%';
+  msgDiv.style.wordWrap = 'break-word';
 
-      try {
-        if (msg.timestamp?.seconds) {
-          timestamp = dayjs.unix(msg.timestamp.seconds).format('HH:mm');
-        } else if (msg.timestamp?.toDate) {
-          timestamp = dayjs(msg.timestamp.toDate()).format('HH:mm');
-        } else {
-          timestamp = dayjs(msg.timestamp).format('HH:mm');
-        }
-      } catch (err) {
-        console.error('Failed to parse timestamp:', msg.timestamp);
-      }
+  const time = document.createElement('div');
+  let timestamp = 'now';
 
-      time.textContent = timestamp;
-      time.style.fontSize = '12px';
-      time.style.color = '#888';
-      time.style.marginTop = '4px';
+try {
+  if (msg.timestamp?.seconds) {
+    // Firestore Timestamp format
+    timestamp = dayjs.unix(msg.timestamp.seconds).format('HH:mm');
+  } else if (msg.timestamp?.toDate) {
+    // Firestore Timestamp object
+    timestamp = dayjs(msg.timestamp.toDate()).format('HH:mm');
+  } else if (typeof msg.timestamp === 'string' || msg.timestamp instanceof Date) {
+    // Normal JS Date or ISO string
+    timestamp = dayjs(msg.timestamp).format('HH:mm');
+  }
+} catch (err) {
+  console.error('Failed to parse timestamp:', msg.timestamp);
+}
 
-      if (msg.sender === currentUsername) {
-        msgDiv.style.background = '#d1e7dd';
-        wrapper.style.alignItems = 'flex-end';
-        msgDiv.style.textAlign = 'right';
-      } else {
-        msgDiv.style.background = '#f8d7da';
-        wrapper.style.alignItems = 'flex-start';
-        msgDiv.style.textAlign = 'left';
-      }
+  time.textContent = timestamp;
+  time.style.fontSize = '12px';
+  time.style.color = '#888';
+  time.style.marginTop = '4px';
 
-      wrapper.appendChild(msgDiv);
-      wrapper.appendChild(time);
-      chatBox.appendChild(wrapper);
-    }
+  if (msg.sender === currentUsername) {
+    msgDiv.style.background = '#d1e7dd';
+    wrapper.style.alignItems = 'flex-end';
+    msgDiv.style.textAlign = 'right';
+  } else {
+    msgDiv.style.background = '#f8d7da';
+    wrapper.style.alignItems = 'flex-start';
+    msgDiv.style.textAlign = 'left';
+  }
 
-    function scrollToBottom() {
-      chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
-    }
+  wrapper.appendChild(msgDiv);
+  wrapper.appendChild(time);
+  chatBox.appendChild(wrapper);
+}
 
     document.getElementById('chat-form').addEventListener('submit', async (e) => {
       e.preventDefault();
