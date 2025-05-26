@@ -118,7 +118,6 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
   <script>
     const modal = document.getElementById('imageModal');
     const modalImg = document.getElementById('modalImage');
@@ -170,8 +169,8 @@
         <img id="mediaPreview" style="max-width: 200px; display: none; margin-top: 10px;" />
 
         <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px;">
-          <!-- Tactical Board Button -->
-          <button type="button" id="openTacticalBoardBtn" class="auth-sensitive-btn" style="
+          <!-- Tactical Board Button — no auth-sensitive-btn class -->
+          <button type="button" id="openTacticalBoardBtn" style="
             border: none;
             background: transparent;
             padding: 0;
@@ -233,79 +232,115 @@
             display: none;
           ">😊</button>
         </div>
+
         <p id="unauthMessage" class="hidden login-warning" style="margin-top: 12px; font-size: 18px; font-weight: bold; color: #007BFF;">
-  You must <span onclick="openLogin()" style="text-decoration: underline; cursor: pointer;">login</span> to post a comment.
-</p>
+          You must <span onclick="openLogin()" style="text-decoration: underline; cursor: pointer;">login</span> to post a comment.
+        </p>
       </form>
     </div>
   </div>
-  <script>
-    document.querySelector('input[name="media"]').addEventListener('change', function () {
-      const file = this.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const url = URL.createObjectURL(file);
-        const img = document.getElementById('mediaPreview');
-        img.src = url;
-        img.style.display = 'block';
-      }
-    });
+<script>
+  document.querySelector('input[name="media"]').addEventListener('change', function () {
+    const file = this.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      const img = document.getElementById('mediaPreview');
+      img.src = url;
+      img.style.display = 'block';
+    }
+  });
 
-    async function reactToComment(id, type) {
-      const key = `reacted-${id}`;
-      if (localStorage.getItem(key)) {
-        alert("You already reacted!");
-        return;
-      }
-
-      const res = await fetch(`/comment/${id}/react/${type}`, { method: 'POST' });
-      if (res.ok) {
-        const span = document.getElementById(`${type}-${id}`);
-        span.textContent = parseInt(span.textContent || 0) + 1;
-        span.classList.add('bounce');
-        setTimeout(() => span.classList.remove('bounce'), 500);
-        localStorage.setItem(key, type);
-      }
+  async function reactToComment(id, type) {
+    const key = `reacted-${id}`;
+    if (localStorage.getItem(key)) {
+      alert("You already reacted!");
+      return;
     }
 
-    const isLoggedIn = <%= user ? 'true' : 'false' %>;
-
-    function showAuthWarning(targetBtn) {
-      const msg = document.getElementById('unauthMessage');
-      msg.classList.remove('hidden');
-      targetBtn.classList.add('shake');
-      setTimeout(() => targetBtn.classList.remove('shake'), 500);
+    const res = await fetch(`/comment/${id}/react/${type}`, { method: 'POST' });
+    if (res.ok) {
+      const span = document.getElementById(`${type}-${id}`);
+      span.textContent = parseInt(span.textContent || 0) + 1;
+      span.classList.add('bounce');
+      setTimeout(() => span.classList.remove('bounce'), 500);
+      localStorage.setItem(key, type);
     }
+  }
 
-    // Auth-sensitive buttons (tactical board, attach file, post comment)
-    document.querySelectorAll('.auth-sensitive-btn').forEach(button => {
-      button.addEventListener('click', function(e) {
-        if (!isLoggedIn) {
-          e.preventDefault();
-          showAuthWarning(this);
-        }
-      });
-    });
+  const isLoggedIn = <%= user ? 'true' : 'false' %>;
 
-    // Block form submission if not logged in or empty
-    document.getElementById('commentForm').addEventListener('submit', function(e) {
-      const text = document.getElementById('commentText').value.trim();
-      const media = document.querySelector('input[name="media"]').files.length > 0;
-      const tactic = document.querySelector('input[name="tacticImage"]').files.length > 0;
+  function showAuthWarning(targetBtn) {
+    const msg = document.getElementById('unauthMessage');
+    msg.classList.remove('hidden');
+    targetBtn.classList.add('shake');
+    setTimeout(() => targetBtn.classList.remove('shake'), 500);
+  }
 
+  // Attach File & Post Comment button auth checks
+  document.querySelectorAll('.auth-sensitive-btn').forEach(button => {
+    button.addEventListener('click', function(e) {
       if (!isLoggedIn) {
         e.preventDefault();
-        const btn = document.getElementById('submitBtn');
-        showAuthWarning(btn);
-        return;
-      }
-
-      if (!text && !media && !tactic) {
-        e.preventDefault();
-        alert("Please write a comment or attach media.");
+        showAuthWarning(this);
       }
     });
-  </script>
+  });
 
-  <%- include('partials/_tactical-board') %>
+  // Comment form submission check
+  document.getElementById('commentForm').addEventListener('submit', function(e) {
+    const text = document.getElementById('commentText').value.trim();
+    const media = document.querySelector('input[name="media"]').files.length > 0;
+    const tactic = document.querySelector('input[name="tacticImage"]').files.length > 0;
+
+    if (!isLoggedIn) {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      showAuthWarning(btn);
+      return;
+    }
+
+    if (!text && !media && !tactic) {
+      e.preventDefault();
+      alert("Please write a comment or attach media.");
+    }
+  });
+</script>
+
+<%- include('partials/_tactical-board') %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('openTacticalBoardBtn');
+
+    if (btn) {
+      btn.addEventListener('click', (e) => {
+        if (!isLoggedIn) {
+          e.preventDefault();
+          const msg = document.getElementById('unauthMessage');
+          msg.classList.remove('hidden');
+          btn.classList.add('shake');
+          setTimeout(() => btn.classList.remove('shake'), 500);
+        } else {
+          openTacticalBoard();
+        }
+      });
+    }
+
+    // Orientation warning logic
+    window.addEventListener("orientationchange", () => {
+      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+      if (!tacticalBoardActivated) return;
+      if (isPortrait) {
+        closeTacticalBoard();
+        showRotateWarning();
+      } else {
+        hideRotateWarning();
+        showTacticalModal();
+      }
+    });
+
+    document.getElementById("rotateWarning").style.display = "none";
+  });
+</script>
 </body>
 </html>
