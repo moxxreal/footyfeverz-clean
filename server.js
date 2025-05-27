@@ -98,19 +98,37 @@ async function renderHomeWithError(res, errorType, errorMsg) {
   try {
     const cutoff = dayjs().subtract(24, 'hour').toDate();
 
-    const commentsSnap = await db.collection('comments').get();
-    const userStats = {};
-    commentsSnap.forEach(doc => {
-      const c = doc.data();
-      if (!userStats[c.user]) userStats[c.user] = { comments: 0, likes: 0 };
-      userStats[c.user].comments += 1;
-      userStats[c.user].likes += c.like_reactions || 0;
-    });
+const commentsSnap = await db.collection('comments').get();
+const userStats = {};
 
-    const topFans = Object.entries(userStats)
-      .sort((a, b) => b[1].likes - a[1].likes)
-      .slice(0, 5)
-      .map(([username, stats]) => ({ username, comments: stats.comments, likes: stats.likes }));
+commentsSnap.forEach(doc => {
+  const c = doc.data();
+  if (!userStats[c.user]) {
+    userStats[c.user] = { comments: 0, likes: 0, funny: 0, angry: 0, love: 0, score: 0 };
+  }
+
+  const like = c.like_reactions || 0;
+  const funny = c.funny_reactions || 0;
+  const angry = c.angry_reactions || 0;
+  const love = c.love_reactions || 0;
+
+  userStats[c.user].comments += 1;
+  userStats[c.user].likes += like;
+  userStats[c.user].funny += funny;
+  userStats[c.user].angry += angry;
+  userStats[c.user].love += love;
+
+  userStats[c.user].score += 1 + like + funny + angry + love; // 1 point per comment + each reaction
+});
+
+const topFans = Object.entries(userStats)
+  .sort((a, b) => b[1].score - a[1].score)
+  .slice(0, 5)
+  .map(([username, stats]) => ({
+    username,
+    comments: stats.comments,
+    likes: stats.likes + stats.funny + stats.angry + stats.love // total reactions shown as "Likes"
+  }));
 
     const storiesSnap = await db.collection('stories').where('createdAt', '>=', cutoff).orderBy('createdAt', 'desc').get();
     const stories = [];

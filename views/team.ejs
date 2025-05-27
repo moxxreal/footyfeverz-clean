@@ -259,23 +259,46 @@
       img.style.display = 'block';
     }
   });
-
-  async function reactToComment(id, type) {
-    const key = `reacted-${id}`;
-    if (localStorage.getItem(key)) {
-      alert("You already reacted!");
-      return;
-    }
-
-    const res = await fetch(`/comment/${id}/react/${type}`, { method: 'POST' });
-    if (res.ok) {
-      const span = document.getElementById(`${type}-${id}`);
-      span.textContent = parseInt(span.textContent || 0) + 1;
-      span.classList.add('bounce');
-      setTimeout(() => span.classList.remove('bounce'), 500);
-      localStorage.setItem(key, type);
-    }
+  async function reactToComment(id, newType) {
+  if (!isLoggedIn) {
+    alert("You must be logged in to react to comments.");
+    return;
   }
+
+  const key = `reacted-${id}`;
+  const previousType = localStorage.getItem(key);
+
+  // If the same reaction was already selected, ignore it
+  if (previousType === newType) {
+    alert("You already chose this reaction.");
+    return;
+  }
+
+  // Send request to update reaction
+  const res = await fetch(`/comment/${id}/react/${newType}`, { method: 'POST' });
+  if (res.ok) {
+    // Decrease previous count (if any)
+    if (previousType) {
+      const oldSpan = document.getElementById(`${previousType}-${id}`);
+      if (oldSpan && parseInt(oldSpan.textContent) > 0) {
+        oldSpan.textContent = parseInt(oldSpan.textContent) - 1;
+      }
+    }
+
+    // Increase new reaction count
+    const newSpan = document.getElementById(`${newType}-${id}`);
+    if (newSpan) {
+      newSpan.textContent = parseInt(newSpan.textContent || 0) + 1;
+      newSpan.classList.add('bounce');
+      setTimeout(() => newSpan.classList.remove('bounce'), 500);
+    }
+
+    // Store the new reaction
+    localStorage.setItem(key, newType);
+  } else {
+    alert("Failed to react. Try again.");
+  }
+}
 
   const isLoggedIn = <%= user ? 'true' : 'false' %>;
 
