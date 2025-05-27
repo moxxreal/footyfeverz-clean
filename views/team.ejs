@@ -54,6 +54,18 @@
       100% { transform: translateX(0); }
     }
   </style>
+  <style>
+  @media (max-width: 767px) {
+    #commentForm button img,
+    #commentForm label img {
+      width: 140px !important;
+    }
+
+    #emoji-button {
+      display: none !important;
+    }
+  }
+</style>
 </head>
 <body>
   <%- include('partials/_header', {
@@ -167,7 +179,9 @@
         <input type="file" name="media" id="mediaInput" accept="image/*,video/*" style="display: none;" />
         <input type="file" name="tacticImage" id="tacticImageInput" style="display: none;" />
         <img id="mediaPreview" style="max-width: 200px; display: none; margin-top: 10px;" />
-
+        <p id="unauthMessage" class="hidden login-warning" style="margin-top: 12px; font-size: 18px; font-weight: bold; color: #007BFF;">
+          You must <span onclick="openLogin()" style="text-decoration: underline; cursor: pointer;">login</span> to post a comment.
+        </p>
         <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px;">
           <!-- Tactical Board Button — no auth-sensitive-btn class -->
           <button type="button" id="openTacticalBoardBtn" style="
@@ -232,10 +246,6 @@
             display: none;
           ">😊</button>
         </div>
-
-        <p id="unauthMessage" class="hidden login-warning" style="margin-top: 12px; font-size: 18px; font-weight: bold; color: #007BFF;">
-          You must <span onclick="openLogin()" style="text-decoration: underline; cursor: pointer;">login</span> to post a comment.
-        </p>
       </form>
     </div>
   </div>
@@ -305,9 +315,7 @@
     }
   });
 </script>
-
-<%- include('partials/_tactical-board') %>
-
+<%- include('partials/_tactical-board', { user }) %>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('openTacticalBoardBtn');

@@ -190,6 +190,17 @@ const templates = {
   '4222': ['GK', 'RB', 'CB', 'CB', 'LB', 'CDM', 'CDM', 'CAM', 'CAM', 'ST', 'ST']
 };
 function openTacticalBoard() {
+  const isLoggedIn = <%= user ? 'true' : 'false' %>;
+
+  if (!isLoggedIn) {
+    const btn = document.getElementById('openTacticalBoardBtn');
+    const msg = document.getElementById('unauthMessage');
+    msg.classList.remove('hidden');
+    btn.classList.add('shake');
+    setTimeout(() => btn.classList.remove('shake'), 500);
+    return; // ⛔ block if not logged in
+  }
+
   tacticalBoardActivated = true;
 
   const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
