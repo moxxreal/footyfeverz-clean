@@ -431,18 +431,27 @@ app.get('/team/:teamname', async (req, res) => {
     } else {
       commentsRef = commentsRef.orderBy('timestamp', 'desc');
     }
-
     const snapshot = await commentsRef.get();
-    const comments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+const allDocs = snapshot.docs;
 
-    res.render('team', {
-      teamname,
-      comments,
-      sort: req.query.sort,
-      useTeamHeader: true,
-      leagueSlug: leagueInfo.slug,
-      leagueName: leagueInfo.name
-    });
+const page = parseInt(req.query.page) || 1;
+const limit = 40;
+const offset = (page - 1) * limit;
+
+const paginatedDocs = allDocs.slice(offset, offset + limit);
+const comments = paginatedDocs.map(doc => ({ id: doc.id, ...doc.data() }));
+const totalPages = Math.ceil(allDocs.length / limit);
+
+res.render('team', {
+  teamname,
+  comments,
+  sort: req.query.sort,
+  useTeamHeader: true,
+  leagueSlug: leagueInfo.slug,
+  leagueName: leagueInfo.name,
+  page,
+  totalPages
+});
   } catch (err) {
     console.error('❌ Team page error:', err.message);
     res.status(500).send('Failed to load team page');
@@ -512,9 +521,10 @@ if (currentUser && currentUser !== username) {
 
     // Fetch Comments
     const commentsSnap = await db.collection('comments')
-      .where('user', '==', username)
-      .orderBy('timestamp', 'desc')
-      .get();
+  .where('user', '==', username)
+  .orderBy('timestamp', 'desc')
+  .limit(10) // ✅ Limit to most recent 10
+  .get();
 
     const comments = commentsSnap.docs.map(doc => {
       const data = doc.data();

@@ -18,7 +18,7 @@
   <!-- League Cards -->
   <div class="card-container">
     <% const leagues = [
-      ['premier', 'premier-league'], ['laliga', 'la-liga'], ['serie-a', 'serie-a'], ['champions', 'champions-league'], ['bundesliga', 'bundesliga'],
+      ['premier', 'premier-league'], ['laliga', 'la-liga'], ['serie-a', 'serie-a'], ['bundesliga', 'bundesliga'],
       ['ligue1', 'ligue1'], ['roshn-saudi', 'saudi-league'], ['eredivisie', 'eredivisie'],
       ['liga-portugal', 'liga-portugal'], ['super-lig', 'super-lig'],
     ]; %>
@@ -96,20 +96,5 @@
       });
     }
   </script>
-  <form id="storyForm" action="/stories/upload" method="POST" enctype="multipart/form-data">
-  <input
-    type="file"
-    id="storyFile"
-    name="storyMedia"
-    accept="image/*,video/*"
-    style="display: none;"
-  >
-  <button type="button" onclick="document.getElementById('storyFile').click()">Add Story</button>
-</form>
-<script>
-  document.getElementById('storyFile').addEventListener('change', function() {
-    document.getElementById('storyForm').submit();
-  });
-</script>
-</body>
+  </body>
 </html>

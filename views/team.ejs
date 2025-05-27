@@ -124,6 +124,25 @@
       <% }) %>
     <% } %>
   </div>
+  <% if (totalPages > 1) { %>
+  <div class="pagination" style="text-align: center; margin: 30px 0;">
+    <% if (page > 1) { %>
+      <a href="?sort=<%= sort %>&page=<%= page - 1 %>" style="margin-right: 10px;">&laquo; Prev</a>
+    <% } %>
+
+    <% for (let i = 1; i <= totalPages; i++) { %>
+      <% if (i === page) { %>
+        <span style="font-weight: bold; margin: 0 5px;"><%= i %></span>
+      <% } else { %>
+        <a href="?sort=<%= sort %>&page=<%= i %>" style="margin: 0 5px;"><%= i %></a>
+      <% } %>
+    <% } %>
+
+    <% if (page < totalPages) { %>
+      <a href="?sort=<%= sort %>&page=<%= page + 1 %>" style="margin-left: 10px;">Next &raquo;</a>
+    <% } %>
+  </div>
+<% } %>
 
   <div id="imageModal" class="hidden">
     <img id="modalImage" src="" />
