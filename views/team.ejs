@@ -75,17 +75,23 @@
     leagueSlug,
     leagueName
   }) %>
-  <h1 style="text-align: center;"><%= teamname.toUpperCase() %> Fan Comments</h1>
-
-  <div class="sort-comments" style="text-align: center; margin-bottom: 20px;">
-    <form method="GET">
-      <label for="sort">Sort by:</label>
-      <select name="sort" id="sort" onchange="this.form.submit()">
-        <option value="new" <%= (!sort || sort === 'new') ? 'selected' : '' %>>Newest</option>
-        <option value="top" <%= (sort === 'top') ? 'selected' : '' %>>Top</option>
-      </select>
-    </form>
-  </div>
+  <div style="
+  width: 95%;
+  max-width: 1400px;
+  margin: 40px auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+">
+  <img src="<%= imagePath %>" alt="<%= teamname %> Logo" style="
+    width: 100%;
+    height: auto;
+    display: block;
+    margin: 0;
+    border-radius: 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  " />
+</div>
 
   <div id="commentsContainer" class="comments-container">
     <% if (comments.length === 0) { %>
@@ -119,7 +125,9 @@
             <button onclick="reactToComment('<%= comment.id %>', 'love')">😍 <span id="love-<%= comment.id %>"><%= comment.love_reactions || 0 %></span></button>
           </div>
 
-          <small style="color: #999;"><%= comment.relativeTime %></small>
+          <small style="color: #999;" title="<%= comment.timestamp?.toDate().toLocaleString() %>">
+  <%= comment.relativeTime %>
+</small>
         </div>
       <% }) %>
     <% } %>

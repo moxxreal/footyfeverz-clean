@@ -11,6 +11,196 @@ const bcrypt = require('bcrypt');
 const admin = require('firebase-admin');
 const teamToLeagueMap = require('./teamToLeagueMap');
 
+const teamImages = {
+  'la-liga': {
+    'real-madrid': '/la-liga-images/real-madrid.png',
+    'barcelona': '/la-liga-images/barcelona.png',
+    'atletico-madrid': '/la-liga-images/atletico.png',
+    'athletic-bilbao': '/la-liga-images/athletic-bilbao.png',
+    'sevilla': '/la-liga-images/sevilla.png',
+    'real-sociedad': '/la-liga-images/real-sociedad.png',
+    'valencia': '/la-liga-images/valencia.png',
+    'villarreal': '/la-liga-images/villarreal.png',
+    'real-betis': '/la-liga-images/real-betis.png',
+    'celta-vigo': '/la-liga-images/celta-vigo.png',
+    'getafe': '/la-liga-images/getafe.png',
+    'osasuna': '/la-liga-images/osasuna.png',
+    'real-mallorca': '/la-liga-images/real-mallorca.png',
+    'rayo-vallecano': '/la-liga-images/rayo-vallecano.png',
+    'espanyol': '/la-liga-images/rcd-espanyol.png',
+    'girona': '/la-liga-images/girona.png',
+    'alaves': '/la-liga-images/deportivo-alaves.png',
+    'las-palmas': '/la-liga-images/las-palmas.png',
+    'leganes': '/la-liga-images/cd-leganes.png',
+    'real-valladolid': '/la-liga-images/real-valladolid.png',
+  },
+  'bundesliga': {
+    'bayern-munich': '/bundesliga-images/bayern-munich.jpg',
+    'borussia-dortmund': '/bundesliga-images/borussia-dortmund.jpg',
+    'bayer-leverkusen': '/bundesliga-images/bayer-leverkusen.jpg',
+    'rb-leipzig': '/bundesliga-images/rb-leipzig.jpg',
+    'eintracht-frankfurt': '/bundesliga-images/eintracht-frankfurt.jpg',
+    'borussia-monchengladbach': '/bundesliga-images/borussia-monchengladbach.jpg',
+    'union-berlin': '/bundesliga-images/union-berlin.jpg',
+    'vfl-wolfsburg': '/bundesliga-images/vfl-wolfsburg.jpg',
+    'freiburg': '/bundesliga-images/freiburg.jpg',
+    'mainz': '/bundesliga-images/mainz.jpg',
+    'augsburg': '/bundesliga-images/augsburg.jpg',
+    'hoffenheim': '/bundesliga-images/hoffenheim.jpg',
+    'vfl-bochum': '/bundesliga-images/vfl-bochum.jpg',
+    'stuttgart': '/bundesliga-images/stuttgart.jpg',
+    'heidenheim': '/bundesliga-images/heidenheim.jpg',
+    'st-pauli': '/bundesliga-images/st-pauli.jpg',
+    'werder-bremen': '/bundesliga-images/werder-bremen.jpg',
+    'holstein': '/bundesliga-images/holstein.jpg',
+  },
+  'eredivisie': {
+    'ajax': '/eredivisie-images/ajax.jpg',
+    'psv-eindhoven': '/eredivisie-images/psv-eindhoven.jpg',
+    'feyenoord': '/eredivisie-images/feyenoord.jpg',
+    'az-alkmaar': '/eredivisie-images/az-alkmaar.jpg',
+    'fc-twente': '/eredivisie-images/fc-twente.jpg',
+    'fc-utrecht': '/eredivisie-images/fc-utrecht.jpg',
+    'sc-heerenveen': '/eredivisie-images/sc-heerenveen.jpg',
+    'nec-nijmegen': '/eredivisie-images/nec-nijmegen.jpg',
+    'sparta-rotterdam': '/eredivisie-images/sparta-rotterdam.jpg',
+    'go-ahead-eagles': '/eredivisie-images/go-ahead-eagles.jpg',
+    'fc-groningen': '/eredivisie-images/fc-groningen.jpg',
+    'pec-zwolle': '/eredivisie-images/pec-zwolle.jpg',
+    'fortuna-sittard': '/eredivisie-images/fortuna-sittard.jpg',
+    'nac-breda': '/eredivisie-images/nac-breda.jpg',
+    'heracles-almelo': '/eredivisie-images/heracles-almelo.jpg',
+    'willem-ii': '/eredivisie-images/willem-ii.jpg',
+    'almere-city': '/eredivisie-images/almere-city.jpg',
+    'rkc-waalwijk': '/eredivisie-images/rkc-waalwijk.jpg',
+  },
+  'liga-portugal': {
+    'sporting-cp': '/liga-portugal-images/sporting-cp.png',
+    'sl-benfica': '/liga-portugal-images/sl-benfica.png',
+    'fc-porto': '/liga-portugal-images/fc-porto.png',
+    'sc-braga': '/liga-portugal-images/sc-braga.png',
+    'vitoria-guimaraes': '/liga-portugal-images/vitoria-guimaraes.png',
+    'cd-santa-clara': '/liga-portugal-images/cd-santa-clara.png',
+    'fc-famalicao': '/liga-portugal-images/fc-famalicao.png',
+    'casa-pia': '/liga-portugal-images/casa-pia.png',
+    'gd-estoril-praia': '/liga-portugal-images/gd-estoril-praia.png',
+    'rio-ave': '/liga-portugal-images/rio-ave.png',
+    'moreirense': '/liga-portugal-images/moreirense.png',
+    'cd-nacional': '/liga-portugal-images/cd-nacional.png',
+    'gil-vicente': '/liga-portugal-images/gil-vicente.png',
+    'fc-arouca': '/liga-portugal-images/fc-arouca.png',
+    'sc-farense': '/liga-portugal-images/sc-farense.png',
+    'cf-estrela-amadora': '/liga-portugal-images/cf-estrela-amadora.png',
+    'boavista': '/liga-portugal-images/boavista.png',
+    'afs': '/liga-portugal-images/afs.png',
+  },
+  'ligue-1': {
+    'psg': '/ligue1-images/psg.jpg',
+    'olympique-marseille': '/ligue1-images/olympique-marseille.jpg',
+    'monaco': '/ligue1-images/monaco.jpg',
+    'lyon': '/ligue1-images/lyon.jpg',
+    'lille': '/ligue1-images/lille.jpg',
+    'nice': '/ligue1-images/nice.jpg',
+    'rennes': '/ligue1-images/rennes.jpg',
+    'lens': '/ligue1-images/lens.jpg',
+    'strasbourg': '/ligue1-images/strasbourg.jpg',
+    'reims': '/ligue1-images/reims.jpg',
+    'brest': '/ligue1-images/brest.jpg',
+    'toulouse': '/ligue1-images/toulouse.jpg',
+    'montpellier': '/ligue1-images/montpellier.jpg',
+    'nantes': '/ligue1-images/nantes.jpg',
+    'le-havre': '/ligue1-images/le-havre.jpg',
+    'auxerre': '/ligue1-images/auxerre.jpg',
+    'angers': '/ligue1-images/angers.jpg',
+    'saint-etienne': '/ligue1-images/saint-etienne.jpg',
+  },
+  'premier-league': {
+    'manchester-united': '/premier-images/man-united.png',
+    'liverpool': '/premier-images/liverpool.png',
+    'manchester-city': '/premier-images/man-city.png',
+    'arsenal': '/premier-images/arsenal.png',
+    'chelsea': '/premier-images/chelsea.png',
+    'tottenham': '/premier-images/tottenham.png',
+    'newcastle': '/premier-images/newcastle.png',
+    'aston-villa': '/premier-images/aston-villa.png',
+    'west-ham': '/premier-images/west-ham.png',
+    'brighton': '/premier-images/brighton.png',
+    'brentford': '/premier-images/brentford.png',
+    'wolves': '/premier-images/wolves.png',
+    'everton': '/premier-images/everton.png',
+    'crystal-palace': '/premier-images/crystal-palace.png',
+    'fulham': '/premier-images/fulham.png',
+    'bournemouth': '/premier-images/bournemouth.png',
+    'leicester-city': '/premier-images/leicester-city.png',
+    'nottingham-forest': '/premier-images/nottingham-forest.png',
+    'ipswich-town': '/premier-images/ipswich-town.png',
+    'southampton': '/premier-images/southampton.png',
+  },
+  'roshn-saudi-league': {
+    'al-hilal': '/roshn-saudi-images/al-hilal.png',
+    'al-nassr': '/roshn-saudi-images/al-nassr.png',
+    'al-ittihad': '/roshn-saudi-images/al-ittihad.png',
+    'al-ahli': '/roshn-saudi-images/al-ahli.png',
+    'al-shabab': '/roshn-saudi-images/al-shabab.png',
+    'al-taawoun': '/roshn-saudi-images/al-taawoun.png',
+    'al-ettifaq': '/roshn-saudi-images/al-ettifaq.png',
+    'al-fateh': '/roshn-saudi-images/al-fateh.png',
+    'al-fayha': '/roshn-saudi-images/al-fayha.png',
+    'damac': '/roshn-saudi-images/damac.png',
+    'al-wehda': '/roshn-saudi-images/al-wehda.png',
+    'al-raed': '/roshn-saudi-images/al-raed.png',
+    'al-khaleej': '/roshn-saudi-images/al-khaleej.png',
+    'al-riyadh': '/roshn-saudi-images/al-riyadh.png',
+    'al-okhdood': '/roshn-saudi-images/al-okhdood.png',
+    'al-qadsiah': '/roshn-saudi-images/al-qadsiah.png',
+    'al-kholood': '/roshn-saudi-images/al-kholood.png',
+    'al-orobah': '/roshn-saudi-images/al-orobah.png',
+  },
+  'serie-a': {
+    'inter-milan': '/serie-a-images/inter-milan.png',
+    'juventus': '/serie-a-images/juventus.png',
+    'ac-milan': '/serie-a-images/ac-milan.png',
+    'napoli': '/serie-a-images/napoli.png',
+    'roma': '/serie-a-images/roma.png',
+    'fiorentina': '/serie-a-images/fiorentina.png',
+    'atalanta': '/serie-a-images/atalanta.png',
+    'lazio': '/serie-a-images/lazio.png',
+    'bologna': '/serie-a-images/bologna.png',
+    'como': '/serie-a-images/como.png',
+    'torino': '/serie-a-images/torino.png',
+    'udinese': '/serie-a-images/udinese.png',
+    'genoa': '/serie-a-images/genoa.png',
+    'cagliari': '/serie-a-images/cagliari.png',
+    'verona': '/serie-a-images/verona.png',
+    'parma': '/serie-a-images/parma.png',
+    'lecce': '/serie-a-images/lecce.png',
+    'venezia': '/serie-a-images/venezia.png',
+    'empoli': '/serie-a-images/empoli.png',
+    'monza': '/serie-a-images/monza.png',
+  },
+  'super-lig': {
+    'galatasaray': '/super-lig-images/galatasaray.png',
+    'fenerbahce': '/super-lig-images/fenerbahce.png',
+    'besiktas': '/super-lig-images/besiktas.png',
+    'trabzonspor': '/super-lig-images/trabzonspor.png',
+    'istanbul-basaksehir': '/super-lig-images/istanbul-basaksehir.png',
+    'kasimpasa': '/super-lig-images/kasimpasa.png',
+    'eyupspor': '/super-lig-images/eyupspor.png',
+    'goztepe': '/super-lig-images/goztepe.png',
+    'bodrum-fk': '/super-lig-images/bodrum-fk.png',
+    'samsunspor': '/super-lig-images/samsunspor.png',
+    'konyaspor': '/super-lig-images/konyaspor.png',
+    'antalyaspor': '/super-lig-images/antalyaspor.png',
+    'sivasspor': '/super-lig-images/sivasspor.png',
+    'alanyaspor': '/super-lig-images/alanyaspor.png',
+    'caykur-rizespor': '/super-lig-images/caykur-rizespor.png',
+    'gaziantep-fk': '/super-lig-images/gaziantep-fk.png',
+    'kayserispor': '/super-lig-images/kayserispor.png',
+    'hatayspor': '/super-lig-images/hatayspor.png',
+    'adana-demirspor': '/super-lig-images/adana-demirspor.png',
+  },
+};
+
 require('dotenv').config();
 
 dayjs.extend(relativeTime);
@@ -414,7 +604,6 @@ if (userDoc.exists) {
 // --- Team Page ---
 app.get('/team/:teamname', async (req, res) => {
   const { teamname } = req.params;
-  const sortField = req.query.sort === 'top' ? 'like_reactions' : 'timestamp';
 
   const leagueInfo = teamToLeagueMap[teamname];
   if (!leagueInfo) {
@@ -423,35 +612,45 @@ app.get('/team/:teamname', async (req, res) => {
   }
 
   try {
-    let commentsRef = db.collection('comments').where('team', '==', teamname);
+    // Build image path dynamically
+    const imagePath = `/images/teams/${leagueInfo.slug}/${teamname}.png`;
 
-    // Only add ordering if field is guaranteed to exist on all docs
-    if (sortField === 'like_reactions') {
-      commentsRef = commentsRef.orderBy('like_reactions', 'desc');
-    } else {
-      commentsRef = commentsRef.orderBy('timestamp', 'desc');
-    }
+    // Fetch comments for the team
+    const commentsRef = db.collection('comments')
+      .where('team', '==', teamname)
+      .orderBy('timestamp', 'desc');
+
     const snapshot = await commentsRef.get();
-const allDocs = snapshot.docs;
+    const allDocs = snapshot.docs;
 
-const page = parseInt(req.query.page) || 1;
-const limit = 40;
-const offset = (page - 1) * limit;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 40;
+    const offset = (page - 1) * limit;
 
-const paginatedDocs = allDocs.slice(offset, offset + limit);
-const comments = paginatedDocs.map(doc => ({ id: doc.id, ...doc.data() }));
-const totalPages = Math.ceil(allDocs.length / limit);
+    const paginatedDocs = allDocs.slice(offset, offset + limit);
+    const comments = paginatedDocs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        relativeTime: data.timestamp ? dayjs(data.timestamp.toDate()).fromNow() : ''
+      };
+    });
 
-res.render('team', {
-  teamname,
-  comments,
-  sort: req.query.sort,
-  useTeamHeader: true,
-  leagueSlug: leagueInfo.slug,
-  leagueName: leagueInfo.name,
-  page,
-  totalPages
-});
+    const totalPages = Math.ceil(allDocs.length / limit);
+
+    // Render team page
+    res.render('team', {
+      teamname,
+      comments,
+      useTeamHeader: true,
+      leagueSlug: leagueInfo.slug,
+      leagueName: leagueInfo.name,
+      imagePath, // ✅ now included
+      page,
+      totalPages
+    });
+
   } catch (err) {
     console.error('❌ Team page error:', err.message);
     res.status(500).send('Failed to load team page');
