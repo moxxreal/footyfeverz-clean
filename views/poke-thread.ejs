@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title><%= teamA %> vs <%= teamB %> | Poke Thread</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .rival-header {
+      text-align: center;
+      margin-top: 30px;
+    }
+    .poke-body {
+      margin: 30px auto;
+      padding: 20px;
+      max-width: 800px;
+      border: 2px solid red;
+      border-radius: 16px;
+      background: #fff3f3;
+    }
+    .poke-comments {
+      margin-top: 30px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .poke-comment-form {
+      margin-top: 20px;
+    }
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <%- include('partials/_header') %>
+
+  <div class="rival-header">
+     <h1>
+  <%= teamA.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) %> ⚔️ 
+  <%= teamB.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) %>
+</h1>
+   <p>Started by <strong><%= pokeData.createdBy %></strong> — <%= pokeData.text %></p>
+    <% if (pokeData.media) { 
+         const isVideo = pokeData.media.endsWith('.mp4') || pokeData.media.endsWith('.webm') || pokeData.media.endsWith('.ogg');
+    %>
+      <% if (isVideo) { %>
+        <video src="<%= pokeData.media %>" controls style="max-width: 100%; margin-top: 10px;"></video>
+      <% } else { %>
+        <img src="<%= pokeData.media %>" style="max-width: 100%; margin-top: 10px;" />
+      <% } %>
+    <% } %>
+  </div>
+
+  <div class="poke-comments">
+    <h2>💬 Comments from both sides</h2>
+    <% comments.forEach(comment => { 
+  const isTeamA = comment.team === 'teamA';
+  const isTeamB = comment.team === 'teamB';
+  const teamLabel = isTeamA ? '🔵 Home Fan' : isTeamB ? '🔴 Rival Fan' : '';
+%>
+  <div style="border: 1px solid #ccc; padding: 12px; border-radius: 10px; margin-bottom: 15px;">
+    <strong><a href="/user/<%= comment.user %>"><%= comment.user %></a></strong>
+    <span style="margin-left: 10px; font-weight: normal; font-size: 0.9em;"><%= teamLabel %></span>
+    <p><%= comment.text %></p>
+
+        <p><%= comment.text %></p>
+        <% if (comment.media) { 
+             const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg');
+        %>
+          <% if (isVideo) { %>
+            <video src="<%= comment.media %>" controls style="max-width: 100%; margin-top: 10px;"></video>
+          <% } else { %>
+            <img src="<%= comment.media %>" style="max-width: 100%; border-radius: 10px; margin-top: 10px;" />
+          <% } %>
+        <% } %>
+        <div style="color: gray; font-size: 14px;"><%= comment.relativeTime %></div>
+      </div>
+    <% }) %>
+
+    <div class="poke-comment-form">
+      <% if (user) { %>
+        <form action="/poke/<%= pokeId %>/comment" method="POST" enctype="multipart/form-data">
+          <textarea name="text" rows="4" placeholder="Join the rivalry..." required></textarea>
+          <input type="file" name="media" accept="image/*,video/*" />
+          <br />
+          <button type="submit" style="margin-top: 10px;">Post Comment</button>
+        </form>
+      <% } else { %>
+        <p><a href="#" onclick="openLogin()">Login</a> to join the battle!</p>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>

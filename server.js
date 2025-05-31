@@ -601,6 +601,63 @@ if (userDoc.exists) {
   }
 });
 
+app.post('/poke-rival', multiUpload, async (req, res) => {
+  if (!req.session.user) return res.status(401).send("Login required");
+
+  const { teamA, teamB, text } = req.body;
+  const username = req.session.user.username;
+
+  if (!teamA || !teamB || !text?.trim()) {
+    return res.status(400).send("Missing data");
+  }
+
+  const media =
+    req.files?.media?.[0]?.path?.includes('uploads')
+      ? `/uploads/${req.files.media[0].filename}`
+      : '';
+
+  try {
+    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+
+const reverseCheck = await db.collection('rivalPokes')
+  .where('createdAt', '>', fourHoursAgo)
+  .where('teamA', '==', teamB)  // flipped
+  .where('teamB', '==', teamA)
+  .get();
+
+if (!reverseCheck.empty) {
+  return res.status(400).json({
+  error: "A reverse rivalry is already active. Please wait until it expires."
+});
+}
+
+// Check for same-direction active rivalry (teamA vs teamB)
+const sameCheck = await db.collection('rivalPokes')
+  .where('createdAt', '>', fourHoursAgo)
+  .where('teamA', '==', teamA)
+  .where('teamB', '==', teamB)
+  .get();
+
+if (!sameCheck.empty) {
+  return res.status(400).json({ error: 'An active rivalry already exists between these two teams. Please wait until it expires.' });
+}
+
+    await db.collection('rivalPokes').add({
+      teamA,
+      teamB,
+      createdBy: username,
+      text: text.trim(),
+      media,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.redirect(`/team/${teamA}`);
+  } catch (err) {
+    console.error('❌ Failed to poke rival:', err);
+    res.status(500).send("Failed to poke rival");
+  }
+});
+
 // --- Team Page ---
 app.get('/team/:teamname', async (req, res) => {
   const { teamname } = req.params;
@@ -611,9 +668,12 @@ app.get('/team/:teamname', async (req, res) => {
     return res.status(404).send('Team not found');
   }
 
+  const leagueSlug = leagueInfo.slug;
+  const leagueName = leagueInfo.name;
+
   try {
     // Build image path dynamically
-    const imagePath = `/images/teams/${leagueInfo.slug}/${teamname}.png`;
+    const imagePath = `/images/teams/${leagueSlug}/${teamname}.png`;
 
     // Fetch comments for the team
     const commentsRef = db.collection('comments')
@@ -639,17 +699,71 @@ app.get('/team/:teamname', async (req, res) => {
 
     const totalPages = Math.ceil(allDocs.length / limit);
 
-    // Render team page
-    res.render('team', {
-      teamname,
-      comments,
-      useTeamHeader: true,
-      leagueSlug: leagueInfo.slug,
-      leagueName: leagueInfo.name,
-      imagePath, // ✅ now included
-      page,
-      totalPages
+    // Fetch Rival Pokes for this team
+const pokeSnapA = await db.collection('rivalPokes')
+  .where('teamA', '==', teamname)
+  .get();
+
+const pokeSnapB = await db.collection('rivalPokes')
+  .where('teamB', '==', teamname)
+  .get();
+
+const allPokes = [...pokeSnapA.docs, ...pokeSnapB.docs];
+
+const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000); // 4 hours ago
+
+const pokeThreads = allPokes
+  .filter(doc => {
+    const data = doc.data();
+    return data.createdAt?.toDate?.() > fourHoursAgo;
+  })
+  .sort((a, b) => b.data().createdAt.toMillis() - a.data().createdAt.toMillis())
+  .slice(0, 3)
+  .map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      ...data,
+      relativeTime: data.createdAt ? dayjs(data.createdAt.toDate()).fromNow() : '',
+      createdAtMillis: data.createdAt?.toMillis?.() || 0 // needed for countdown
+    };
+  });
+
+    const teamDoc = await db.collection('teams').doc(teamname).get();
+    const teamData = teamDoc.exists ? teamDoc.data() : null;
+
+    const relativeTimes = comments.map(comment => {
+      const timestamp = comment.timestamp?.toDate?.();
+      if (!timestamp) return 'Just now';
+
+      const now = new Date();
+      const secondsAgo = Math.floor((now - timestamp) / 1000);
+
+      if (secondsAgo < 60) return `${secondsAgo}s ago`;
+      const minutesAgo = Math.floor(secondsAgo / 60);
+      if (minutesAgo < 60) return `${minutesAgo}m ago`;
+      const hoursAgo = Math.floor(minutesAgo / 60);
+      if (hoursAgo < 24) return `${hoursAgo}h ago`;
+      const daysAgo = Math.floor(hoursAgo / 24);
+      return `${daysAgo}d ago`;
     });
+
+    res.render('team', {
+  user: req.session.user || null,
+  teamname,
+  teamData,
+  comments,
+  currentPage: page,
+  totalPages,
+  relativeTimes,
+  pokeThreads,
+  leagueSlug,
+  leagueName,
+  useTeamHeader: true,
+  imagePath,
+  teamToLeagueMap, // ✅ THIS FIXES THE CRASH
+  pokeError: 'A reverse rivalry is already active. Please wait until it expires.'
+});
 
   } catch (err) {
     console.error('❌ Team page error:', err.message);
@@ -698,6 +812,78 @@ app.post('/battle/vote', async (req, res) => {
   }
 });
 
+app.get('/poke/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const pokeDoc = await db.collection('rivalPokes').doc(id).get();
+    if (!pokeDoc.exists) return res.status(404).send("Rival thread not found");
+
+    const pokeData = pokeDoc.data();
+    const commentSnap = await db.collection('rivalPokes').doc(id).collection('comments').orderBy('timestamp', 'asc').get();
+
+    const pokeThreadComments = commentSnap.docs.map(c => {
+      const data = c.data();
+      return {
+        ...data,
+        relativeTime: data.timestamp ? dayjs(data.timestamp.toDate()).fromNow() : ''
+      };
+    });
+
+    const teamA = pokeData.teamA;
+    const teamB = pokeData.teamB;
+    const profilePic = req.session.user?.profile_pic || '/default-avatar.png';
+
+    res.render('poke-thread', {
+      pokeId: id,
+      pokeData,
+      comments: pokeThreadComments, // ← using renamed variable here
+      teamA,
+      teamB,
+      profilePic,
+      user: req.session.user || null,
+      headerClass: 'header-simple',
+      useTeamHeader: false 
+    });
+  } catch (err) {
+    console.error('❌ Failed to load poke thread:', err);
+    res.status(500).send("Failed to load poke thread");
+  }
+});
+
+app.post('/poke/:id/comment', multiUpload, async (req, res) => {
+  const { id } = req.params;
+  const { text } = req.body;
+  const username = req.session.user?.username;
+
+  if (!username || !text?.trim()) return res.status(400).send("Missing data");
+
+  const media =
+    req.files?.media?.[0]?.path?.includes('uploads')
+      ? `/uploads/${req.files.media[0].filename}`
+      : '';
+
+  try {
+    const pokeDoc = await db.collection('rivalPokes').doc(id).get();
+    const pokeData = pokeDoc.data();
+
+    // Determine fan side based on who started the poke
+    const fanSide = (username === pokeData.createdBy) ? 'teamA' : 'teamB';
+
+    await db.collection('rivalPokes').doc(id).collection('comments').add({
+      user: username,
+      text: text.trim(),
+      media,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      team: fanSide
+    });
+
+    res.redirect(`/poke/${id}`);
+  } catch (err) {
+    console.error('❌ Failed to comment on rival thread:', err);
+    res.status(500).send("Failed to post comment");
+  }
+});
+
 // --- User Profile Page ---
 app.get('/user/:username', async (req, res) => {
   const { username } = req.params;
@@ -724,14 +910,21 @@ if (currentUser && currentUser !== username) {
   .orderBy('timestamp', 'desc')
   .limit(10) // ✅ Limit to most recent 10
   .get();
+  const allComments = commentsSnap.docs.map(doc => doc.data());
+const totalCommentCount = allComments.length;
+const commentsPerPage = 10;
+const totalPages = Math.ceil(totalCommentCount / commentsPerPage);
+const startIndex = (page - 1) * commentsPerPage;
 
-    const comments = commentsSnap.docs.map(doc => {
-      const data = doc.data();
-      return {
-        ...data,
-        relativeTime: data.timestamp ? dayjs(data.timestamp.toDate()).fromNow() : ''
-      };
-    });
+    const commentSnap = await db.collection('rivalPokes').doc(id).collection('comments').orderBy('timestamp', 'asc').get();
+
+const comments = commentSnap.docs.map(c => {
+  const data = c.data();
+  return {
+    ...data,
+    relativeTime: data.timestamp ? dayjs(data.timestamp.toDate()).fromNow() : ''
+  };
+});
 
     const totalComments = comments.length;
     const totalLikes = comments.reduce((sum, c) => sum + (c.like_reactions || 0), 0);

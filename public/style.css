@@ -3,7 +3,7 @@ body {
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
-  background: url('/images/grass-bg.jpg') center/cover no-repeat fixed;
+  background-color: #f5f5f5; /* light neutral fallback */
 }
 
 h1 {
@@ -310,15 +310,11 @@ body.modal-open {
   50% { transform: scale(1.5); }
   100% { transform: scale(1); }
 }
-
 .comment-form-container {
-  background: rgba(255,255,255,0.95);
-  border: 4px solid transparent;
-  background-image: url('/images/grass-border.png');
-  background-size: contain;
-  background-repeat: round;
+  background: rgba(255, 255, 255, 0.95);
+  border: 4px solid #ddd;
   border-radius: 20px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   width: 80%;
   margin: 0 auto;
 }
@@ -583,6 +579,9 @@ body.modal-open {
   display: none;
 }
 .hidden {
+  display: none !important;
+}
+.hidden-away {
   display: none !important;
 }
 
@@ -946,6 +945,7 @@ body.modal-open {
   cursor: grab;
   user-select: none;
 }
+
 button.follow-btn,
 a.chat-button {
   cursor: pointer;
@@ -979,4 +979,26 @@ a.chat-button:hover {
   50% { transform: translateX(5px); }
   75% { transform: translateX(-5px); }
   100% { transform: translateX(0); }
+}
+
+/* --- Poke Rival Button Pulse --- */
+@keyframes pokePulse {
+  0% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 0, 0, 0.3); }
+  50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 0, 0, 0.5); }
+  100% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 0, 0, 0.3); }
+}
+
+/* --- BIG POKE RIVAL BUTTON --- */
+.big-poke-button {
+  width: 420px;
+  max-width: 90vw;
+  height: auto;
+  border-radius: 20px;
+  box-shadow: 0 0 30px rgba(255, 0, 0, 0.4);
+  animation: pokePulse 2.5s infinite;
+  transition: transform 0.3s ease;
+}
+
+#pokeRivalBtn:hover .big-poke-button {
+  transform: scale(1.08);
 }
