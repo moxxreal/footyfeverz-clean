@@ -106,24 +106,6 @@
   text-align: center;
 "></div>
 
-<!-- ⚠️ Server-rendered error message (fallback) -->
-<% if (pokeError) { %>
-  <div style="
-    background: #ffe0e0;
-    color: #990000;
-    padding: 12px 20px;
-    border-radius: 10px;
-    margin-bottom: 25px;
-    font-weight: bold;
-    font-size: 16px;
-    max-width: 600px;
-    margin: 0 auto 25px;
-    text-align: center;
-  ">
-    ⚠️ <%= pokeError %>
-  </div>
-<% } %>
-
 <!-- 🎯 Big Centered "Fight Rival" Button -->
 <div style="display: flex; justify-content: center; margin: 40px 0;">
   <button type="button" id="pokeRivalBtn" style="
@@ -139,66 +121,65 @@
 <!-- 🔥 Active Rival Pokes -->
 <% if (pokeThreads && pokeThreads.length > 0) { %>
   <div class="poke-rival-container" style="margin-bottom: 40px;">
-    <h2 style="margin-bottom: 15px;">🔥 Active Rival Pokes</h2>
+  <h2 style="margin-bottom: 15px; font-size: 28px; font-weight: 700; text-align: center; color: #222;">🔥 Active Rival Pokes</h2>
 
-    <% pokeThreads.forEach(poke => {
-      const formattedTeamB = poke.teamB.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    %>
-      <div class="poke-thread" style="
-        border: 4px solid #ff1a1a;
-        background: linear-gradient(135deg, #fff0f0, #ffe6e6);
-        border-radius: 20px;
-        padding: 30px;
-        margin-bottom: 35px;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-        transition: transform 0.3s ease;
-        font-family: 'Segoe UI', sans-serif;
-      ">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-          <div style="font-size: 22px;">
-            <strong style="color: #d10000;"><%= poke.createdBy %></strong>
-            <span style="color: #333;"> poked </span>
-            <strong style="color: #0055cc;"><%= formattedTeamB %></strong>
-          </div>
-          <span id="countdown-<%= poke.id %>" style="
-            font-size: 18px;
-            color: #d10000;
-            font-weight: bold;
-          "></span>
+  <% pokeThreads.forEach(poke => {
+    const formattedTeamB = poke.teamB.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  %>
+    <div style="
+      background: linear-gradient(145deg, #ffffff, #f0f0f0);
+      border-radius: 20px;
+      padding: 25px 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      transition: transform 0.3s ease;
+      border: 1px solid #ddd;
+    ">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+        <div style="font-size: 20px; font-weight: 600;">
+          <span style="color: #333;">👤</span> <a href="/user/<%= poke.createdBy %>" style="color: #0055cc; text-decoration: none;"><%= poke.createdBy %></a>
+          <span style="color: #888;"> poked </span>
+          <span style="color: #cc0000; font-weight: bold;"><%= formattedTeamB %></span>
         </div>
-
-        <p style="margin: 15px 0; font-size: 20px; color: #444; font-weight: 500;"><%= poke.text %></p>
-
-        <% if (poke.media) {
-          const isVideo = poke.media.endsWith('.mp4') || poke.media.endsWith('.webm') || poke.media.endsWith('.ogg');
-        %>
-          <% if (isVideo) { %>
-            <video src="<%= poke.media %>" controls style="width: 100%; border-radius: 12px; margin-top: 15px;"></video>
-          <% } else { %>
-            <img src="<%= poke.media %>" style="width: 100%; border-radius: 12px; margin-top: 15px;" />
-          <% } %>
-        <% } %>
-
-        <div style="text-align: center; margin-top: 25px;">
-          <a href="/poke/<%= poke.id %>" style="
-            text-decoration: none;
-            background-color: #ff1a1a;
-            color: white;
-            padding: 16px 28px;
-            font-size: 20px;
-            border-radius: 12px;
-            font-weight: bold;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-            transition: background-color 0.2s ease, transform 0.2s ease;
-            display: inline-block;
-          " onmouseover="this.style.backgroundColor='#cc0000'; this.style.transform='scale(1.05)';"
-            onmouseout="this.style.backgroundColor='#ff1a1a'; this.style.transform='scale(1)';">
-            Join the Rivalry →
-          </a>
-        </div>
+        <span id="countdown-<%= poke.id %>" style="font-size: 16px; color: #ff6600; font-weight: bold; margin-top: 10px;">
+          ⏳ ...
+        </span>
       </div>
-    <% }) %>
-  </div>
+
+      <p style="margin: 20px 0 10px; font-size: 18px; color: #333; line-height: 1.5;"><%= poke.text %></p>
+
+      <% if (poke.media) {
+        const isVideo = poke.media.endsWith('.mp4') || poke.media.endsWith('.webm') || poke.media.endsWith('.ogg');
+      %>
+        <div style="margin: 10px 0;">
+          <% if (isVideo) { %>
+            <video src="<%= poke.media %>" controls style="width: 100%; border-radius: 10px;"></video>
+          <% } else { %>
+            <img src="<%= poke.media %>" alt="Poke Media" style="width: 100%; border-radius: 10px;" />
+          <% } %>
+        </div>
+      <% } %>
+
+      <div style="text-align: center; margin-top: 20px;">
+        <a href="/poke/<%= poke.id %>" style="
+          display: inline-block;
+          background: linear-gradient(to bottom, #ff3c3c, #c40000);
+          color: white;
+          font-size: 18px;
+          padding: 12px 24px;
+          border-radius: 12px;
+          text-decoration: none;
+          font-weight: 600;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+          transition: transform 0.2s ease, background 0.2s ease;
+        " onmouseover="this.style.transform='scale(1.04)'; this.style.background='#a70000';"
+          onmouseout="this.style.transform='scale(1)'; this.style.background='linear-gradient(to bottom, #ff3c3c, #c40000)';">
+          Join the Rivalry →
+        </a>
+      </div>
+    </div>
+  <% }); %>
+</div>
 <% } %>
 
   <div id="commentsContainer" class="comments-container">
