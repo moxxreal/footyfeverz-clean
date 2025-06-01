@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tag Mentions | Footy Feverz</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .tags-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 1rem;
+    }
+    .tag-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+    .tag-item {
+      background: #fff;
+      padding: 1rem;
+      border-radius: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .tag-meta {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    .tag-content {
+      margin-top: 0.5rem;
+    }
+    .tag-link {
+      color: #0077cc;
+      text-decoration: underline;
+      display: inline-block;
+      margin-top: 0.3rem;
+    }
+  </style>
+</head>
+<body>
+  <%- include('partials/_header', {
+    headerClass: 'header-home',
+    useTeamHeader: false,
+    user
+  }) %>
+
+  <section class="tags-container">
+    <h2>🏷️ Tagged Mentions</h2>
+
+    <% if (taggedComments.length === 0) { %>
+      <p class="empty-inbox">No one has tagged you in a comment yet.</p>
+    <% } else { %>
+      <div class="tag-list">
+        <% taggedComments.forEach(tag => { %>
+          <div class="tag-item">
+            <div class="tag-meta">
+              <a href="/user/<%= tag.fromUser %>" style="color: #007bff;">@<%= tag.fromUser %></a>
+              mentioned you in 
+              <%= tag.threadType === 'poke' ? 'a poke thread' : 'a team comment' %>
+            </div>
+            <div class="tag-content">
+              <%= tag.content.replace(/@(\w+)/g, '<a href="/user/$1" style="color:#007BFF;">@$1</a>') %>
+            </div>
+            <a class="tag-link" href="<%= tag.link %>">View Comment</a>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </section>
+</body>
+</html>

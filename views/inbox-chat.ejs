@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Chat Inbox | Footy Feverz</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .chat-container {
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 0 20px;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    .chat-container h2 {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+
+    .chat-box {
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 1rem;
+      height: 320px;
+      overflow-y: auto;
+      background: #f9f9f9;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #chat-form {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #message-input {
+      width: 100%;
+      max-width: 700px;
+      padding: 12px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    #chat-form button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+
+    #typing-indicator {
+      text-align: center;
+      font-style: italic;
+      color: #888;
+      display: none;
+      margin-top: 10px;
+    }
+
+    .reaction-emoji {
+      position: absolute;
+      bottom: -10px;
+      right: -10px;
+      font-size: 16px;
+      background: white;
+      border-radius: 50%;
+      padding: 1px 4px;
+      box-shadow: 0 0 3px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <%- include('partials/_header', {
+    headerClass: 'header-home',
+    useTeamHeader: false,
+    showAuthLinks: true,
+    showLeagueLink: false,
+    hideAuthModals: false
+  }) %>
+
+  <section class="chat-container">
+    <% if (conversations) { %>
+      <h2>📨 Conversations</h2>
+      <% conversations.forEach(conv => { %>
+        <a href="/chat/<%= conv.user %>" style="display: block; padding: 10px; border-bottom: 1px solid #ccc;">
+          <strong><%= conv.user %></strong><br>
+          <span><%= conv.lastMessage %></span>
+        </a>
+      <% }) %>
+    <% } %>
+
+    <% if (otherUser) { %>
+      <h2>Chat with <%= otherUser %> <span id="online-status"></span></h2>
+
+      <div id="chat-box" class="chat-box"></div>
+      <p id="typing-indicator">Typing...</p>
+
+      <form id="chat-form">
+        <textarea id="message-input" rows="3" placeholder="Type your message..." required></textarea>
+        <button type="submit">Send</button>
+      </form>
+    <% } %>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
+  <script>
+    dayjs.extend(window.dayjs_plugin_relativeTime);
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <% if (typeof messages !== 'undefined' && typeof otherUser !== 'undefined') { %>
+  <script>
+    const currentUsername = '<%= currentUser.username %>';
+    const receiverUsername = '<%= otherUser %>';
+    const chatBox = document.getElementById('chat-box');
+    const messageInput = document.getElementById('message-input');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const statusElement = document.getElementById('online-status');
+    const socket = io();
+    const renderedMessageIds = new Set();
+
+    function scrollToBottom() {
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function renderMessage(msg) {
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.margin = '10px 0';
+
+      const msgDiv = document.createElement('div');
+      msgDiv.textContent = msg.content;
+      msgDiv.style.padding = '10px';
+      msgDiv.style.borderRadius = '8px';
+      msgDiv.style.maxWidth = '70%';
+      msgDiv.style.wordWrap = 'break-word';
+      msgDiv.style.position = 'relative';
+      msgDiv.style.cursor = 'pointer';
+
+      const time = document.createElement('div');
+      let timestamp = 'now';
+      try {
+        if (msg.timestamp?.seconds) {
+          timestamp = dayjs.unix(msg.timestamp.seconds).format('HH:mm');
+        } else if (msg.timestamp?.toDate) {
+          timestamp = dayjs(msg.timestamp.toDate()).format('HH:mm');
+        } else if (typeof msg.timestamp === 'string' || msg.timestamp instanceof Date) {
+          timestamp = dayjs(msg.timestamp).format('HH:mm');
+        }
+      } catch (err) {
+        console.error('Failed to parse timestamp:', msg.timestamp);
+      }
+
+      time.textContent = timestamp;
+      time.style.fontSize = '12px';
+      time.style.color = '#888';
+      time.style.marginTop = '4px';
+
+      if (msg.sender === currentUsername) {
+        msgDiv.style.background = '#d1e7dd';
+        wrapper.style.alignItems = 'flex-end';
+        msgDiv.style.textAlign = 'right';
+      } else {
+        msgDiv.style.background = '#f8d7da';
+        wrapper.style.alignItems = 'flex-start';
+        msgDiv.style.textAlign = 'left';
+      }
+
+      const emojiTag = document.createElement('div');
+      emojiTag.className = 'reaction-emoji';
+      if (msg.reactions?.[currentUsername]) {
+        emojiTag.textContent = msg.reactions[currentUsername];
+        msgDiv.appendChild(emojiTag);
+      }
+
+      const reactionsBar = document.createElement('div');
+      reactionsBar.style.marginTop = '6px';
+      reactionsBar.style.fontSize = '20px';
+      reactionsBar.style.display = 'none';
+
+      ['👍', '❤️', '😂', '😡'].forEach(emoji => {
+        const btn = document.createElement('button');
+        btn.textContent = emoji;
+        btn.style.border = 'none';
+        btn.style.background = 'transparent';
+        btn.style.cursor = 'pointer';
+        btn.style.marginRight = '5px';
+
+        btn.onclick = () => {
+          socket.emit('reactToMessage', {
+            messageId: msg.id,
+            reactor: currentUsername,
+            emoji
+          });
+        };
+
+        reactionsBar.appendChild(btn);
+      });
+
+      msgDiv.addEventListener('click', () => {
+        if (window.innerWidth > 768) {
+          reactionsBar.style.display = 'block';
+        }
+      });
+
+      let longPressTimer;
+      msgDiv.addEventListener('touchstart', () => {
+        if (window.innerWidth <= 768) {
+          longPressTimer = setTimeout(() => {
+            reactionsBar.style.display = 'block';
+          }, 500);
+        }
+      });
+      msgDiv.addEventListener('touchend', () => clearTimeout(longPressTimer));
+      msgDiv.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+
+      wrapper.appendChild(msgDiv);
+      wrapper.appendChild(time);
+      wrapper.appendChild(reactionsBar);
+      chatBox.appendChild(wrapper);
+    }
+
+    socket.emit('joinRoom', { sender: currentUsername, receiver: receiverUsername });
+    socket.emit('checkOnlineStatus', { userToCheck: receiverUsername });
+
+    socket.on('userOnline', ({ username }) => {
+      if (username === receiverUsername) {
+        statusElement.textContent = '🟢 Online';
+        statusElement.style.color = 'green';
+      }
+    });
+
+    socket.on('userOffline', ({ username, lastSeen }) => {
+      if (username === receiverUsername) {
+        const relative = lastSeen ? dayjs(lastSeen).fromNow() : 'a while ago';
+        statusElement.textContent = `⚫ Last seen ${relative}`;
+        statusElement.style.color = '#888';
+      }
+    });
+
+    async function loadMessages() {
+      try {
+        const res = await fetch(`/api/messages/conversation/${receiverUsername}`);
+        const messages = await res.json();
+        chatBox.innerHTML = '';
+        messages.forEach(renderMessage);
+        setTimeout(scrollToBottom, 0);
+      } catch (err) {
+        console.error('❌ Failed to load messages:', err);
+      }
+    }
+
+    document.getElementById('chat-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const content = messageInput.value.trim();
+      if (!content) return;
+
+      try {
+        await fetch('/api/messages/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ receiver: receiverUsername, content })
+        });
+
+        socket.emit('chatMessage', { sender: currentUsername, receiver: receiverUsername, content });
+        messageInput.value = '';
+        socket.emit('stopTyping', { to: receiverUsername, from: currentUsername });
+      } catch (err) {
+        console.error('❌ Failed to send message:', err);
+      }
+    });
+
+    messageInput.addEventListener('input', () => {
+      socket.emit('typing', { to: receiverUsername, from: currentUsername });
+      clearTimeout(window.typingTimeout);
+      window.typingTimeout = setTimeout(() => {
+        socket.emit('stopTyping', { to: receiverUsername, from: currentUsername });
+      }, 1000);
+    });
+
+    socket.on('typing', ({ from }) => {
+      if (from === receiverUsername) typingIndicator.style.display = 'block';
+    });
+
+    socket.on('stopTyping', ({ from }) => {
+      if (from === receiverUsername) typingIndicator.style.display = 'none';
+    });
+
+    socket.on('newMessage', (msg) => {
+      if (
+        (msg.sender === currentUsername && msg.receiver === receiverUsername) ||
+        (msg.sender === receiverUsername && msg.receiver === currentUsername)
+      ) {
+        renderMessage(msg);
+        scrollToBottom();
+      }
+    });
+
+    socket.on('reactionUpdated', updatedMsg => {
+      if (
+        (updatedMsg.sender === currentUsername && updatedMsg.receiver === receiverUsername) ||
+        (updatedMsg.sender === receiverUsername && updatedMsg.receiver === currentUsername)
+      ) {
+        loadMessages();
+      }
+    });
+
+    loadMessages();
+  </script>
+  <% } %>
+</body>
+</html>

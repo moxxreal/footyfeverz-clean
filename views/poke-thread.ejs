@@ -4,10 +4,19 @@
   <title><%= teamA %> vs <%= teamB %> | Poke Thread</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #fafafa;
+    }
+
     .rival-header {
       text-align: center;
       margin-top: 30px;
+      padding: 0 16px;
     }
+
     .poke-body {
       margin: 30px auto;
       padding: 20px;
@@ -16,91 +25,121 @@
       border-radius: 16px;
       background: #fff3f3;
     }
+
     .poke-comments {
       margin-top: 30px;
       max-width: 800px;
       margin-left: auto;
       margin-right: auto;
+      padding: 0 16px;
     }
+
     .poke-comment-form {
       margin-top: 20px;
     }
+
     textarea {
       width: 100%;
       padding: 10px;
       border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    button[type="submit"] {
+      background: #cc0000;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button[type="submit"]:hover {
+      background: #a60000;
+    }
+
+    @media (max-width: 600px) {
+      .rival-header h1 {
+        font-size: 22px;
+        line-height: 1.4;
+      }
+
+      .poke-comments h2 {
+        font-size: 20px;
+      }
+
+      .poke-comment-form textarea {
+        font-size: 15px;
+      }
+
+      button[type="submit"] {
+        width: 100%;
+      }
+
+      video, img {
+        max-width: 100%;
+        height: auto;
+      }
     }
   </style>
 </head>
 <body>
   <%- include('partials/_header') %>
+
   <!-- Full-width banner image like team pages -->
-<div style="
-  width: 95%;
-  max-width: 1400px;
-  margin: 40px auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-">
-  <img src="/images/join-rivalry-banner.png" alt="Join the Rivalry" style="
-    width: 100%;
-    height: auto;
-    display: block;
-    margin: 0;
-    border-radius: 20px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  " />
-</div>
+  <div style="width: 95%; max-width: 1400px; margin: 40px auto; display: flex; justify-content: center; align-items: center; padding: 0 10px;">
+    <img src="/images/join-rivalry-banner.png" alt="Join the Rivalry" style="width: 100%; height: auto; display: block; margin: 0; border-radius: 20px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);" />
+  </div>
 
   <div class="rival-header">
-     <h1>
-  <%= teamA.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) %> ⚔️ 
-  <%= teamB.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) %>
-</h1>
-   <p>Started by <strong><%= pokeData.createdBy %></strong> — <%= pokeData.text %></p>
-    <% if (pokeData.media) { 
-         const isVideo = pokeData.media.endsWith('.mp4') || pokeData.media.endsWith('.webm') || pokeData.media.endsWith('.ogg');
-    %>
+    <h1><%= teamA.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) %> ⚔️ <%= teamB.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) %></h1>
+    <p>Started by <strong><%= pokeData.createdBy %></strong> — <%= pokeData.text %></p>
+    <% if (pokeData.media) { const isVideo = pokeData.media.endsWith('.mp4') || pokeData.media.endsWith('.webm') || pokeData.media.endsWith('.ogg'); %>
       <% if (isVideo) { %>
         <video src="<%= pokeData.media %>" controls style="max-width: 100%; margin-top: 10px;"></video>
       <% } else { %>
-        <img src="<%= pokeData.media %>" style="max-width: 100%; margin-top: 10px;" />
+        <img src="<%= pokeData.media %>" style="max-width: 100%; border-radius: 10px; margin-top: 10px;" />
       <% } %>
     <% } %>
   </div>
 
   <div class="poke-comments">
     <h2>💬 Comments from both sides</h2>
-    <% comments.forEach(comment => { 
-  const isTeamA = comment.team === 'teamA';
-  const isTeamB = comment.team === 'teamB';
-  const teamLabel = isTeamA ? '🔵 Home Fan' : isTeamB ? '🔴 Rival Fan' : '';
-%>
-  <div style="border: 1px solid #ccc; padding: 12px; border-radius: 10px; margin-bottom: 15px;">
-    <strong><a href="/user/<%= comment.user %>"><%= comment.user %></a></strong>
-    <span style="margin-left: 10px; font-weight: normal; font-size: 0.9em;"><%= teamLabel %></span>
-    <p><%= comment.text %></p>
+    <% comments.forEach((comment, index) => { 
+      const isTeamA = comment.team === 'teamA';
+      const isTeamB = comment.team === 'teamB';
+      const teamLabel = isTeamA ? '🔵 Home Fan' : isTeamB ? '🔴 Rival Fan' : '';
+    %>
+      <div style="border: 1px solid #ccc; padding: 12px; border-radius: 10px; margin-bottom: 15px; background: #fff;">
+        <strong><a href="/user/<%= comment.user %>"><%= comment.user %></a></strong>
+        <span style="margin-left: 10px; font-weight: normal; font-size: 0.9em;"><%= teamLabel %></span>
+        <p><%= comment.text.replace(/@(\w+)/g, '<a href="/user/$1" style="color:#007BFF;">@$1</a>') %></p>
 
-        <p><%= comment.text %></p>
-        <% if (comment.media) { 
-             const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg');
-        %>
+        <% if (comment.media) { const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg'); %>
           <% if (isVideo) { %>
             <video src="<%= comment.media %>" controls style="max-width: 100%; margin-top: 10px;"></video>
           <% } else { %>
             <img src="<%= comment.media %>" style="max-width: 100%; border-radius: 10px; margin-top: 10px;" />
           <% } %>
         <% } %>
+
         <div style="color: gray; font-size: 14px;"><%= comment.relativeTime %></div>
+        <div style="margin-top: 8px;">
+          <button style="margin-right: 8px;">❤️</button>
+          <button style="margin-right: 8px;">😂</button>
+          <button style="margin-right: 8px;">😡</button>
+          <button style="margin-right: 8px;">👍</button>
+        </div>
       </div>
     <% }) %>
 
     <div class="poke-comment-form">
       <% if (user) { %>
         <form action="/poke/<%= pokeId %>/comment" method="POST" enctype="multipart/form-data">
-          <textarea name="text" rows="4" placeholder="Join the rivalry..." required></textarea>
-          <input type="file" name="media" accept="image/*,video/*" />
+          <textarea name="text" rows="4" placeholder="Join the rivalry... Tag @username to mention someone" required></textarea>
+          <input type="file" name="media" accept="image/*,video/*" style="margin-top: 10px;" />
           <br />
           <button type="submit" style="margin-top: 10px;">Post Comment</button>
         </form>

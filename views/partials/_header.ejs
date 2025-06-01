@@ -33,25 +33,25 @@
     </a>
   </div>
 
-  <!-- Right Side -->
-  <div class="header-side right">
-    <% if (!user && !useTeamHeader) { %>
-      <a href="#" class="header-link" onclick="openSignup()">Sign Up</a>
-    <% } %>
+ <!-- Right Side -->
+<div class="header-side right">
+  <% if (!user && !useTeamHeader) { %>
+    <a href="#" class="header-link" onclick="openSignup()">Sign Up</a>
+  <% } %>
 
-    <% if (user && !useTeamHeader) { %>
-      <a href="/inbox" class="header-link" style="position: relative;">
-        Inbox
-        <% if (user.unreadCount && user.unreadCount > 0) { %>
-          <span class="notification-badge"><%= user.unreadCount %></span>
-        <% } %>
-      </a>
-    <% } %>
+  <% if (user && !useTeamHeader) { %>
+    <a href="/inbox" class="header-link" style="position: relative;">
+  Inbox
+  <% if (user.unreadCount && user.unreadCount > 0) { %>
+    <span class="notification-badge"><%= user.unreadCount %></span>
+  <% } %>
+</a>
+  <% } %>
 
-    <% if (useTeamHeader && leagueSlug && leagueName) { %>
-      <a href="/<%= leagueSlug %>.html" class="header-link"><%= leagueName %></a>
-    <% } %>
-  </div>
+  <% if (useTeamHeader && leagueSlug && leagueName) { %>
+    <a href="/<%= leagueSlug %>.html" class="header-link"><%= leagueName %></a>
+  <% } %>
+</div>
 </header>
 
 <!-- Login Modal -->

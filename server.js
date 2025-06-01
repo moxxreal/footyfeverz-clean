@@ -283,6 +283,26 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(async (req, res, next) => {
+  try {
+    if (req.session.user && req.session.user.id) {
+      const snapshot = await db.collection('notifications')
+        .where('toUser', '==', req.session.user.id)
+        .where('read', '==', false)
+        .get();
+
+      res.locals.unreadCount = snapshot.size;
+    } else {
+      res.locals.unreadCount = 0;
+    }
+  } catch (err) {
+    console.error("Error fetching notifications:", err);
+    res.locals.unreadCount = 0;
+  }
+
+  next();
+});
+
 // --- Reusable Homepage Error Renderer ---
 async function renderHomeWithError(res, errorType, errorMsg) {
   try {
@@ -573,10 +593,10 @@ app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
       : '';
 
   let profilePic = '';
-const userDoc = await db.collection('users').doc(req.session.user.username).get();
-if (userDoc.exists) {
-  profilePic = userDoc.data().profile_pic || '';
-}
+  const userDoc = await db.collection('users').doc(req.session.user.username).get();
+  if (userDoc.exists) {
+    profilePic = userDoc.data().profile_pic || '';
+  }
 
   // ✅ Allow comment if text or media is present
   if (!text?.trim() && !media) {
@@ -584,23 +604,43 @@ if (userDoc.exists) {
   }
 
   try {
+    const trimmedText = text.trim();
+
+    // 🔽 Save the comment
     await db.collection('comments').add({
       team: teamname,
       user: req.session.user.username,
-      text: text?.trim() || '', // ensure string even if empty
+      text: trimmedText,
       media,
       profile_pic: profilePic,
       like_reactions: 0,
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    res.redirect(`/team/${teamname}`);
+    // ✅ Mention tagging logic
+    const mentionedUsernames = [...trimmedText.matchAll(/@(\w+)/g)].map(match => match[1]);
+
+    for (const username of mentionedUsernames) {
+      const tag = {
+        fromUser: req.session.user.username,
+        taggedUserId: username,
+        content: trimmedText,
+        timestamp: new Date(),
+        threadType: 'team',
+        link: `/team/${teamname}#comments`,
+        seen: false
+      };
+      await db.collection('tags').add(tag);
+    }
+
+    res.redirect(`/team/${teamname}#comments`);
   } catch (err) {
     console.error('Team comment error:', err);
     res.status(500).send("Failed to post comment");
   }
 });
 
+//-----Poke-rival
 app.post('/poke-rival', multiUpload, async (req, res) => {
   if (!req.session.user) return res.status(401).send("Login required");
 
@@ -619,30 +659,34 @@ app.post('/poke-rival', multiUpload, async (req, res) => {
   try {
     const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
 
-const reverseCheck = await db.collection('rivalPokes')
-  .where('createdAt', '>', fourHoursAgo)
-  .where('teamA', '==', teamB)  // flipped
-  .where('teamB', '==', teamA)
-  .get();
+    // 🔁 Reverse rivalry check (teamB vs teamA)
+    const reverseCheck = await db.collection('rivalPokes')
+      .where('createdAt', '>', fourHoursAgo)
+      .where('teamA', '==', teamB)
+      .where('teamB', '==', teamA)
+      .get();
 
-if (!reverseCheck.empty) {
-  return res.status(400).json({
-  error: "A reverse rivalry is already active. Please wait until it expires."
-});
-}
+    if (!reverseCheck.empty) {
+      return res.status(400).json({
+        error: "A reverse rivalry is already active. Please wait until it expires."
+      });
+    }
 
-// Check for same-direction active rivalry (teamA vs teamB)
-const sameCheck = await db.collection('rivalPokes')
-  .where('createdAt', '>', fourHoursAgo)
-  .where('teamA', '==', teamA)
-  .where('teamB', '==', teamB)
-  .get();
+    // ⏱️ Same direction rivalry check
+    const sameCheck = await db.collection('rivalPokes')
+      .where('createdAt', '>', fourHoursAgo)
+      .where('teamA', '==', teamA)
+      .where('teamB', '==', teamB)
+      .get();
 
-if (!sameCheck.empty) {
-  return res.status(400).json({ error: 'An active rivalry already exists between these two teams. Please wait until it expires.' });
-}
+    if (!sameCheck.empty) {
+      return res.status(400).json({
+        error: 'An active rivalry already exists between these two teams. Please wait until it expires.'
+      });
+    }
 
-    await db.collection('rivalPokes').add({
+    // ✅ Save the poke thread
+    const newDocRef = await db.collection('rivalPokes').add({
       teamA,
       teamB,
       createdBy: username,
@@ -650,6 +694,24 @@ if (!sameCheck.empty) {
       media,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
+
+    const pokeId = newDocRef.id;
+
+    // ✅ Detect @username mentions and add tag notifications
+    const mentionedUsernames = [...text.matchAll(/@(\w+)/g)].map(match => match[1]);
+
+    for (const taggedUser of mentionedUsernames) {
+      const tag = {
+        fromUser: username,
+        taggedUserId: taggedUser,
+        content: text,
+        timestamp: new Date(),
+        threadType: 'poke',
+        link: `/poke/${pokeId}#comments`,
+        seen: false
+      };
+      await db.collection('tags').add(tag);
+    }
 
     res.redirect(`/team/${teamA}`);
   } catch (err) {
@@ -812,6 +874,31 @@ app.post('/battle/vote', async (req, res) => {
   }
 });
 
+// 🔔 Notifications page
+app.get('/notifications', async (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+
+  const snapshot = await db.collection('notifications')
+    .where('toUser', '==', req.session.user.id)
+    .orderBy('timestamp', 'desc')
+    .get();
+
+  const notifications = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+
+  for (const doc of snapshot.docs) {
+    await db.collection('notifications').doc(doc.id).update({ read: true });
+  }
+
+  res.render('notifications', {
+    user: req.session.user,
+    notifications
+  });
+});
+
+// ⚔️ View a Rival Poke thread
 app.get('/poke/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -819,7 +906,12 @@ app.get('/poke/:id', async (req, res) => {
     if (!pokeDoc.exists) return res.status(404).send("Rival thread not found");
 
     const pokeData = pokeDoc.data();
-    const commentSnap = await db.collection('rivalPokes').doc(id).collection('comments').orderBy('timestamp', 'asc').get();
+
+    const commentSnap = await db.collection('rivalPokes')
+      .doc(id)
+      .collection('comments')
+      .orderBy('timestamp', 'asc')
+      .get();
 
     const pokeThreadComments = commentSnap.docs.map(c => {
       const data = c.data();
@@ -829,20 +921,16 @@ app.get('/poke/:id', async (req, res) => {
       };
     });
 
-    const teamA = pokeData.teamA;
-    const teamB = pokeData.teamB;
-    const profilePic = req.session.user?.profile_pic || '/default-avatar.png';
-
     res.render('poke-thread', {
       pokeId: id,
       pokeData,
-      comments: pokeThreadComments, // ← using renamed variable here
-      teamA,
-      teamB,
-      profilePic,
+      comments: pokeThreadComments,
+      teamA: pokeData.teamA,
+      teamB: pokeData.teamB,
+      profilePic: req.session.user?.profile_pic || '/default-avatar.png',
       user: req.session.user || null,
       headerClass: 'header-simple',
-      useTeamHeader: false 
+      useTeamHeader: false
     });
   } catch (err) {
     console.error('❌ Failed to load poke thread:', err);
@@ -850,6 +938,7 @@ app.get('/poke/:id', async (req, res) => {
   }
 });
 
+// 💬 Post a comment in a Rival Poke thread
 app.post('/poke/:id/comment', multiUpload, async (req, res) => {
   const { id } = req.params;
   const { text } = req.body;
@@ -862,13 +951,17 @@ app.post('/poke/:id/comment', multiUpload, async (req, res) => {
       ? `/uploads/${req.files.media[0].filename}`
       : '';
 
+  const mentionRegex = /@([a-zA-Z0-9_]+)/g;
+  const mentions = [...text.matchAll(mentionRegex)].map(m => m[1]);
+
   try {
+    // Get poke data for fan side
     const pokeDoc = await db.collection('rivalPokes').doc(id).get();
     const pokeData = pokeDoc.data();
 
-    // Determine fan side based on who started the poke
     const fanSide = (username === pokeData.createdBy) ? 'teamA' : 'teamB';
 
+    // Save comment
     await db.collection('rivalPokes').doc(id).collection('comments').add({
       user: username,
       text: text.trim(),
@@ -877,9 +970,53 @@ app.post('/poke/:id/comment', multiUpload, async (req, res) => {
       team: fanSide
     });
 
+    // Loop through mentions
+    for (const mentionedUsername of mentions) {
+      const userSnapshot = await db.collection('users')
+        .where('username', '==', mentionedUsername)
+        .limit(1)
+        .get();
+
+      if (!userSnapshot.empty) {
+        const mentionedUserDoc = userSnapshot.docs[0];
+        const mentionedUserId = mentionedUserDoc.id;
+
+        // ✅ Store in notifications (for your real-time socket stuff)
+        await db.collection('notifications').add({
+          toUser: mentionedUserId,
+          fromUser: username,
+          type: 'mention',
+          text,
+          link: `/poke/${id}`,
+          timestamp: new Date(),
+          read: false
+        });
+
+        // ✅ Store in tags (for inbox-tags.ejs)
+        await db.collection('tags').add({
+          fromUser: username,
+          taggedUserId: mentionedUsername,
+          content: text,
+          threadType: 'poke',
+          link: `/poke/${id}#comments`,
+          timestamp: new Date(),
+          seen: false
+        });
+
+        // ✅ Emit via socket.io if user is online
+        if (io && io.to) {
+          io.to(mentionedUserId).emit('newMention', {
+            fromUser: username,
+            text,
+            link: `/poke/${id}`
+          });
+        }
+      }
+    }
+
     res.redirect(`/poke/${id}`);
   } catch (err) {
-    console.error('❌ Failed to comment on rival thread:', err);
+    console.error('❌ Failed to post comment:', err);
     res.status(500).send("Failed to post comment");
   }
 });
@@ -897,34 +1034,36 @@ app.get('/user/:username', async (req, res) => {
     const followers = userData.followers || [];
     const following = userData.following || [];
     const isFollowing = currentUser ? followers.includes(currentUser) : false;
+
     let requestSent = false;
-if (currentUser && currentUser !== username) {
-  const reqSnap = await db.collection('users').doc(username).collection('followRequests').doc(currentUser).get();
-  requestSent = reqSnap.exists;
-}
+    if (currentUser && currentUser !== username) {
+      const reqSnap = await db
+        .collection('users')
+        .doc(username)
+        .collection('followRequests')
+        .doc(currentUser)
+        .get();
+      requestSent = reqSnap.exists;
+    }
+
     const profilePic = userData.profile_pic || '/default-avatar.png';
+    const page = parseInt(req.query.page) || 1;
+    const commentsPerPage = 10;
 
-    // Fetch Comments
+    // ✅ Fetch user's comments from global comments collection
     const commentsSnap = await db.collection('comments')
-  .where('user', '==', username)
-  .orderBy('timestamp', 'desc')
-  .limit(10) // ✅ Limit to most recent 10
-  .get();
-  const allComments = commentsSnap.docs.map(doc => doc.data());
-const totalCommentCount = allComments.length;
-const commentsPerPage = 10;
-const totalPages = Math.ceil(totalCommentCount / commentsPerPage);
-const startIndex = (page - 1) * commentsPerPage;
+      .where('user', '==', username)
+      .orderBy('timestamp', 'desc')
+      .limit(commentsPerPage)
+      .get();
 
-    const commentSnap = await db.collection('rivalPokes').doc(id).collection('comments').orderBy('timestamp', 'asc').get();
-
-const comments = commentSnap.docs.map(c => {
-  const data = c.data();
-  return {
-    ...data,
-    relativeTime: data.timestamp ? dayjs(data.timestamp.toDate()).fromNow() : ''
-  };
-});
+    const comments = commentsSnap.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        relativeTime: data.timestamp ? dayjs(data.timestamp.toDate()).fromNow() : ''
+      };
+    });
 
     const totalComments = comments.length;
     const totalLikes = comments.reduce((sum, c) => sum + (c.like_reactions || 0), 0);
@@ -946,7 +1085,7 @@ const comments = commentSnap.docs.map(c => {
     const followersCount = followers.length;
     const followingCount = following.length;
 
-    // ✅ Get follow requests if this is the logged-in user's own profile
+    // Follow requests
     let followRequests = [];
     if (currentUser === username) {
       const followReqSnap = await db.collection('users')
@@ -956,25 +1095,27 @@ const comments = commentSnap.docs.map(c => {
 
       followRequests = followReqSnap.docs.map(doc => doc.id);
     }
+
     res.render('user', {
-  profileUser: username,
-  profilePic,
-  comments,
-  stories,
-  totalComments,
-  totalLikes,
-  followersCount,
-  followingCount,
-  isFollowing,
-  followRequests,
-  requestSent  // ✅ Add this
-});
+      profileUser: username,
+      profilePic,
+      comments,
+      stories,
+      totalComments,
+      totalLikes,
+      followersCount,
+      followingCount,
+      isFollowing,
+      followRequests,
+      requestSent
+    });
 
   } catch (err) {
     console.error('User profile error:', err);
     res.status(500).send("Failed to load profile");
   }
 });
+
 // Accept follow
 app.post('/user/:fromUser/accept-follow', async (req, res) => {
   const toUser = req.session.user?.username;
@@ -1023,60 +1164,48 @@ app.post('/user/:fromUser/reject-follow', async (req, res) => {
   }
 });
 
-// ✅ Helper: Save message to Firestore
-async function saveMessage({ sender, receiver, content }) {
-  const timestamp = new Date();
-
-const message = {
-  sender,
-  receiver,
-  participants: [sender, receiver],
-  content: content.trim(),
-  timestamp: timestamp.toISOString(), // ✅ send ISO string
-  seenByReceiver: false
-};
-
-  const ref = await db.collection('messages').add(message);
-  return { id: ref.id, ...message };
-}
-
-// ✅ API: Send message
-app.post('/api/messages/send', (req, res) => {
-  // Since actual sending happens via socket.io, just return OK
-  res.status(200).json({ success: true });
-});
-
-// ✅ API: Get conversation
-app.get('/api/messages/conversation/:username', async (req, res) => {
-  const currentUser = req.session.user?.username;
-  const otherUser = req.params.username;
-
-  if (!currentUser) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
-
-  try {
-    const snapshot = await db.collection('messages')
-      .where('sender', 'in', [currentUser, otherUser])
-      .where('receiver', 'in', [currentUser, otherUser])
-      .orderBy('timestamp', 'asc')  // <-- MUST match index direction
-      .get();
-
-    const messages = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
-    res.json(messages);
-  } catch (err) {
-    console.error('❌ Failed to fetch messages:', err);
-    res.status(500).json({ success: false, message: 'Failed to fetch messages' });
-  }
-});
-
-// ✅ Inbox
+// ✅ Inbox Hub Page: /inbox
 app.get('/inbox', async (req, res) => {
   if (!req.session.user) return res.redirect('/?error=Login required');
+
+  const username = req.session.user.username;
+  const currentUser = req.session.user;
+
+  try {
+    // Count unseen chat messages
+    const chatSnap = await db.collection('messages')
+      .where('receiver', '==', username)
+      .where('seenByReceiver', '==', false)
+      .get();
+
+    const chatNotifications = chatSnap.size;
+
+    // Count unseen tags
+    const tagSnap = await db.collection('tags')
+      .where('taggedUserId', '==', username)
+      .where('seen', '==', false)
+      .get();
+
+    const tagNotifications = tagSnap.size;
+
+    res.render('inbox', {
+      user: {
+        chatNotifications,
+        tagNotifications
+      },
+      currentUser
+    });
+  } catch (err) {
+    console.error('❌ Inbox error:', err);
+    res.status(500).send("Inbox error");
+  }
+});
+
+
+// ✅ Inbox Chat Page: /inbox/chat
+app.get('/inbox/chat', async (req, res) => {
+  if (!req.session.user) return res.redirect('/?error=Login required');
+
   const username = req.session.user.username;
   const currentUser = req.session.user;
 
@@ -1091,54 +1220,185 @@ app.get('/inbox', async (req, res) => {
       const msg = doc.data();
       const otherUser = msg.sender === username ? msg.receiver : msg.sender;
 
-      if (!conversations[otherUser] || msg.timestamp?.toMillis?.() > conversations[otherUser].timestamp?.toMillis?.()) {
+      if (
+        !conversations[otherUser] ||
+        new Date(msg.timestamp).getTime() > conversations[otherUser].timestamp.getTime()
+      ) {
         conversations[otherUser] = {
           user: otherUser,
           lastMessage: msg.content,
-          timestamp: msg.timestamp?.toDate?.() || new Date(0),
+          timestamp: new Date(msg.timestamp),
           seenByReceiver: msg.seenByReceiver || false,
-          profile_pic: msg.profile_pic || null
+          profile_pic: msg.sender === username ? msg.receiverPic : msg.senderPic
         };
       }
     });
 
     const sorted = Object.values(conversations).sort((a, b) => b.timestamp - a.timestamp);
-    res.render('inbox', { conversations: sorted, currentUser });
-  } catch (err) {
-    console.error('❌ Inbox error:', err);
-    res.status(500).send("Inbox error");
-  }
-});
 
-// ✅ Chat Page
-app.get('/chat/:username', async (req, res) => {
-  if (!req.session.user) return res.redirect('/?error=Login required');
-
-  const sender = req.session.user.username;
-  const receiver = req.params.username;
-  if (sender === receiver) return res.redirect('/?error=Cannot chat with yourself');
-
-  try {
-    const userSnap = await db.collection('users').doc(receiver).get();
-    if (!userSnap.exists) return res.status(404).send("User not found");
-
+    // Mark all messages as seen for this user
     const unseen = await db.collection('messages')
-      .where('sender', '==', receiver)
-      .where('receiver', '==', sender)
+      .where('receiver', '==', username)
       .where('seenByReceiver', '==', false)
       .get();
 
     await Promise.all(unseen.docs.map(doc => doc.ref.update({ seenByReceiver: true })));
 
-    res.render('chat', {
-      receiver: userSnap.data(),
-      currentUser: req.session.user
-    });
+    res.render('inbox-chat', {
+  conversations: sorted,
+  currentUser,
+  messages: [],
+  otherUser: null
+});
   } catch (err) {
-    console.error('❌ Chat load error:', err);
-    res.status(500).send("Failed to load chat");
+    console.error('❌ Inbox Chat error:', err);
+    res.status(500).send("Inbox chat error");
   }
 });
+// ✅ Individual Chat Page: /chat/:username
+app.get('/chat/:username', async (req, res) => {
+  if (!req.session.user) return res.redirect('/?error=Login required');
+
+  const currentUser = req.session.user;
+  const username = currentUser.username;
+  const otherUser = req.params.username;
+
+  try {
+    const snapshot = await db.collection('messages')
+      .where('participants', 'in', [
+        [username, otherUser],
+        [otherUser, username]
+      ])
+      .orderBy('timestamp', 'asc')
+      .get();
+
+    const messages = snapshot.docs.map(doc => doc.data());
+
+    res.render('inbox-chat', {
+      currentUser,
+      messages,
+      otherUser,
+      conversations: null // We’ll use this to detect if it's chat vs inbox
+    });
+  } catch (err) {
+    console.error('❌ Direct chat error:', err);
+    res.status(500).send("Chat page error");
+  }
+});
+
+app.post('/send-message', async (req, res) => {
+  if (!req.session.user) return res.redirect('/?error=Login required');
+
+  const sender = req.session.user.username;
+  const { receiver, content } = req.body;
+
+  try {
+    await saveMessage({ sender, receiver, content });
+    res.redirect(`/chat/${receiver}`);
+  } catch (err) {
+    console.error('❌ Send message error:', err);
+    res.status(500).send("Message send failed");
+  }
+});
+// ✅ API: Get full message history between two users
+app.get('/api/messages/conversation/:username', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Login required' });
+
+  const currentUser = req.session.user.username;
+  const otherUser = req.params.username;
+
+  try {
+    const snapshot = await db.collection('messages')
+      .where('participants', 'in', [
+        [currentUser, otherUser],
+        [otherUser, currentUser]
+      ])
+      .orderBy('timestamp', 'asc')
+      .get();
+
+    const messages = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    res.json(messages);
+  } catch (err) {
+    console.error('❌ Failed to fetch messages:', err);
+    res.status(500).json({ error: 'Failed to load messages' });
+  }
+});
+
+// ✅ Inbox Tags Page: /inbox/tags
+app.get('/inbox/tags', async (req, res) => {
+  if (!req.session.user) return res.redirect('/?error=Login required');
+
+  try {
+    const tagSnap = await db.collection('tags')
+      .where('taggedUserId', '==', req.session.user.username)
+      .orderBy('timestamp', 'desc')
+      .get();
+
+    const taggedComments = tagSnap.docs.map(doc => {
+      const tag = doc.data();
+      return {
+        fromUser: tag.fromUser,
+        content: tag.content,
+        threadType: tag.threadType || 'team',
+        link: tag.link || '#',
+        seen: tag.seen || false
+      };
+    });
+
+    // Mark all unseen tags as seen
+    const batch = db.batch();
+    tagSnap.forEach(doc => {
+      if (!doc.data().seen) batch.update(doc.ref, { seen: true });
+    });
+    await batch.commit();
+
+    res.render('inbox-tags', {
+  taggedComments,
+  headerClass: 'header-home',
+  showAuthLinks: true,
+  showLeagueLink: false,
+  useTeamHeader: false,
+  hideAuthModals: false,
+  currentUser: req.session.user
+});
+  } catch (err) {
+    console.error('❌ Tag inbox error:', err);
+    res.status(500).send("Inbox tags error");
+  }
+});
+
+
+// ✅ Helper: Save message to Firestore with profile pics
+async function saveMessage({ sender, receiver, content }) {
+  const timestamp = new Date();
+
+  // Fetch sender + receiver data from Firestore
+  const [senderDoc, receiverDoc] = await Promise.all([
+    db.collection('users').doc(sender).get(),
+    db.collection('users').doc(receiver).get()
+  ]);
+
+  const senderData = senderDoc.exists ? senderDoc.data() : {};
+  const receiverData = receiverDoc.exists ? receiverDoc.data() : {};
+
+  const message = {
+  sender,
+  receiver,
+  participants: [sender, receiver],
+  senderPic: senderData.profile_pic || null,
+  receiverPic: receiverData.profile_pic || null,
+  content: content.trim(),
+  timestamp: admin.firestore.Timestamp.fromDate(timestamp), // ✅ FIXED
+  seenByReceiver: false
+};
+
+  const ref = await db.collection('messages').add(message);
+  return { id: ref.id, ...message };
+}
 
 // ✅ WebSocket
 const connectedUsers = new Map();
@@ -1168,6 +1428,7 @@ io.on('connection', (socket) => {
   }
 });
   socket.on('chatMessage', async ({ sender, receiver, content }) => {
+    console.log('✉️ Incoming socket message:', { sender, receiver, content });
     if (!sender || !receiver || !content?.trim()) return;
     const room = [sender, receiver].sort().join('-');
 
@@ -1189,25 +1450,53 @@ io.on('connection', (socket) => {
     socket.to(room).emit('stopTyping', { from });
   });
 
-  socket.on('disconnect', () => {
+ socket.on('disconnect', () => {
   for (const [username, id] of connectedUsers.entries()) {
     if (id === socket.id) {
       connectedUsers.delete(username);
 
+      const lastSeen = new Date();
+
       // ✅ Save last seen in Firestore
-      db.collection('users').doc(username).update({
-        lastSeen: new Date()
-      }).catch(err => {
-        console.error('❌ Failed to update lastSeen:', err);
+      db.collection('users').doc(username).update({ lastSeen })
+        .catch(err => {
+          console.error('❌ Failed to update lastSeen:', err);
+        });
+
+      // ✅ Send lastSeen to others
+      socket.broadcast.emit('userOffline', {
+        username,
+        lastSeen: lastSeen.toISOString()
       });
 
-      socket.broadcast.emit('userOffline', { username });
       break;
     }
   }
 
   console.log('❌ Socket disconnected:', socket.id);
 });
+
+  socket.on('reactToMessage', async ({ messageId, reactor, emoji }) => {
+    try {
+      const ref = db.collection('messages').doc(messageId);
+      const doc = await ref.get();
+      if (!doc.exists) return;
+
+      const data = doc.data();
+      const reactions = data.reactions || {};
+      reactions[reactor] = emoji;
+
+      await ref.update({ reactions });
+
+      const updatedMsg = { id: messageId, ...data, reactions };
+      updatedMsg.reactions[reactor] = emoji;
+
+      const room = [data.sender, data.receiver].sort().join('-');
+      io.to(room).emit('reactionUpdated', updatedMsg);
+    } catch (err) {
+      console.error('❌ Reaction error:', err);
+    }
+  });
 });
 
 // --- Follow a user ---

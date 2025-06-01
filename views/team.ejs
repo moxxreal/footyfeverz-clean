@@ -121,7 +121,7 @@
 <!-- 🔥 Active Rival Pokes -->
 <% if (pokeThreads && pokeThreads.length > 0) { %>
   <div class="poke-rival-container" style="margin-bottom: 40px;">
-  <h2 style="margin-bottom: 15px; font-size: 28px; font-weight: 700; text-align: center; color: #222;">🔥 Active Rival Pokes</h2>
+  <h2 style="margin-bottom: 15px; font-size: 28px; font-weight: 700; text-align: center; color: #222;">🔥 Active Rival Debates</h2>
 
   <% pokeThreads.forEach(poke => {
     const formattedTeamB = poke.teamB.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -194,8 +194,8 @@
           </div>
 
           <% if (comment.text && comment.text.trim()) { %>
-            <p><%= comment.text %></p>
-          <% } %>
+  <p><%- comment.text.replace(/@(\w+)/g, '<a href="/user/$1" style="color:#007BFF;">$1</a>') %></p>
+<% } %>
 
           <% if (comment.media) {
             const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg');
@@ -277,21 +277,22 @@
     ">
       <form id="commentForm" action="/team/<%= teamname %>/comment" method="POST" enctype="multipart/form-data">
         <textarea
-          id="commentText"
-          name="text"
-          placeholder="Write your comment..."
-          style="
-            width: 100%;
-            height: 220px;
-            font-size: 18px;
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid #ccc;
-            background: #fff;
-            resize: vertical;
-            margin-bottom: 15px;
-          "
-        ></textarea>
+  id="commentText"
+  name="text"
+  placeholder="Write your comment... tag @username to mention someone"
+  style="
+    width: 100%;
+    height: 220px;
+    font-size: 18px;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #ccc;
+    background: #fff;
+    resize: vertical;
+    margin-bottom: 15px;
+  "
+></textarea>
+
         <input type="file" name="media" id="mediaInput" accept="image/*,video/*" style="display: none;" />
         <input type="file" name="tacticImage" id="tacticImageInput" style="display: none;" />
         <img id="mediaPreview" style="max-width: 200px; display: none; margin-top: 10px;" />

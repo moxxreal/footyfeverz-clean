@@ -5,6 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Inbox | Footy Feverz</title>
   <link rel="stylesheet" href="/style.css" />
+  <style>
+    .inbox-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 1rem;
+      text-align: center;
+    }
+    .card-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      justify-content: center;
+      margin-top: 2rem;
+    }
+    .inbox-card {
+      width: 280px;
+      height: 160px;
+      background: #fff;
+      border-radius: 1.5rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-decoration: none;
+      color: #111;
+      position: relative;
+      transition: transform 0.2s ease;
+    }
+    .inbox-card:hover {
+      transform: scale(1.03);
+    }
+    .inbox-card h3 {
+      font-size: 1.3rem;
+      font-weight: 600;
+    }
+    .notif-badge {
+      position: absolute;
+      top: 14px;
+      right: 20px;
+      background: red;
+      color: white;
+      font-size: 0.9rem;
+      padding: 4px 8px;
+      border-radius: 999px;
+    }
+  </style>
 </head>
 <body>
   <%- include('partials/_header', {
@@ -17,29 +64,23 @@
   <section class="inbox-container">
     <h2>📥 My Inbox</h2>
 
-    <% if (conversations.length === 0) { %>
-      <p class="empty-inbox">You have no messages yet.</p>
-    <% } else { %>
-      <div class="conversation-list">
-        <% conversations.forEach(convo => { %>
-          <a href="/chat/<%= convo.user %>" class="conversation-item">
-            <img src="<%= convo.profile_pic || '/default-avatar.png' %>" alt="avatar" class="avatar" />
-            <div class="conversation-content">
-              <div class="conversation-header">
-                <strong><%= convo.user %></strong>
-                <small><%= new Date(convo.timestamp).toLocaleString() %></small>
-              </div>
-              <div class="conversation-message">
-                <%= convo.lastMessage %>
-              </div>
-            </div>
-            <% if (!convo.seenByReceiver && convo.user !== currentUser.username) { %>
-              <div class="unread-dot"></div>
-            <% } %>
-          </a>
-        <% }) %>
-      </div>
-    <% } %>
+    <div class="card-grid">
+      <!-- Chat Notifications -->
+      <a href="/inbox/chat" class="inbox-card">
+        <h3>💬 Chat</h3>
+        <% if (user.chatNotifications > 0) { %>
+          <span class="notif-badge"><%= user.chatNotifications %></span>
+        <% } %>
+      </a>
+
+      <!-- Tag Notifications -->
+      <a href="/inbox/tags" class="inbox-card">
+        <h3>🏷️ Tags</h3>
+        <% if (user.tagNotifications > 0) { %>
+          <span class="notif-badge"><%= user.tagNotifications %></span>
+        <% } %>
+      </a>
+    </div>
   </section>
 </body>
 </html>
