@@ -1483,26 +1483,28 @@ io.on('connection', (socket) => {
   });
 
   socket.on('reactToMessage', async ({ messageId, reactor, emoji }) => {
-    try {
-      const ref = db.collection('messages').doc(messageId);
-      const doc = await ref.get();
-      if (!doc.exists) return;
+  try {
+    const ref = db.collection('messages').doc(messageId);
+    const doc = await ref.get();
+    if (!doc.exists) return;
 
-      const data = doc.data();
-      const reactions = data.reactions || {};
-      reactions[reactor] = emoji;
+    const data = doc.data();
+    const reactions = data.reactions || {};
+    reactions[reactor] = emoji;
 
-      await ref.update({ reactions });
+    await ref.update({ reactions });
 
-      const updatedMsg = { id: messageId, ...data, reactions };
-      updatedMsg.reactions[reactor] = emoji;
+    const updatedMsg = { id: messageId, ...data, reactions };
 
-      const room = [data.sender, data.receiver].sort().join('-');
-      io.to(room).emit('reactionUpdated', updatedMsg);
-    } catch (err) {
-      console.error('❌ Reaction error:', err);
-    }
-  });
+    const room = [data.sender, data.receiver].sort().join('-');
+
+    // ✅ This ensures both users get the reaction update
+    io.in(room).emit('reactionUpdated', updatedMsg);
+
+  } catch (err) {
+    console.error('❌ Reaction error:', err);
+  }
+});
 
   socket.on('disconnect', () => {
     for (const [username, id] of connectedUsers.entries()) {
