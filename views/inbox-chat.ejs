@@ -235,10 +235,8 @@
       try {
         const res = await fetch(`/api/messages/conversation/${receiverUsername}`);
         const messages = await res.json();
-
         chatBox.innerHTML = '';
         renderedMessageIds.clear();
-
         messages.forEach(renderMessage);
         scrollToBottom();
       } catch (err) {
@@ -298,38 +296,32 @@
     });
 
     socket.on('newMessage', (msg) => {
-      if (
-        (msg.sender === currentUsername && msg.receiver === receiverUsername) ||
-        (msg.sender === receiverUsername && msg.receiver === currentUsername)
-      ) {
+      if (!renderedMessageIds.has(msg.id)) {
         renderMessage(msg);
         scrollToBottom();
       }
     });
 
     socket.on('reactionUpdated', updatedMsg => {
-  const existingWrappers = [...chatBox.children];
-  for (const wrapper of existingWrappers) {
-    if (wrapper.dataset.msgId === updatedMsg.id) {
-      // Just update the reaction inside the message
-      const msgDiv = wrapper.querySelector('div');
-      if (msgDiv) {
-        // Remove old emoji tag if exists
-        const oldEmoji = msgDiv.querySelector('.reaction-emoji');
-        if (oldEmoji) msgDiv.removeChild(oldEmoji);
+      const existingWrappers = [...chatBox.children];
+      for (const wrapper of existingWrappers) {
+        if (wrapper.dataset.msgId === updatedMsg.id) {
+          const msgDiv = wrapper.querySelector('div');
+          if (msgDiv) {
+            const oldEmoji = msgDiv.querySelector('.reaction-emoji');
+            if (oldEmoji) msgDiv.removeChild(oldEmoji);
 
-        // Add updated emoji (current user's only)
-        if (updatedMsg.reactions?.[currentUsername]) {
-          const emojiTag = document.createElement('div');
-          emojiTag.className = 'reaction-emoji';
-          emojiTag.textContent = updatedMsg.reactions[currentUsername];
-          msgDiv.appendChild(emojiTag);
+            if (updatedMsg.reactions?.[currentUsername]) {
+              const emojiTag = document.createElement('div');
+              emojiTag.className = 'reaction-emoji';
+              emojiTag.textContent = updatedMsg.reactions[currentUsername];
+              msgDiv.appendChild(emojiTag);
+            }
+          }
+          return;
         }
       }
-      return;
-    }
-  }
-});
+    });
 
     socket.emit('joinRoom', { sender: currentUsername, receiver: receiverUsername });
     socket.emit('checkOnlineStatus', { userToCheck: receiverUsername });
