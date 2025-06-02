@@ -1172,7 +1172,6 @@ app.get('/inbox', async (req, res) => {
   const currentUser = req.session.user;
 
   try {
-    // Count unseen chat messages
     const chatSnap = await db.collection('messages')
       .where('receiver', '==', username)
       .where('seenByReceiver', '==', false)
@@ -1180,7 +1179,6 @@ app.get('/inbox', async (req, res) => {
 
     const chatNotifications = chatSnap.size;
 
-    // Count unseen tags
     const tagSnap = await db.collection('tags')
       .where('taggedUserId', '==', username)
       .where('seen', '==', false)
@@ -1236,7 +1234,6 @@ app.get('/inbox/chat', async (req, res) => {
 
     const sorted = Object.values(conversations).sort((a, b) => b.timestamp - a.timestamp);
 
-    // Mark all messages as seen for this user
     const unseen = await db.collection('messages')
       .where('receiver', '==', username)
       .where('seenByReceiver', '==', false)
@@ -1245,16 +1242,18 @@ app.get('/inbox/chat', async (req, res) => {
     await Promise.all(unseen.docs.map(doc => doc.ref.update({ seenByReceiver: true })));
 
     res.render('inbox-chat', {
-  conversations: sorted,
-  currentUser,
-  messages: [],
-  otherUser: null
-});
+      conversations: sorted,
+      currentUser,
+      messages: [],
+      otherUser: null
+    });
   } catch (err) {
     console.error('❌ Inbox Chat error:', err);
     res.status(500).send("Inbox chat error");
   }
 });
+
+
 // ✅ Individual Chat Page: /chat/:username
 app.get('/chat/:username', async (req, res) => {
   if (!req.session.user) return res.redirect('/?error=Login required');
@@ -1264,21 +1263,52 @@ app.get('/chat/:username', async (req, res) => {
   const otherUser = req.params.username;
 
   try {
-    const snapshot = await db.collection('messages')
-      .where('participants', 'in', [
-        [username, otherUser],
-        [otherUser, username]
-      ])
-      .orderBy('timestamp', 'asc')
+    const convoRef = db.collection('messages')
+      .where('participants', 'array-contains-any', [username, otherUser])
+      .orderBy('timestamp', 'asc');
+
+    const snapshot = await convoRef.get();
+    const participantsSorted = [username, otherUser].sort().join(',');
+
+    const messages = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const dataSorted = data.participants.sort().join(',');
+      if (dataSorted === participantsSorted) {
+        messages.push({ id: doc.id, ...data });
+      }
+    });
+
+    const convoSnapshot = await db.collection('messages')
+      .where('participants', 'array-contains', username)
+      .orderBy('timestamp', 'desc')
       .get();
 
-    const messages = snapshot.docs.map(doc => doc.data());
+    const conversations = {};
+    convoSnapshot.forEach(doc => {
+      const msg = doc.data();
+      const other = msg.sender === username ? msg.receiver : msg.sender;
+      if (
+        !conversations[other] ||
+        new Date(msg.timestamp).getTime() > conversations[other].timestamp.getTime()
+      ) {
+        conversations[other] = {
+          user: other,
+          lastMessage: msg.content,
+          timestamp: new Date(msg.timestamp),
+          seenByReceiver: msg.seenByReceiver || false,
+          profile_pic: msg.sender === username ? msg.receiverPic : msg.senderPic
+        };
+      }
+    });
+
+    const sortedConversations = Object.values(conversations).sort((a, b) => b.timestamp - a.timestamp);
 
     res.render('inbox-chat', {
       currentUser,
       messages,
       otherUser,
-      conversations: null // We’ll use this to detect if it's chat vs inbox
+      conversations: sortedConversations
     });
   } catch (err) {
     console.error('❌ Direct chat error:', err);
@@ -1286,47 +1316,49 @@ app.get('/chat/:username', async (req, res) => {
   }
 });
 
-app.post('/send-message', async (req, res) => {
-  if (!req.session.user) return res.redirect('/?error=Login required');
+
+// ✅ API: Send a message
+app.post('/api/messages/send', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Login required' });
 
   const sender = req.session.user.username;
   const { receiver, content } = req.body;
 
   try {
-    await saveMessage({ sender, receiver, content });
-    res.redirect(`/chat/${receiver}`);
+    const savedMessage = await saveMessage({ sender, receiver, content });
+    console.log('✅ Saved message to Firestore:', savedMessage);
+    res.json({ success: true, message: savedMessage });
   } catch (err) {
-    console.error('❌ Send message error:', err);
-    res.status(500).send("Message send failed");
+    console.error('❌ /api/messages/send error:', err);
+    res.status(500).json({ error: 'Failed to send message' });
   }
 });
+
+
 // ✅ API: Get full message history between two users
 app.get('/api/messages/conversation/:username', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Login required' });
+  const user1 = req.session.user.username;
+  const user2 = req.params.username;
 
-  const currentUser = req.session.user.username;
-  const otherUser = req.params.username;
+  const convoRef = db.collection('messages')
+    .where('participants', 'array-contains-any', [user1, user2])
+    .orderBy('timestamp');
 
-  try {
-    const snapshot = await db.collection('messages')
-      .where('participants', 'in', [
-        [currentUser, otherUser],
-        [otherUser, currentUser]
-      ])
-      .orderBy('timestamp', 'asc')
-      .get();
+  const snapshot = await convoRef.get();
+  const messages = [];
 
-    const messages = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    const participantsSorted = [user1, user2].sort().join(',');
+    const dataSorted = data.participants.sort().join(',');
+    if (participantsSorted === dataSorted) {
+      messages.push({ id: doc.id, ...data });
+    }
+  });
 
-    res.json(messages);
-  } catch (err) {
-    console.error('❌ Failed to fetch messages:', err);
-    res.status(500).json({ error: 'Failed to load messages' });
-  }
+  res.json(messages);
 });
+
 
 // ✅ Inbox Tags Page: /inbox/tags
 app.get('/inbox/tags', async (req, res) => {
@@ -1349,7 +1381,6 @@ app.get('/inbox/tags', async (req, res) => {
       };
     });
 
-    // Mark all unseen tags as seen
     const batch = db.batch();
     tagSnap.forEach(doc => {
       if (!doc.data().seen) batch.update(doc.ref, { seen: true });
@@ -1357,14 +1388,14 @@ app.get('/inbox/tags', async (req, res) => {
     await batch.commit();
 
     res.render('inbox-tags', {
-  taggedComments,
-  headerClass: 'header-home',
-  showAuthLinks: true,
-  showLeagueLink: false,
-  useTeamHeader: false,
-  hideAuthModals: false,
-  currentUser: req.session.user
-});
+      taggedComments,
+      headerClass: 'header-home',
+      showAuthLinks: true,
+      showLeagueLink: false,
+      useTeamHeader: false,
+      hideAuthModals: false,
+      currentUser: req.session.user
+    });
   } catch (err) {
     console.error('❌ Tag inbox error:', err);
     res.status(500).send("Inbox tags error");
@@ -1376,7 +1407,6 @@ app.get('/inbox/tags', async (req, res) => {
 async function saveMessage({ sender, receiver, content }) {
   const timestamp = new Date();
 
-  // Fetch sender + receiver data from Firestore
   const [senderDoc, receiverDoc] = await Promise.all([
     db.collection('users').doc(sender).get(),
     db.collection('users').doc(receiver).get()
@@ -1386,21 +1416,22 @@ async function saveMessage({ sender, receiver, content }) {
   const receiverData = receiverDoc.exists ? receiverDoc.data() : {};
 
   const message = {
-  sender,
-  receiver,
-  participants: [sender, receiver],
-  senderPic: senderData.profile_pic || null,
-  receiverPic: receiverData.profile_pic || null,
-  content: content.trim(),
-  timestamp: admin.firestore.Timestamp.fromDate(timestamp), // ✅ FIXED
-  seenByReceiver: false
-};
+    sender,
+    receiver,
+    participants: [sender, receiver].sort(),
+    senderPic: senderData.profile_pic || null,
+    receiverPic: receiverData.profile_pic || null,
+    content: content.trim(),
+    timestamp: admin.firestore.Timestamp.fromDate(timestamp),
+    seenByReceiver: false
+  };
 
   const ref = await db.collection('messages').add(message);
   return { id: ref.id, ...message };
 }
 
-// ✅ WebSocket
+
+// ✅ WebSocket setup
 const connectedUsers = new Map();
 
 io.on('connection', (socket) => {
@@ -1412,21 +1443,22 @@ io.on('connection', (socket) => {
     connectedUsers.set(sender, socket.id);
     socket.broadcast.emit('userOnline', { username: sender });
   });
-  socket.on('checkOnlineStatus', async ({ userToCheck }) => {
-  if (!userToCheck) return;
 
-  if (connectedUsers.has(userToCheck)) {
-    socket.emit('userOnline', { username: userToCheck });
-  } else {
-    try {
-      const doc = await db.collection('users').doc(userToCheck).get();
-      const lastSeen = doc.exists ? doc.data().lastSeen : null;
-      socket.emit('userOffline', { username: userToCheck, lastSeen });
-    } catch (err) {
-      console.error('❌ Failed to check user last seen:', err);
+  socket.on('checkOnlineStatus', async ({ userToCheck }) => {
+    if (!userToCheck) return;
+    if (connectedUsers.has(userToCheck)) {
+      socket.emit('userOnline', { username: userToCheck });
+    } else {
+      try {
+        const doc = await db.collection('users').doc(userToCheck).get();
+        const lastSeen = doc.exists ? doc.data().lastSeen : null;
+        socket.emit('userOffline', { username: userToCheck, lastSeen });
+      } catch (err) {
+        console.error('❌ Failed to check user last seen:', err);
+      }
     }
-  }
-});
+  });
+
   socket.on('chatMessage', async ({ sender, receiver, content }) => {
     console.log('✉️ Incoming socket message:', { sender, receiver, content });
     if (!sender || !receiver || !content?.trim()) return;
@@ -1450,32 +1482,6 @@ io.on('connection', (socket) => {
     socket.to(room).emit('stopTyping', { from });
   });
 
- socket.on('disconnect', () => {
-  for (const [username, id] of connectedUsers.entries()) {
-    if (id === socket.id) {
-      connectedUsers.delete(username);
-
-      const lastSeen = new Date();
-
-      // ✅ Save last seen in Firestore
-      db.collection('users').doc(username).update({ lastSeen })
-        .catch(err => {
-          console.error('❌ Failed to update lastSeen:', err);
-        });
-
-      // ✅ Send lastSeen to others
-      socket.broadcast.emit('userOffline', {
-        username,
-        lastSeen: lastSeen.toISOString()
-      });
-
-      break;
-    }
-  }
-
-  console.log('❌ Socket disconnected:', socket.id);
-});
-
   socket.on('reactToMessage', async ({ messageId, reactor, emoji }) => {
     try {
       const ref = db.collection('messages').doc(messageId);
@@ -1496,6 +1502,24 @@ io.on('connection', (socket) => {
     } catch (err) {
       console.error('❌ Reaction error:', err);
     }
+  });
+
+  socket.on('disconnect', () => {
+    for (const [username, id] of connectedUsers.entries()) {
+      if (id === socket.id) {
+        connectedUsers.delete(username);
+        const lastSeen = new Date();
+        db.collection('users').doc(username).update({ lastSeen })
+          .catch(err => console.error('❌ Failed to update lastSeen:', err));
+        socket.broadcast.emit('userOffline', {
+          username,
+          lastSeen: lastSeen.toISOString()
+        });
+        break;
+      }
+    }
+
+    console.log('❌ Socket disconnected:', socket.id);
   });
 });
 

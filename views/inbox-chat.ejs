@@ -114,7 +114,7 @@
     dayjs.extend(window.dayjs_plugin_relativeTime);
   </script>
   <script src="/socket.io/socket.io.js"></script>
-  <% if (typeof messages !== 'undefined' && typeof otherUser !== 'undefined') { %>
+  <% if (typeof currentUser !== 'undefined' && typeof otherUser !== 'undefined') { %>
   <script>
     const currentUsername = '<%= currentUser.username %>';
     const receiverUsername = '<%= otherUser %>';
@@ -130,7 +130,11 @@
     }
 
     function renderMessage(msg) {
+      if (!msg.id || renderedMessageIds.has(msg.id)) return;
+      renderedMessageIds.add(msg.id);
+
       const wrapper = document.createElement('div');
+      wrapper.dataset.msgId = msg.id;
       wrapper.style.display = 'flex';
       wrapper.style.flexDirection = 'column';
       wrapper.style.margin = '10px 0';
@@ -155,7 +159,7 @@
           timestamp = dayjs(msg.timestamp).format('HH:mm');
         }
       } catch (err) {
-        console.error('Failed to parse timestamp:', msg.timestamp);
+        console.error('Timestamp parse error:', err);
       }
 
       time.textContent = timestamp;
@@ -173,9 +177,9 @@
         msgDiv.style.textAlign = 'left';
       }
 
-      const emojiTag = document.createElement('div');
-      emojiTag.className = 'reaction-emoji';
       if (msg.reactions?.[currentUsername]) {
+        const emojiTag = document.createElement('div');
+        emojiTag.className = 'reaction-emoji';
         emojiTag.textContent = msg.reactions[currentUsername];
         msgDiv.appendChild(emojiTag);
       }
@@ -227,31 +231,16 @@
       chatBox.appendChild(wrapper);
     }
 
-    socket.emit('joinRoom', { sender: currentUsername, receiver: receiverUsername });
-    socket.emit('checkOnlineStatus', { userToCheck: receiverUsername });
-
-    socket.on('userOnline', ({ username }) => {
-      if (username === receiverUsername) {
-        statusElement.textContent = '🟢 Online';
-        statusElement.style.color = 'green';
-      }
-    });
-
-    socket.on('userOffline', ({ username, lastSeen }) => {
-      if (username === receiverUsername) {
-        const relative = lastSeen ? dayjs(lastSeen).fromNow() : 'a while ago';
-        statusElement.textContent = `⚫ Last seen ${relative}`;
-        statusElement.style.color = '#888';
-      }
-    });
-
     async function loadMessages() {
       try {
         const res = await fetch(`/api/messages/conversation/${receiverUsername}`);
         const messages = await res.json();
+
         chatBox.innerHTML = '';
+        renderedMessageIds.clear();
+
         messages.forEach(renderMessage);
-        setTimeout(scrollToBottom, 0);
+        scrollToBottom();
       } catch (err) {
         console.error('❌ Failed to load messages:', err);
       }
@@ -285,6 +274,21 @@
       }, 1000);
     });
 
+    socket.on('userOnline', ({ username }) => {
+      if (username === receiverUsername) {
+        statusElement.textContent = '🟢 Online';
+        statusElement.style.color = 'green';
+      }
+    });
+
+    socket.on('userOffline', ({ username, lastSeen }) => {
+      if (username === receiverUsername) {
+        const relative = lastSeen ? dayjs(lastSeen).fromNow() : 'a while ago';
+        statusElement.textContent = `⚫ Last seen ${relative}`;
+        statusElement.style.color = '#888';
+      }
+    });
+
     socket.on('typing', ({ from }) => {
       if (from === receiverUsername) typingIndicator.style.display = 'block';
     });
@@ -304,14 +308,31 @@
     });
 
     socket.on('reactionUpdated', updatedMsg => {
-      if (
-        (updatedMsg.sender === currentUsername && updatedMsg.receiver === receiverUsername) ||
-        (updatedMsg.sender === receiverUsername && updatedMsg.receiver === currentUsername)
-      ) {
-        loadMessages();
-      }
-    });
+  const existingWrappers = [...chatBox.children];
+  for (const wrapper of existingWrappers) {
+    if (wrapper.dataset.msgId === updatedMsg.id) {
+      // Just update the reaction inside the message
+      const msgDiv = wrapper.querySelector('div');
+      if (msgDiv) {
+        // Remove old emoji tag if exists
+        const oldEmoji = msgDiv.querySelector('.reaction-emoji');
+        if (oldEmoji) msgDiv.removeChild(oldEmoji);
 
+        // Add updated emoji (current user's only)
+        if (updatedMsg.reactions?.[currentUsername]) {
+          const emojiTag = document.createElement('div');
+          emojiTag.className = 'reaction-emoji';
+          emojiTag.textContent = updatedMsg.reactions[currentUsername];
+          msgDiv.appendChild(emojiTag);
+        }
+      }
+      return;
+    }
+  }
+});
+
+    socket.emit('joinRoom', { sender: currentUsername, receiver: receiverUsername });
+    socket.emit('checkOnlineStatus', { userToCheck: receiverUsername });
     loadMessages();
   </script>
   <% } %>
