@@ -1430,7 +1430,6 @@ async function saveMessage({ sender, receiver, content }) {
   return { id: ref.id, ...message };
 }
 
-
 // ✅ WebSocket setup
 const connectedUsers = new Map();
 
@@ -1438,11 +1437,12 @@ io.on('connection', (socket) => {
   console.log('🔌 Socket connected:', socket.id);
 
   socket.on('joinRoom', ({ sender, receiver }) => {
-    const room = [sender, receiver].sort().join('-');
-    socket.join(room);
-    connectedUsers.set(sender, socket.id);
-    socket.broadcast.emit('userOnline', { username: sender });
-  });
+  const room = [sender, receiver].sort().join('-');
+  socket.join(room);
+  connectedUsers.set(sender, socket.id);
+  // Optional: you can log room membership
+  console.log(`👥 ${sender} joined room ${room}`);
+});
 
   socket.on('checkOnlineStatus', async ({ userToCheck }) => {
     if (!userToCheck) return;
