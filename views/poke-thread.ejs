@@ -4,94 +4,245 @@
   <title><%= teamA %> vs <%= teamB %> | Poke Thread</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #fafafa;
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #fafafa;
+  }
+
+  .rival-header {
+    text-align: center;
+    margin-top: 30px;
+    padding: 0 16px;
+  }
+
+  .pitch-container {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    margin: 30px auto;
+  }
+
+  .pitch {
+    width: 100%;
+    border-radius: 20px;
+    display: block;
+  }
+
+  .ball {
+    position: absolute;
+    width: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: left 0.4s ease;
+    z-index: 5;
+  }
+
+  .player {
+    position: absolute;
+    width: 45px;
+    animation: kick 0.6s infinite alternate;
+  }
+
+  @keyframes kick {
+    from { transform: rotate(-5deg); }
+    to { transform: rotate(5deg); }
+  }
+
+  .player.red {
+    content: url('/images/player-red.png');
+  }
+
+  .player.blue {
+    content: url('/images/player-blue.png');
+  }
+
+  .scoreboard {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #2b2b2b;
+    background: #fff;
+    padding: 10px 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    display: inline-block;
+  }
+
+  .goal-flash {
+    display: none;
+    text-align: center;
+    font-size: 24px;
+    color: green;
+    font-weight: bold;
+    animation: flash 1s ease-in-out;
+  }
+
+  @keyframes flash {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .poke-comments {
+    margin-top: 30px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0 16px;
+  }
+
+  .poke-comment-form {
+    margin-top: 20px;
+  }
+
+  textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+  }
+
+  button[type="submit"],
+  .poke-comments button {
+    background: #cc0000;
+    color: white;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  button[type="submit"]:hover,
+  .poke-comments button:hover {
+    background: #a60000;
+  }
+
+  video,
+  img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+  }
+
+  form[action*="support"] {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+  }
+
+  form[action*="support"] button {
+    width: 90%;
+    max-width: 300px;
+  }
+
+  @media screen and (max-width: 600px) {
+    .scoreboard {
+      font-size: 22px;
+      padding: 8px 12px;
     }
 
-    .rival-header {
-      text-align: center;
-      margin-top: 30px;
-      padding: 0 16px;
+    .ball {
+      width: 40px;
     }
 
-    .poke-body {
-      margin: 30px auto;
-      padding: 20px;
-      max-width: 800px;
-      border: 2px solid red;
-      border-radius: 16px;
-      background: #fff3f3;
+    .player {
+      width: 30px;
     }
 
-    .poke-comments {
-      margin-top: 30px;
-      max-width: 800px;
-      margin-left: auto;
-      margin-right: auto;
-      padding: 0 16px;
+    .goal-flash {
+      font-size: 20px;
     }
 
-    .poke-comment-form {
-      margin-top: 20px;
+    h1 {
+      font-size: 20px;
     }
 
-    textarea {
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 16px;
+    .poke-comments h2 {
+      font-size: 18px;
     }
-
-    button[type="submit"] {
-      background: #cc0000;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    button[type="submit"]:hover {
-      background: #a60000;
-    }
-
-    @media (max-width: 600px) {
-      .rival-header h1 {
-        font-size: 22px;
-        line-height: 1.4;
-      }
-
-      .poke-comments h2 {
-        font-size: 20px;
-      }
-
-      .poke-comment-form textarea {
-        font-size: 15px;
-      }
-
-      button[type="submit"] {
-        width: 100%;
-      }
-
-      video, img {
-        max-width: 100%;
-        height: auto;
-      }
-    }
-  </style>
+  }
+</style>
 </head>
 <body>
   <%- include('partials/_header') %>
 
-  <!-- Full-width banner image like team pages -->
-  <div style="width: 95%; max-width: 1400px; margin: 40px auto; display: flex; justify-content: center; align-items: center; padding: 0 10px;">
-    <img src="/images/join-rivalry-banner.png" alt="Join the Rivalry" style="width: 100%; height: auto; display: block; margin: 0; border-radius: 20px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);" />
+  <% if (user && !userVote) { %>
+    <form action="/poke/<%= pokeId %>/support" method="POST" style="text-align: center; margin-top: 20px;">
+      <p>Which side are you on?</p>
+      <button type="submit" name="team" value="teamA">Support <%= teamA %></button>
+      <button type="submit" name="team" value="teamB">Support <%= teamB %></button>
+    </form>
+  <% } else if (userVote) { %>
+    <p style="text-align:center;"><strong>You’re supporting: <%= userVote === 'teamA' ? teamA : teamB %></strong></p>
+  <% } %>
+
+  <div style="text-align:center; margin: 20px 0;">
+    <div class="scoreboard" id="scoreboard">⚽ Live Score: 0 - 0</div>
+    <div class="goal-flash" id="goalFlash">GOAL!</div>
   </div>
+
+  <div class="pitch-container">
+    <img src="/images/pitch.jpg" alt="Football Pitch" class="pitch" />
+    <img id="ball" src="/images/ball.png" class="ball" style="left: 45%;" />
+
+    <% for (let i = 0; i < 5; i++) { 
+  const topOffset = 34 + i * 5; // slightly more downward
+%>
+  <img class="player red" id="red-player-<%= i %>" style="top: <%= topOffset %>%; left: 38.5%;" />
+<% } %>
+
+<% for (let i = 0; i < 5; i++) { 
+  const topOffset = 34 + i * 4.2;
+%>
+  <img class="player blue" id="blue-player-<%= i %>" style="top: <%= topOffset %>%; left: 51%;" />
+<% } %>
+  </div>
+
+  <script>
+    let scoreA = 0;
+    let scoreB = 0;
+
+    async function fetchVotes() {
+      try {
+        const res = await fetch('/poke/<%= pokeId %>/votes');
+        const data = await res.json();
+        const teamAVotes = data.teamA || 0;
+        const teamBVotes = data.teamB || 0;
+        const net = teamAVotes - teamBVotes;
+        const max = 10;
+
+        if (Math.abs(net) >= max) {
+          if (net > 0) scoreA++;
+          else scoreB++;
+          document.getElementById('goalFlash').style.display = 'block';
+          setTimeout(() => {
+            document.getElementById('goalFlash').style.display = 'none';
+          }, 1000);
+          await fetch('/poke/<%= pokeId %>/reset-votes', { method: 'POST' });
+        }
+
+        document.getElementById('scoreboard').innerText = `⚽ Live Score: ${scoreA} - ${scoreB}`;
+        const percent = 45 + Math.max(-max, Math.min(net, max)) * 5;
+        document.getElementById('ball').style.left = percent + '%';
+
+        for (let i = 0; i < 5; i++) {
+          document.getElementById('red-player-' + i).style.left = (percent - 6) + '%';
+          document.getElementById('blue-player-' + i).style.left = (percent + 6) + '%';
+        }
+      } catch (err) {
+        console.error("Failed to fetch votes:", err);
+      }
+    }
+
+    fetchVotes();
+    setInterval(fetchVotes, 3000);
+  </script>
 
   <div class="rival-header">
     <h1><%= teamA.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) %> ⚔️ <%= teamB.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) %></h1>
@@ -107,15 +258,15 @@
 
   <div class="poke-comments">
     <h2>💬 Comments from both sides</h2>
-    <% comments.forEach((comment, index) => { 
+    <% comments.forEach(comment => {
       const isTeamA = comment.team === 'teamA';
-      const isTeamB = comment.team === 'teamB';
-      const teamLabel = isTeamA ? '🔵 Home Fan' : isTeamB ? '🔴 Rival Fan' : '';
+      const teamEmoji = isTeamA ? '🔵' : '🔴';
+      const teamLabel = `${teamEmoji} ${isTeamA ? teamA : teamB} Supporter`;
     %>
       <div style="border: 1px solid #ccc; padding: 12px; border-radius: 10px; margin-bottom: 15px; background: #fff;">
         <strong><a href="/user/<%= comment.user %>"><%= comment.user %></a></strong>
-        <span style="margin-left: 10px; font-weight: normal; font-size: 0.9em;"><%= teamLabel %></span>
-        <p><%= comment.text.replace(/@(\w+)/g, '<a href="/user/$1" style="color:#007BFF;">@$1</a>') %></p>
+        <span style="margin-left: 10px;"><%= teamLabel %></span>
+        <p><%- comment.text.replace(/@(\w+)/g, '<a href="/user/$1" style="color:#007BFF;">@$1</a>') %></p>
 
         <% if (comment.media) { const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg'); %>
           <% if (isVideo) { %>

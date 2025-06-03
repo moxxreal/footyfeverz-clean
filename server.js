@@ -308,37 +308,19 @@ async function renderHomeWithError(res, errorType, errorMsg) {
   try {
     const cutoff = dayjs().subtract(24, 'hour').toDate();
 
-const commentsSnap = await db.collection('comments').get();
-const userStats = {};
+const statsSnap = await db.collection('userStats')
+  .orderBy('score', 'desc')
+  .limit(5)
+  .get();
 
-commentsSnap.forEach(doc => {
-  const c = doc.data();
-  if (!userStats[c.user]) {
-    userStats[c.user] = { comments: 0, likes: 0, funny: 0, angry: 0, love: 0, score: 0 };
-  }
-
-  const like = c.like_reactions || 0;
-  const funny = c.funny_reactions || 0;
-  const angry = c.angry_reactions || 0;
-  const love = c.love_reactions || 0;
-
-  userStats[c.user].comments += 1;
-  userStats[c.user].likes += like;
-  userStats[c.user].funny += funny;
-  userStats[c.user].angry += angry;
-  userStats[c.user].love += love;
-
-  userStats[c.user].score += 1 + like + funny + angry + love; // 1 point per comment + each reaction
+const topFans = statsSnap.docs.map(doc => {
+  const data = doc.data();
+  return {
+    username: doc.id,
+    comments: data.comments || 0,
+    likes: (data.likes || 0) + (data.funny || 0) + (data.angry || 0) + (data.love || 0)
+  };
 });
-
-const topFans = Object.entries(userStats)
-  .sort((a, b) => b[1].score - a[1].score)
-  .slice(0, 5)
-  .map(([username, stats]) => ({
-    username,
-    comments: stats.comments,
-    likes: stats.likes + stats.funny + stats.angry + stats.love // total reactions shown as "Likes"
-  }));
 
     const storiesSnap = await db.collection('stories').where('createdAt', '>=', cutoff).orderBy('createdAt', 'desc').get();
     const stories = [];
@@ -401,12 +383,24 @@ app.post('/signup', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // ✅ Create user document
     await db.collection('users').doc(username).set({
       username,
       password: hashedPassword,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
+    // ✅ Initialize userStats document
+    await db.collection('userStats').doc(username).set({
+      comments: 0,
+      likes: 0,
+      funny: 0,
+      angry: 0,
+      love: 0,
+      score: 0
+    });
+
+    // ✅ Set session
     req.session.user = { username };
     res.redirect('/');
   } catch (err) {
@@ -457,20 +451,19 @@ app.get('/', async (req, res) => {
   const cutoff = dayjs().subtract(24, 'hour').toDate();
 
   try {
-    const commentsSnap = await db.collection('comments').get();
-    const userStats = {};
-    commentsSnap.forEach(doc => {
-      const c = doc.data();
-      if (!userStats[c.user]) userStats[c.user] = { comments: 0, likes: 0 };
-      userStats[c.user].comments += 1;
-      userStats[c.user].likes += c.like_reactions || 0;
-    });
+    const statsSnap = await db.collection('userStats')
+  .orderBy('score', 'desc')
+  .limit(5)
+  .get();
 
-    const topFans = Object.entries(userStats)
-      .sort((a, b) => b[1].likes - a[1].likes)
-      .slice(0, 5)
-      .map(([username, stats]) => ({ username, comments: stats.comments, likes: stats.likes }));
-
+const topFans = statsSnap.docs.map(doc => {
+  const data = doc.data();
+  return {
+    username: doc.id,
+    comments: data.comments || 0,
+    likes: (data.likes || 0) + (data.funny || 0) + (data.angry || 0) + (data.love || 0)
+  };
+});
     const storiesSnap = await db.collection('stories').where('createdAt', '>=', cutoff).orderBy('createdAt', 'desc').get();
     const stories = [];
     for (const doc of storiesSnap.docs) {
@@ -539,44 +532,53 @@ app.post('/stories/upload', upload.single('storyMedia'), async (req, res) => {
   }
 });
 
-// --- React to Story ---
-app.post('/stories/:id/react', async (req, res) => {
-  const { id } = req.params;
-  const { reaction_type } = req.body;
-  const username = req.session.user?.username;
+function sendReaction(emoji) {
+  const story = stories[currentIndex];
+  if (!story || !story._id) return;
 
-  if (!username || !reaction_type) return res.status(400).send("Login or reaction missing");
-
-  try {
-    const reactionRef = db.collection('stories').doc(id).collection('reactions').doc(`${username}_${reaction_type}`);
-    await reactionRef.set({ username, reaction_type });
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Story react error:', err);
-    res.status(500).send("Failed to react");
-  }
-});
-
-// --- Comment on Story ---
-app.post('/stories/:id/comment', async (req, res) => {
-  const { id } = req.params;
-  const { comment } = req.body;
-  const username = req.session.user?.username;
-
-  if (!username || !comment?.trim()) return res.status(400).send("Login or comment missing");
-
-  try {
-    await db.collection('stories').doc(id).collection('comments').add({
-      username,
-      comment: comment.trim(),
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+  fetch(`/stories/${story._id}/react`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reaction_type: emoji })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        console.log('Reaction sent:', emoji);
+      } else {
+        alert('Failed to react');
+      }
+    })
+    .catch(err => {
+      console.error('Reaction error:', err);
+      alert('Failed to react');
     });
-    res.redirect('/');
-  } catch (err) {
-    console.error('Story comment error:', err);
-    res.status(500).send("Failed to comment");
-  }
-});
+}
+
+function submitReply() {
+  const input = document.getElementById('replyInput');
+  const text = input.value.trim();
+  const story = stories[currentIndex];
+  if (!text || !story || !story._id) return;
+
+  fetch(`/stories/${story._id}/comment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ comment: text })
+  })
+    .then(res => {
+      if (res.ok) {
+        input.value = '';
+        alert('Reply sent!');
+      } else {
+        alert('Failed to reply.');
+      }
+    })
+    .catch(err => {
+      console.error('Reply error:', err);
+      alert('Failed to reply.');
+    });
+}
 
 // --- Team Comments ---
 app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
@@ -607,15 +609,24 @@ app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
     const trimmedText = text.trim();
 
     // 🔽 Save the comment
-    await db.collection('comments').add({
-      team: teamname,
-      user: req.session.user.username,
-      text: trimmedText,
-      media,
-      profile_pic: profilePic,
-      like_reactions: 0,
-      timestamp: admin.firestore.FieldValue.serverTimestamp()
-    });
+await db.collection('comments').add({
+  team: teamname,
+  user: req.session.user.username,
+  text: trimmedText,
+  media,
+  profile_pic: profilePic,
+  like_reactions: 0,
+  timestamp: admin.firestore.FieldValue.serverTimestamp()
+});
+await db.collection('userStats').doc(req.session.user.username).set({
+  comments: admin.firestore.FieldValue.increment(1),
+  likes: 0,
+  funny: 0,
+  angry: 0,
+  love: 0,
+  score: admin.firestore.FieldValue.increment(1)
+}, { merge: true });
+
 
     // ✅ Mention tagging logic
     const mentionedUsernames = [...trimmedText.matchAll(/@(\w+)/g)].map(match => match[1]);
@@ -687,13 +698,17 @@ app.post('/poke-rival', multiUpload, async (req, res) => {
 
     // ✅ Save the poke thread
     const newDocRef = await db.collection('rivalPokes').add({
-      teamA,
-      teamB,
-      createdBy: username,
-      text: text.trim(),
-      media,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+  teamA,
+  teamB,
+  createdBy: username,
+  text: text.trim(),
+  media,
+  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  score: {
+    teamA: 0,
+    teamB: 0
+  }
+});
 
     const pokeId = newDocRef.id;
 
@@ -842,7 +857,14 @@ app.post('/comment/:id/react/:type', async (req, res) => {
 
   try {
     const commentRef = db.collection('comments').doc(id);
-    await commentRef.update({ [`${type}_reactions`]: admin.firestore.FieldValue.increment(1) });
+    const commentDoc = await commentRef.get();
+const commentData = commentDoc.data();
+const commentUser = commentData.user;
+
+await db.collection('userStats').doc(commentUser).set({
+  [type]: admin.firestore.FieldValue.increment(1),
+  score: admin.firestore.FieldValue.increment(1)
+}, { merge: true });
     res.json({ success: true });
   } catch (err) {
     console.error('React error:', err);
@@ -921,6 +943,18 @@ app.get('/poke/:id', async (req, res) => {
       };
     });
 
+    // ✅ Get user's side (if logged in)
+    let userVote = null;
+    if (req.session.user) {
+      const voteDoc = await db.collection('rivalPokes')
+        .doc(id).collection('supporters')
+        .doc(req.session.user.username).get();
+
+      if (voteDoc.exists) {
+        userVote = voteDoc.data().team;
+      }
+    }
+
     res.render('poke-thread', {
       pokeId: id,
       pokeData,
@@ -929,12 +963,107 @@ app.get('/poke/:id', async (req, res) => {
       teamB: pokeData.teamB,
       profilePic: req.session.user?.profile_pic || '/default-avatar.png',
       user: req.session.user || null,
+      userVote,
       headerClass: 'header-simple',
       useTeamHeader: false
     });
   } catch (err) {
     console.error('❌ Failed to load poke thread:', err);
     res.status(500).send("Failed to load poke thread");
+  }
+});
+
+// 🔁 Vote count for game rendering
+app.get('/poke/:id/votes', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const voteSnap = await db.collection('rivalPokes')
+      .doc(id)
+      .collection('votes')
+      .get();
+
+    let teamA = 0;
+    let teamB = 0;
+
+    voteSnap.forEach(doc => {
+      const vote = doc.data();
+      if (vote.team === 'teamA') teamA++;
+      else if (vote.team === 'teamB') teamB++;
+    });
+
+    res.json({ teamA, teamB });
+  } catch (err) {
+    console.error('❌ Failed to fetch poke votes:', err);
+    res.status(500).json({ error: 'Failed to get vote counts' });
+  }
+});
+
+app.post('/poke/:id/support', async (req, res) => {
+  const { id } = req.params;
+  const { team } = req.body;
+  const username = req.session.user?.username;
+
+  if (!username || !['teamA', 'teamB'].includes(team)) {
+    return res.status(400).send('Invalid vote');
+  }
+
+  try {
+    const voteRef = db.collection('rivalPokes').doc(id).collection('votes').doc(username);
+    const existingVoteDoc = await voteRef.get();
+
+    if (!existingVoteDoc.exists) {
+      // ✅ Save per-user vote
+      await voteRef.set({ team });
+
+      // ✅ Increment global vote count
+      await db.collection('rivalPokes')
+        .doc(id)
+        .collection('supportVotes')
+        .doc('counts')
+        .set({
+          [team]: admin.firestore.FieldValue.increment(1)
+        }, { merge: true });
+    }
+
+    res.redirect(`/poke/${id}`);
+  } catch (err) {
+    console.error('❌ Failed to record vote:', err);
+    res.status(500).send('Could not record vote');
+  }
+});
+app.post('/poke/:id/reset-votes', async (req, res) => {
+  const { id } = req.params;
+  const { scorer } = req.body; // scorer = "teamA" or "teamB"
+
+  if (!["teamA", "teamB"].includes(scorer)) {
+    return res.status(400).send("Invalid scorer");
+  }
+
+  try {
+    const pokeRef = db.collection('rivalPokes').doc(id);
+
+    // 🔁 Step 1: Delete all individual votes
+    const votesSnap = await pokeRef.collection('votes').get();
+    const batch = db.batch();
+    votesSnap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+
+    // 🔁 Step 2: Reset vote counts
+    await pokeRef.collection('supportVotes').doc('counts').set({ teamA: 0, teamB: 0 });
+
+    // ✅ Step 3: Increment the scorer’s goal
+    const doc = await pokeRef.get();
+    const existingScore = doc.data().score || { teamA: 0, teamB: 0 };
+
+    existingScore[scorer] += 1;
+
+    await pokeRef.update({ score: existingScore });
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('❌ Failed to reset and update score:', err);
+    res.status(500).send("Failed to process goal");
   }
 });
 
@@ -969,6 +1098,14 @@ app.post('/poke/:id/comment', multiUpload, async (req, res) => {
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       team: fanSide
     });
+    await db.collection('userStats').doc(username).set({
+  comments: admin.firestore.FieldValue.increment(1),
+  likes: 0,
+  funny: 0,
+  angry: 0,
+  love: 0,
+  score: admin.firestore.FieldValue.increment(1)
+}, { merge: true });
 
     // Loop through mentions
     for (const mentionedUsername of mentions) {

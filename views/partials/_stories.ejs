@@ -1,6 +1,6 @@
 <section class="stories">
   <div class="stories-container">
-    <!-- Add Story Box -->
+    <!-- Add Story -->
     <div class="story-item add-story" onclick="handleAddStoryClick()">
       <div class="add-story-content">
         <div class="plus">＋</div>
@@ -13,6 +13,7 @@
       <% stories.forEach((story, index) => { %>
         <div class="story-item" onclick="openStoryModal(<%= index %>)">
           <% if (/\.(mp4|webm|ogg)$/i.test(story.image)) { %>
+            <video src="<%= story.image %>" muted></video>
           <% } else { %>
             <img src="<%= story.image %>" alt="Story by <%= story.username %>">
           <% } %>
@@ -22,7 +23,7 @@
       <p>No stories found.</p>
     <% } %>
 
-    <!-- Hidden Upload Form -->
+    <!-- Upload Form -->
     <form id="storyForm" action="/stories/upload" method="POST" enctype="multipart/form-data" style="display:none;">
       <input type="file" id="storyFile" name="storyMedia" accept="image/*,video/*" required />
     </form>
@@ -30,140 +31,354 @@
 </section>
 
 <!-- Story Modal -->
-<div id="storyModal" style="display:none;">
+<div id="storyModal">
   <div class="story-progress">
     <div class="story-progress-bar" id="progressBar"></div>
   </div>
   <div class="modal-content" id="modalContent"></div>
   <div class="story-caption" id="storyCaption"></div>
+
+  <div class="story-actions">
+    <div class="reaction-buttons">
+      <button onclick="sendReaction('❤️')">❤️</button>
+      <button onclick="sendReaction('😂')">😂</button>
+      <button onclick="sendReaction('😡')">😡</button>
+      <button onclick="sendReaction('👍')">👍</button>
+    </div>
+    <div class="reply-container">
+      <input type="text" id="replyInput" placeholder="Reply to this story..." />
+      <button onclick="submitReply()">Send</button>
+    </div>
+  </div>
+
   <div class="close-modal" onclick="closeStoryModal()">✖</div>
   <div class="modal-arrow left" onclick="prevStory()">❮</div>
-<div class="modal-arrow right" onclick="nextStory()">❯</div>
+  <div class="modal-arrow right" onclick="nextStory()">❯</div>
 </div>
 
+<style>
+/* --- STORIES --- */
+.stories-container {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 10px;
+  padding: 10px;
+  scroll-snap-type: x mandatory;
+}
+.stories-container::-webkit-scrollbar {
+  height: 8px;
+}
+.stories-container::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.4);
+  border-radius: 4px;
+}
+.story-item {
+  flex: 0 0 auto;
+  width: 150px;
+  height: 150px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #222;
+  cursor: pointer;
+  transition: transform 0.2s;
+  scroll-snap-align: start;
+}
+.story-item:hover {
+  transform: scale(1.05);
+}
+.story-item img,
+.story-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.story-item.add-story {
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.add-story-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.add-story-content .plus {
+  font-size: 36px;
+  font-weight: bold;
+}
+.add-story-content div:last-child {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* --- MODAL --- */
+#storyModal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.9);
+  z-index: 9999;
+  overflow: hidden;
+  touch-action: none;
+}
+#storyModal.show {
+  display: flex;
+}
+#modalContent img,
+#modalContent video {
+  max-width: 100%;
+  max-height: 100vh;
+  object-fit: contain;
+}
+.story-progress {
+  position: absolute;
+  top: 10px;
+  left: 5%;
+  width: 90%;
+  height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
+}
+.story-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: #ffcc00;
+  transition: width 5s linear;
+}
+.story-caption {
+  position: absolute;
+  bottom: 130px;
+  width: 90%;
+  text-align: center;
+  color: white;
+  font-size: 18px;
+}
+.close-modal {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 28px;
+  color: white;
+  cursor: pointer;
+}
+.modal-arrow {
+  position: absolute;
+  top: 50%;
+  font-size: 40px;
+  color: white;
+  cursor: pointer;
+  user-select: none;
+}
+.modal-arrow.left {
+  left: 20px;
+}
+.modal-arrow.right {
+  right: 20px;
+}
+
+/* --- Reactions + Reply --- */
+.story-actions {
+  position: absolute;
+  bottom: 60px;
+  width: 100%;
+  text-align: center;
+}
+.reaction-buttons {
+  margin-bottom: 10px;
+}
+.reaction-buttons button {
+  font-size: 24px;
+  background: none;
+  border: none;
+  margin: 0 6px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.reaction-buttons button:hover {
+  transform: scale(1.3);
+}
+.reply-container {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.reply-container input {
+  padding: 8px 12px;
+  width: 50%;
+  max-width: 300px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+.reply-container button {
+  padding: 8px 14px;
+  background: navy;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+</style>
+
 <script>
-  const stories = <%- JSON.stringify(stories) %>;
-  let currentIndex = 0;
-  let autoCloseTimeout;
+const stories = <%- JSON.stringify(stories) %>;
+let currentIndex = 0;
+let autoCloseTimeout;
 
-  function handleAddStoryClick() {
-    <% if (user) { %>
-      document.getElementById('storyFile').click();
-    <% } else { %>
-      alert('Please log in to upload a story.');
-    <% } %>
+function handleAddStoryClick() {
+  <% if (user) { %>
+    document.getElementById('storyFile').click();
+  <% } else { %>
+    alert('Please log in to upload a story.');
+  <% } %>
+}
+
+function openStoryModal(index) {
+  currentIndex = index;
+  const story = stories[currentIndex];
+  if (!story) return;
+
+  document.body.classList.add('modal-open');
+  const modal = document.getElementById('storyModal');
+  const modalContent = document.getElementById('modalContent');
+  const caption = document.getElementById('storyCaption');
+  const isVideo = /\.(mp4|webm|ogg)$/i.test(story.image);
+
+  modalContent.innerHTML = isVideo
+    ? `<video src="${story.image}" controls autoplay playsinline></video>`
+    : `<img src="${story.image}" alt="Story">`;
+
+  caption.textContent = story.caption || '';
+  modal.classList.add('show');
+
+  animateProgressBar();
+  clearTimeout(autoCloseTimeout);
+  autoCloseTimeout = setTimeout(nextStory, 5000);
+}
+
+function closeStoryModal() {
+  document.body.classList.remove('modal-open');
+  const modal = document.getElementById('storyModal');
+  modal.classList.remove('show');
+  document.getElementById('progressBar').style.transition = 'none';
+  document.getElementById('progressBar').style.width = '0%';
+
+  const video = document.querySelector('#modalContent video');
+  if (video) video.pause();
+
+  clearTimeout(autoCloseTimeout);
+}
+
+function nextStory() {
+  if (currentIndex < stories.length - 1) {
+    openStoryModal(currentIndex + 1);
+  } else {
+    closeStoryModal();
   }
+}
 
-  function openStoryModal(index) {
-    currentIndex = index;
-    const story = stories[currentIndex];
-    if (!story) return;
-
-    document.body.classList.add('modal-open');
-    const modal = document.getElementById('storyModal');
-    const modalContent = document.getElementById('modalContent');
-    const caption = document.getElementById('storyCaption');
-    const isVideo = /\.(mp4|webm|ogg)$/i.test(story.image);
-
-    modalContent.innerHTML = isVideo
-  ? `<video src="${story.image}" controls autoplay playsinline style="max-width: 100%; max-height: 80vh;"></video>`
-  : `<img src="${story.image}" alt="Story">`;
-
-
-    caption.textContent = story.caption || '';
-    modal.style.display = 'flex';
-
-    animateProgressBar();
-    clearTimeout(autoCloseTimeout);
-    autoCloseTimeout = setTimeout(nextStory, 5000);
+function prevStory() {
+  if (currentIndex > 0) {
+    openStoryModal(currentIndex - 1);
   }
+}
 
-  function closeStoryModal() {
-    document.body.classList.remove('modal-open');
-    const modal = document.getElementById('storyModal');
-    modal.style.display = 'none';
-    document.getElementById('progressBar').style.transition = 'none';
-    document.getElementById('progressBar').style.width = '0%';
-
-    const video = document.querySelector('#modalContent video');
-    if (video) video.pause();
-
-    clearTimeout(autoCloseTimeout);
-  }
-
-  function nextStory() {
-    if (currentIndex < stories.length - 1) {
-      openStoryModal(currentIndex + 1);
-    } else {
-      closeStoryModal();
-    }
-  }
-
-  function prevStory() {
-    if (currentIndex > 0) {
-      openStoryModal(currentIndex - 1);
-    }
-  }
-
-  function animateProgressBar() {
-    const progressBar = document.getElementById('progressBar');
-    progressBar.style.transition = 'none';
-    progressBar.style.width = '0%';
+function animateProgressBar() {
+  const progressBar = document.getElementById('progressBar');
+  progressBar.style.transition = 'none';
+  progressBar.style.width = '0%';
+  requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        progressBar.style.transition = 'width 5s linear';
-        progressBar.style.width = '100%';
-      });
+      progressBar.style.transition = 'width 5s linear';
+      progressBar.style.width = '100%';
     });
-  }
-
-  // Swipe Navigation
-  let touchStartX = null;
-  let touchStartY = null;
-
-  document.getElementById('storyModal').addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-    touchStartY = e.changedTouches[0].screenY;
   });
+}
 
-  document.getElementById('storyModal').addEventListener('touchend', e => {
-    if (touchStartX === null || touchStartY === null) return;
+function sendReaction(emoji) {
+  const story = stories[currentIndex];
+  if (!story || !story._id) return;
 
-    const diffX = e.changedTouches[0].screenX - touchStartX;
-    const diffY = e.changedTouches[0].screenY - touchStartY;
+  fetch(`/stories/${story._id}/react`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reaction_type: emoji })
+  }).then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        console.log('Reacted:', emoji);
+      } else {
+        alert('Reaction failed.');
+      }
+    });
+}
 
-    if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 50) {
-      if (diffY > 0) closeStoryModal();
-    } else if (Math.abs(diffX) > 50) {
-      diffX < 0 ? nextStory() : prevStory();
+function submitReply() {
+  const input = document.getElementById('replyInput');
+  const text = input.value.trim();
+  const story = stories[currentIndex];
+  if (!text || !story || !story._id) return;
+
+  fetch(`/stories/${story._id}/comment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ comment: text })
+  }).then(res => {
+    if (res.ok) {
+      input.value = '';
+      alert('Reply sent!');
+    } else {
+      alert('Reply failed.');
     }
-
-    touchStartX = null;
-    touchStartY = null;
   });
+}
 
-  // Tap outside to close
-  document.getElementById('storyModal').addEventListener('click', function(e) {
-    if (e.target === this) closeStoryModal();
-  });
+// Swipe
+let touchStartX = null;
+let touchStartY = null;
+document.getElementById('storyModal').addEventListener('touchstart', e => {
+  touchStartX = e.changedTouches[0].screenX;
+  touchStartY = e.changedTouches[0].screenY;
+});
+document.getElementById('storyModal').addEventListener('touchend', e => {
+  if (touchStartX === null || touchStartY === null) return;
+  const diffX = e.changedTouches[0].screenX - touchStartX;
+  const diffY = e.changedTouches[0].screenY - touchStartY;
+  if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 50) {
+    if (diffY > 0) closeStoryModal();
+  } else if (Math.abs(diffX) > 50) {
+    diffX < 0 ? nextStory() : prevStory();
+  }
+  touchStartX = null;
+  touchStartY = null;
+});
 
-  // Escape key to close
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeStoryModal();
-  });
-
-  // Auto-submit after file select
-  document.getElementById('storyFile')?.addEventListener('change', function() {
-    if (this.files.length) document.getElementById('storyForm').submit();
-  });
-  document.getElementById('storyModal').addEventListener('click', function (e) {
+// Tap areas
+document.getElementById('storyModal').addEventListener('click', function (e) {
   const width = window.innerWidth;
   const tapX = e.clientX;
-
-  if (tapX < width / 3) {
+  if (e.target === this) {
+    closeStoryModal();
+  } else if (tapX < width / 3) {
     prevStory();
   } else if (tapX > (2 * width) / 3) {
     nextStory();
   }
+});
+
+// ESC
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') closeStoryModal();
+});
+
+// Auto-upload
+document.getElementById('storyFile')?.addEventListener('change', function () {
+  if (this.files.length) document.getElementById('storyForm').submit();
 });
 </script>
