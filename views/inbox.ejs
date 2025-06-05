@@ -65,22 +65,30 @@
     <h2>📥 My Inbox</h2>
 
     <div class="card-grid">
-      <!-- Chat Notifications -->
-      <a href="/inbox/chat" class="inbox-card">
-        <h3>💬 Chat</h3>
-        <% if (user.chatNotifications > 0) { %>
-          <span class="notif-badge"><%= user.chatNotifications %></span>
-        <% } %>
-      </a>
+  <!-- Chat Notifications -->
+  <a href="/inbox/chat" class="inbox-card">
+    <h3>💬 Chat</h3>
+    <% if (user.chatNotifications > 0) { %>
+      <span class="notif-badge"><%= user.chatNotifications %></span>
+    <% } %>
+  </a>
 
-      <!-- Tag Notifications -->
-      <a href="/inbox/tags" class="inbox-card">
-        <h3>🏷️ Tags</h3>
-        <% if (user.tagNotifications > 0) { %>
-          <span class="notif-badge"><%= user.tagNotifications %></span>
-        <% } %>
-      </a>
-    </div>
+  <!-- Tag Notifications -->
+  <a href="/inbox/tags" class="inbox-card">
+    <h3>🏷️ Mentions</h3>
+    <% if (user.tagNotifications > 0) { %>
+      <span class="notif-badge"><%= user.tagNotifications %></span>
+    <% } %>
+  </a>
+
+  <!-- Story Notifications -->
+  <a href="/inbox/stories" class="inbox-card">
+    <h3>📸 Stories</h3>
+    <% if (user.storyNotifications > 0) { %>
+      <span class="notif-badge"><%= user.storyNotifications %></span>
+    <% } %>
+  </a>
+</div>
   </section>
 </body>
 </html>

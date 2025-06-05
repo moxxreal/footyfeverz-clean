@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>📸 Story Notifications | Footy Feverz</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .inbox-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 1rem;
+    }
+    .story-notification {
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .story-notification a {
+      color: #007bff;
+      font-weight: bold;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <%- include('partials/_header', {
+    headerClass: 'header-home',
+    showAuthLinks: true,
+    showLeagueLink: false,
+    useTeamHeader: false
+  }) %>
+
+  <section class="inbox-container">
+    <h2>📸 Story Notifications</h2>
+
+    <% if (storyNotifications && storyNotifications.length > 0) { %>
+      <% storyNotifications.forEach(note => { %>
+        <div class="story-notification">
+          <% let action = (note.type === 'reply') ? 'replied to' : 'reacted to'; %>
+          <p><strong><%= note.from %></strong> <%= action %> your story.</p>
+          <a href="/story/<%= note.storyId %>">View Story</a>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <p>No new story notifications.</p>
+    <% } %>
+  </section>
+</body>
+</html>

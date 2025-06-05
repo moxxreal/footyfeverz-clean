@@ -3,177 +3,178 @@
 <head>
   <title><%= teamA %> vs <%= teamB %> | Poke Thread</title>
   <link rel="stylesheet" href="/style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-  body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background: #fafafa;
-  }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #fafafa;
+    }
 
-  .rival-header {
-    text-align: center;
-    margin-top: 30px;
-    padding: 0 16px;
-  }
+    .rival-header {
+      text-align: center;
+      margin-top: 30px;
+      padding: 0 16px;
+    }
 
-  .pitch-container {
-    position: relative;
-    width: 100%;
-    max-width: 1000px;
-    margin: 30px auto;
-  }
+    .pitch-container {
+      position: relative;
+      width: 100%;
+      max-width: 1000px;
+      margin: 30px auto;
+    }
 
-  .pitch {
-    width: 100%;
-    border-radius: 20px;
-    display: block;
-  }
-
-  .ball {
-    position: absolute;
-    width: 60px;
-    top: 50%;
-    transform: translateY(-50%);
-    transition: left 0.4s ease;
-    z-index: 5;
-  }
-
-  .player {
-    position: absolute;
-    width: 45px;
-    animation: kick 0.6s infinite alternate;
-  }
-
-  @keyframes kick {
-    from { transform: rotate(-5deg); }
-    to { transform: rotate(5deg); }
-  }
-
-  .player.red {
-    content: url('/images/player-red.png');
-  }
-
-  .player.blue {
-    content: url('/images/player-blue.png');
-  }
-
-  .scoreboard {
-    text-align: center;
-    font-size: 28px;
-    margin-bottom: 10px;
-    font-weight: bold;
-    color: #2b2b2b;
-    background: #fff;
-    padding: 10px 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    display: inline-block;
-  }
-
-  .goal-flash {
-    display: none;
-    text-align: center;
-    font-size: 24px;
-    color: green;
-    font-weight: bold;
-    animation: flash 1s ease-in-out;
-  }
-
-  @keyframes flash {
-    0% { opacity: 1; }
-    100% { opacity: 0; }
-  }
-
-  .poke-comments {
-    margin-top: 30px;
-    max-width: 800px;
-    margin-left: auto;
-    margin-right: auto;
-    padding: 0 16px;
-  }
-
-  .poke-comment-form {
-    margin-top: 20px;
-  }
-
-  textarea {
-    width: 100%;
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    font-size: 16px;
-  }
-
-  button[type="submit"],
-  .poke-comments button {
-    background: #cc0000;
-    color: white;
-    padding: 10px 16px;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    cursor: pointer;
-  }
-
-  button[type="submit"]:hover,
-  .poke-comments button:hover {
-    background: #a60000;
-  }
-
-  video,
-  img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 10px;
-  }
-
-  form[action*="support"] {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding: 0 16px;
-  }
-
-  form[action*="support"] button {
-    width: 90%;
-    max-width: 300px;
-  }
-
-  @media screen and (max-width: 600px) {
-    .scoreboard {
-      font-size: 22px;
-      padding: 8px 12px;
+    .pitch {
+      width: 100%;
+      border-radius: 20px;
+      display: block;
     }
 
     .ball {
-      width: 40px;
+      position: absolute;
+      width: 60px;
+      top: 50%;
+      transform: translateY(-50%);
+      transition: left 0.4s ease;
+      z-index: 5;
     }
 
     .player {
-      width: 30px;
+      position: absolute;
+      width: 45px;
+      animation: kick 0.6s infinite alternate;
+    }
+
+    @keyframes kick {
+      from { transform: rotate(-5deg); }
+      to { transform: rotate(5deg); }
+    }
+
+    .player.red {
+      content: url('/images/player-red.png');
+    }
+
+    .player.blue {
+      content: url('/images/player-blue.png');
+    }
+
+    .scoreboard {
+      text-align: center;
+      font-size: 28px;
+      margin-bottom: 10px;
+      font-weight: bold;
+      color: #2b2b2b;
+      background: #fff;
+      padding: 10px 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      display: inline-block;
     }
 
     .goal-flash {
-      font-size: 20px;
+      display: none;
+      text-align: center;
+      font-size: 24px;
+      color: green;
+      font-weight: bold;
+      animation: flash 1s ease-in-out;
     }
 
-    h1 {
-      font-size: 20px;
+    @keyframes flash {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
     }
 
-    .poke-comments h2 {
-      font-size: 18px;
+    .poke-comments {
+      margin-top: 30px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0 16px;
     }
-  }
-</style>
+
+    .poke-comment-form {
+      margin-top: 20px;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    button[type="submit"],
+    .poke-comments button {
+      background: #cc0000;
+      color: white;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button[type="submit"]:hover,
+    .poke-comments button:hover {
+      background: #a60000;
+    }
+
+    video,
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 10px;
+    }
+
+    form[action*="support"] {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+    }
+
+    form[action*="support"] button {
+      width: 90%;
+      max-width: 300px;
+    }
+
+    @media screen and (max-width: 600px) {
+      .scoreboard {
+        font-size: 22px;
+        padding: 8px 12px;
+      }
+
+      .ball {
+        width: 40px;
+      }
+
+      .player {
+        width: 30px;
+      }
+
+      .goal-flash {
+        font-size: 20px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      .poke-comments h2 {
+        font-size: 18px;
+      }
+    }
+  </style>
 </head>
 <body>
   <%- include('partials/_header') %>
 
   <% if (user && !userVote) { %>
-    <form action="/poke/<%= pokeId %>/support" method="POST" style="text-align: center; margin-top: 20px;">
+    <form action="/poke/<%= pokeId %>/support" method="POST">
       <p>Which side are you on?</p>
       <button type="submit" name="team" value="teamA">Support <%= teamA %></button>
       <button type="submit" name="team" value="teamB">Support <%= teamB %></button>
@@ -192,16 +193,16 @@
     <img id="ball" src="/images/ball.png" class="ball" style="left: 45%;" />
 
     <% for (let i = 0; i < 5; i++) { 
-  const topOffset = 34 + i * 5; // slightly more downward
-%>
-  <img class="player red" id="red-player-<%= i %>" style="top: <%= topOffset %>%; left: 38.5%;" />
-<% } %>
+      const topOffset = 34 + i * 5;
+    %>
+      <img class="player red" id="red-player-<%= i %>" style="top: <%= topOffset %>%; left: 38.5%;" />
+    <% } %>
 
-<% for (let i = 0; i < 5; i++) { 
-  const topOffset = 34 + i * 4.2;
-%>
-  <img class="player blue" id="blue-player-<%= i %>" style="top: <%= topOffset %>%; left: 51%;" />
-<% } %>
+    <% for (let i = 0; i < 5; i++) { 
+      const topOffset = 34 + i * 4.2;
+    %>
+      <img class="player blue" id="blue-player-<%= i %>" style="top: <%= topOffset %>%; left: 51%;" />
+    <% } %>
   </div>
 
   <script>
@@ -247,11 +248,13 @@
   <div class="rival-header">
     <h1><%= teamA.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) %> ⚔️ <%= teamB.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) %></h1>
     <p>Started by <strong><%= pokeData.createdBy %></strong> — <%= pokeData.text %></p>
-    <% if (pokeData.media) { const isVideo = pokeData.media.endsWith('.mp4') || pokeData.media.endsWith('.webm') || pokeData.media.endsWith('.ogg'); %>
+    <% if (pokeData.media) { 
+      const isVideo = pokeData.media.endsWith('.mp4') || pokeData.media.endsWith('.webm') || pokeData.media.endsWith('.ogg'); 
+    %>
       <% if (isVideo) { %>
-        <video src="<%= pokeData.media %>" controls style="max-width: 100%; margin-top: 10px;"></video>
+        <video src="<%= pokeData.media %>" controls style="margin-top: 10px;"></video>
       <% } else { %>
-        <img src="<%= pokeData.media %>" style="max-width: 100%; border-radius: 10px; margin-top: 10px;" />
+        <img src="<%= pokeData.media %>" style="margin-top: 10px;" />
       <% } %>
     <% } %>
   </div>
@@ -268,20 +271,22 @@
         <span style="margin-left: 10px;"><%= teamLabel %></span>
         <p><%- comment.text.replace(/@(\w+)/g, '<a href="/user/$1" style="color:#007BFF;">@$1</a>') %></p>
 
-        <% if (comment.media) { const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg'); %>
+        <% if (comment.media) { 
+          const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg'); 
+        %>
           <% if (isVideo) { %>
-            <video src="<%= comment.media %>" controls style="max-width: 100%; margin-top: 10px;"></video>
+            <video src="<%= comment.media %>" controls style="margin-top: 10px;"></video>
           <% } else { %>
-            <img src="<%= comment.media %>" style="max-width: 100%; border-radius: 10px; margin-top: 10px;" />
+            <img src="<%= comment.media %>" style="margin-top: 10px;" />
           <% } %>
         <% } %>
 
         <div style="color: gray; font-size: 14px;"><%= comment.relativeTime %></div>
         <div style="margin-top: 8px;">
-          <button style="margin-right: 8px;">❤️</button>
-          <button style="margin-right: 8px;">😂</button>
-          <button style="margin-right: 8px;">😡</button>
-          <button style="margin-right: 8px;">👍</button>
+          <button>❤️</button>
+          <button>😂</button>
+          <button>😡</button>
+          <button>👍</button>
         </div>
       </div>
     <% }) %>

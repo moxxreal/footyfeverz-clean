@@ -10,6 +10,15 @@ const session = require('express-session');
 const bcrypt = require('bcrypt');
 const admin = require('firebase-admin');
 const teamToLeagueMap = require('./teamToLeagueMap');
+const sanitizeHtml = require('sanitize-html');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiter for story uploads (5 per minute per IP)
+const storyLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5,              // max 5 uploads/comments per minute
+  message: 'Too many uploads, please slow down.'
+});
 
 const teamImages = {
   'la-liga': {
@@ -236,15 +245,47 @@ app.use(session({
   saveUninitialized: true
 }));
 
+// --- 🔐 Login Check Middleware ---
+function requireLogin(req, res, next) {
+  if (!req.session.user) {
+    return res.redirect('/?error=Login required to view stories');
+  }
+  next();
+}
+
+// Storage engine with sanitized filename
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'public/uploads/'),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${Math.random().toString(36).substring(7)}${path.extname(file.originalname)}`)
+  filename: (req, file, cb) => {
+    const cleanName = path.basename(file.originalname);
+    const ext = path.extname(cleanName);
+    const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+    cb(null, filename);
+  }
 });
-const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
+
+// Accept only images and videos (optional but recommended)
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/quicktime'];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Unsupported file type'), false);
+  }
+};
+
+// Upload config
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB max
+});
+
+// Multi-field upload for comments, profiles, tactical images
 const multiUpload = upload.fields([
   { name: 'media', maxCount: 1 },
   { name: 'profile_pic', maxCount: 1 },
-  { name: 'tacticImage', maxCount: 1 } // ✅ required for tactical board
+  { name: 'tacticImage', maxCount: 1 } // ✅ for tactical board
 ]);
 
 // ✅ First middleware: fetch unread messages
@@ -283,68 +324,73 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(async (req, res, next) => {
-  try {
-    if (req.session.user && req.session.user.id) {
-      const snapshot = await db.collection('notifications')
-        .where('toUser', '==', req.session.user.id)
-        .where('read', '==', false)
-        .get();
+async function loadHomeData() {
+  const cutoff = dayjs().subtract(24, 'hour').toDate();
 
-      res.locals.unreadCount = snapshot.size;
-    } else {
-      res.locals.unreadCount = 0;
-    }
-  } catch (err) {
-    console.error("Error fetching notifications:", err);
-    res.locals.unreadCount = 0;
-  }
+  const statsSnap = await db.collection('userStats')
+    .orderBy('score', 'desc')
+    .limit(5)
+    .get();
 
-  next();
-});
+  const topFans = statsSnap.docs.map(doc => {
+    const data = doc.data();
+    return {
+      username: doc.id,
+      comments: data.comments || 0,
+      likes: (data.likes || 0) + (data.funny || 0) + (data.angry || 0) + (data.love || 0)
+    };
+  });
+
+  const storiesSnap = await db.collection('stories')
+    .where('createdAt', '>=', cutoff)
+    .orderBy('createdAt', 'desc')
+    .get();
+
+  const storyDocs = storiesSnap.docs;
+
+  const commentPromises = storyDocs.map(doc =>
+    db.collection('stories').doc(doc.id).collection('comments').get()
+  );
+  const reactionPromises = storyDocs.map(doc =>
+    db.collection('stories').doc(doc.id).collection('reactions').get()
+  );
+
+  const [commentSnaps, reactionSnaps] = await Promise.all([
+    Promise.all(commentPromises),
+    Promise.all(reactionPromises)
+  ]);
+
+  const stories = storyDocs.map((doc, i) => {
+    const story = doc.data();
+    const reactions = {};
+    reactionSnaps[i].forEach(r => {
+      const { reaction_type } = r.data();
+      reactions[reaction_type] = (reactions[reaction_type] || 0) + 1;
+    });
+
+    return {
+      _id: doc.id,
+      ...story,
+      relativeTime: dayjs(story.createdAt.toDate()).fromNow(),
+      comments: commentSnaps[i].docs.map(c => c.data()),
+      reactions: Object.entries(reactions).map(([type, count]) => ({ type, count }))
+    };
+  });
+
+  const battleSnap = await db.collection('battles')
+    .orderBy('created_at', 'desc')
+    .limit(1)
+    .get();
+
+  const battle = battleSnap.empty ? null : { id: battleSnap.docs[0].id, ...battleSnap.docs[0].data() };
+
+  return { stories, topFans, battle };
+}
 
 // --- Reusable Homepage Error Renderer ---
 async function renderHomeWithError(res, errorType, errorMsg) {
   try {
-    const cutoff = dayjs().subtract(24, 'hour').toDate();
-
-const statsSnap = await db.collection('userStats')
-  .orderBy('score', 'desc')
-  .limit(5)
-  .get();
-
-const topFans = statsSnap.docs.map(doc => {
-  const data = doc.data();
-  return {
-    username: doc.id,
-    comments: data.comments || 0,
-    likes: (data.likes || 0) + (data.funny || 0) + (data.angry || 0) + (data.love || 0)
-  };
-});
-
-    const storiesSnap = await db.collection('stories').where('createdAt', '>=', cutoff).orderBy('createdAt', 'desc').get();
-    const stories = [];
-    for (const doc of storiesSnap.docs) {
-      const story = doc.data();
-      const commentsSnap = await db.collection('stories').doc(doc.id).collection('comments').get();
-      const reactionsSnap = await db.collection('stories').doc(doc.id).collection('reactions').get();
-
-      const reactions = {};
-      reactionsSnap.forEach(r => {
-        const { reaction_type } = r.data();
-        reactions[reaction_type] = (reactions[reaction_type] || 0) + 1;
-      });
-
-      stories.push({
-        ...story,
-        relativeTime: dayjs(story.createdAt.toDate()).fromNow(),
-        comments: commentsSnap.docs.map(c => c.data()),
-        reactions: Object.entries(reactions).map(([type, count]) => ({ type, count }))
-      });
-    }
-
-    const battleSnap = await db.collection('battles').orderBy('created_at', 'desc').limit(1).get();
-    const battle = battleSnap.docs[0]?.data() || null;
+    const { stories, topFans, battle } = await loadHomeData();
 
     const data = {
       stories,
@@ -354,8 +400,7 @@ const topFans = statsSnap.docs.map(doc => {
       signupError: null
     };
 
-    data[errorType] = errorMsg;
-
+    data[errorType] = errorMsg; // e.g., data.signupError = "..."
     res.render('index', data);
   } catch (err) {
     console.error('renderHomeWithError failed:', err);
@@ -448,137 +493,233 @@ app.get('/logout', (req, res) => {
 
 // --- Home Page ---
 app.get('/', async (req, res) => {
-  const cutoff = dayjs().subtract(24, 'hour').toDate();
-
   try {
-    const statsSnap = await db.collection('userStats')
-  .orderBy('score', 'desc')
-  .limit(5)
-  .get();
+    const { stories, topFans, battle } = await loadHomeData();
 
-const topFans = statsSnap.docs.map(doc => {
-  const data = doc.data();
-  return {
-    username: doc.id,
-    comments: data.comments || 0,
-    likes: (data.likes || 0) + (data.funny || 0) + (data.angry || 0) + (data.love || 0)
-  };
-});
-    const storiesSnap = await db.collection('stories').where('createdAt', '>=', cutoff).orderBy('createdAt', 'desc').get();
-    const stories = [];
-    for (const doc of storiesSnap.docs) {
-      const story = doc.data();
-      const commentsSnap = await db.collection('stories').doc(doc.id).collection('comments').get();
-      const reactionsSnap = await db.collection('stories').doc(doc.id).collection('reactions').get();
+    let user = req.session.user || null;
 
-      const reactions = {};
-      reactionsSnap.forEach(r => {
-        const { reaction_type } = r.data();
-        reactions[reaction_type] = (reactions[reaction_type] || 0) + 1;
-      });
+    if (user) {
+      const username = user.username;
 
-      stories.push({
-        ...story,
-        relativeTime: dayjs(story.createdAt.toDate()).fromNow(),
-        comments: commentsSnap.docs.map(c => c.data()),
-        reactions: Object.entries(reactions).map(([type, count]) => ({ type, count }))
-      });
+      const [chatSnap, tagSnap, storySnap] = await Promise.all([
+        db.collection('messages')
+          .where('receiver', '==', username)
+          .where('seenByReceiver', '==', false)
+          .get(),
+        db.collection('tags')
+          .where('taggedUserId', '==', username)
+          .where('seen', '==', false)
+          .get(),
+        db.collection('users')
+          .doc(username)
+          .collection('storyNotifications')
+          .get()
+      ]);
+
+      user = {
+        ...user,
+        chatNotifications: chatSnap.size,
+        tagNotifications: tagSnap.size,
+        storyNotifications: storySnap.size,
+        unreadCount: chatSnap.size + tagSnap.size + storySnap.size
+      };
     }
-    
-    const battleSnap = await db.collection('battles')
-  .orderBy('created_at', 'desc')
-  .limit(1)
-  .get();
 
-let battle = null;
-if (!battleSnap.empty) {
-  const doc = battleSnap.docs[0];
-  battle = { id: doc.id, ...doc.data() };
-}
-
-    res.render('index', { 
-  user: req.session.user || null, // ✅ now it works!
-  stories, 
-  topFans, 
-  battle, 
-  signupError: null, 
-  loginError: null 
-});
+    res.render('index', {
+      user,
+      stories,
+      topFans,
+      battle,
+      signupError: null,
+      loginError: null
+    });
   } catch (err) {
     console.error('❌ Home load error:', err);
     res.status(500).send("Failed to load homepage");
   }
 });
+
 // --- Upload Story ---
-app.post('/stories/upload', upload.single('storyMedia'), async (req, res) => {
+app.get('/story/:id', requireLogin, async (req, res) => {
+  const { id } = req.params;
+
+  // Optionally: validate ID format
+  if (!id) return res.redirect('/');
+
+  // Redirect to homepage with ?story=ID (handled client-side)
+  res.redirect(`/?story=${id}`);
+});
+
+app.post('/stories/upload', storyLimiter, upload.single('storyMedia'), async (req, res) => {
+  console.log('📦 req.file =', req.file);
   if (!req.session.user) return res.redirect('/?error=Login required');
   if (!req.file) return res.redirect('/?error=No file uploaded');
 
   const filePath = `/uploads/${req.file.filename}`;
   const username = req.session.user.username;
-  const caption = req.body.caption || '';
+
+  // Sanitize caption to prevent XSS
+  const caption = sanitizeHtml(req.body.caption || '', {
+    allowedTags: [],
+    allowedAttributes: {}
+  });
 
   try {
-    await db.collection('stories').add({
+    const storyRef = await db.collection('stories').add({
       image: filePath,
       username,
       caption,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
+
+    await storyRef.update({ _id: storyRef.id }); // Save the Firestore doc ID
+
     res.redirect('/');
   } catch (err) {
-    console.error('Error saving story:', err);
+    console.error('❌ Error uploading story:', err);
     res.redirect('/?error=Failed to save story');
   }
 });
 
-function sendReaction(emoji) {
-  const story = stories[currentIndex];
-  if (!story || !story._id) return;
+// --- React to a story ---
+app.post('/stories/:id/react', requireLogin, async (req, res) => {
+  const { id } = req.params;
+  const { reaction_type } = req.body;
+  const username = req.session.user.username;
 
-  fetch(`/stories/${story._id}/react`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reaction_type: emoji })
-  })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        console.log('Reaction sent:', emoji);
-      } else {
-        alert('Failed to react');
+  try {
+    console.log('📌 Reaction:', { id, reaction_type, username });
+
+    const reactionRef = db.collection('stories').doc(id)
+      .collection('reactions').doc(username); // Unique doc per user
+
+    await reactionRef.set({ reaction_type, user: username }, { merge: true });
+
+    // Notify the story owner
+    const storyDoc = await db.collection('stories').doc(id).get();
+    const to = storyDoc.data()?.username;
+
+    if (to && to !== username) {
+      const notifRef = db.collection('users').doc(to).collection('storyNotifications');
+      
+      // Only send notification if one doesn’t already exist for this reaction
+      const existingSnap = await notifRef
+        .where('from', '==', username)
+        .where('storyId', '==', id)
+        .where('type', '==', 'reaction')
+        .limit(1)
+        .get();
+
+      if (existingSnap.empty) {
+        await notifRef.add({
+          from: username,
+          storyId: id,
+          type: 'reaction',
+          timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
       }
-    })
-    .catch(err => {
-      console.error('Reaction error:', err);
-      alert('Failed to react');
-    });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('❌ Story reaction error:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
+// --- Comment on a story ---
+app.post('/stories/:id/comment', requireLogin, async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ success: false });
+
+  const { id } = req.params;
+  const { comment } = req.body;
+  const username = req.session.user.username;
+
+  if (!comment?.trim()) return res.status(400).json({ success: false });
+
+  try {
+    console.log('💬 Story comment:', { id, comment, user: username });
+
+    await db.collection('stories').doc(id)
+  .collection('comments').add({
+    user: username,
+    comment: comment.trim(),
+    timestamp: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+// Send notification to story owner
+const storyDoc = await db.collection('stories').doc(id).get();
+const to = storyDoc.data()?.username;
+if (to && to !== username) {
+  await db.collection('users').doc(to).collection('storyNotifications').add({
+    from: username,
+    storyId: id,
+    type: 'reply',
+    timestamp: admin.firestore.FieldValue.serverTimestamp()
+  });
 }
 
-function submitReply() {
-  const input = document.getElementById('replyInput');
-  const text = input.value.trim();
-  const story = stories[currentIndex];
-  if (!text || !story || !story._id) return;
+    res.json({ success: true });
+  } catch (err) {
+    console.error('❌ Story comment error:', err);
+    res.status(500).json({ success: false });
+  }
+});
 
-  fetch(`/stories/${story._id}/comment`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ comment: text })
-  })
-    .then(res => {
-      if (res.ok) {
-        input.value = '';
-        alert('Reply sent!');
-      } else {
-        alert('Failed to reply.');
-      }
-    })
-    .catch(err => {
-      console.error('Reply error:', err);
-      alert('Failed to reply.');
+// --- Story Notifications Inbox ---
+app.get('/inbox/stories', requireLogin, async (req, res) => {
+  const currentUser = req.session.user?.username;
+  if (!currentUser) return res.redirect('/login');
+
+  try {
+    const snap = await db.collection('users')
+      .doc(currentUser)
+      .collection('storyNotifications')
+      .orderBy('timestamp', 'desc')
+      .get();
+
+    const storyNotifications = snap.docs.map(doc => doc.data());
+
+    res.render('inbox-stories', { storyNotifications });
+  } catch (err) {
+    console.error('❌ Story inbox error:', err);
+    res.status(500).send('Error loading story notifications');
+  }
+});
+
+// --- Notify when someone views a story ---
+app.post('/notify-story-view', requireLogin, async (req, res) => {
+  const { to, from, storyId } = req.body;
+
+  if (!to || !from || !storyId || to === from) {
+    return res.status(400).send('Invalid notification data');
+  }
+
+  try {
+    const notifRef = db.collection('users')
+      .doc(to)
+      .collection('storyNotifications');
+
+    const existingSnap = await notifRef
+      .where('from', '==', from)
+      .where('storyId', '==', storyId)
+      .limit(1)
+      .get();
+
+    if (!existingSnap.empty) return res.status(200).send('Already notified');
+
+    await notifRef.add({
+      from,
+      storyId,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
-}
+
+    res.status(200).send('Notification sent');
+  } catch (err) {
+    console.error('🔥 Firestore error in notify-story-view:', err);
+    res.status(500).send('Error sending notification');
+  }
+});
 
 // --- Team Comments ---
 app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
@@ -1168,9 +1309,9 @@ app.get('/user/:username', async (req, res) => {
     if (!userDoc.exists) return res.status(404).send("User not found");
 
     const userData = userDoc.data();
-    const followers = userData.followers || [];
-    const following = userData.following || [];
-    const isFollowing = currentUser ? followers.includes(currentUser) : false;
+    const followersUsernames = userData.followers || [];
+    const followingUsernames = userData.following || [];
+    const isFollowing = currentUser ? followersUsernames.includes(currentUser) : false;
 
     let requestSent = false;
     if (currentUser && currentUser !== username) {
@@ -1187,7 +1328,7 @@ app.get('/user/:username', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const commentsPerPage = 10;
 
-    // ✅ Fetch user's comments from global comments collection
+    // ✅ Fetch user's comments
     const commentsSnap = await db.collection('comments')
       .where('user', '==', username)
       .orderBy('timestamp', 'desc')
@@ -1205,7 +1346,7 @@ app.get('/user/:username', async (req, res) => {
     const totalComments = comments.length;
     const totalLikes = comments.reduce((sum, c) => sum + (c.like_reactions || 0), 0);
 
-    // Fetch Stories
+    // ✅ Fetch user's stories
     const storiesSnap = await db.collection('stories')
       .where('username', '==', username)
       .orderBy('createdAt', 'desc')
@@ -1219,10 +1360,44 @@ app.get('/user/:username', async (req, res) => {
       };
     });
 
-    const followersCount = followers.length;
-    const followingCount = following.length;
+    const followersCount = followersUsernames.length;
+    const followingCount = followingUsernames.length;
 
-    // Follow requests
+    // ✅ Get logged-in user's following list (for follow-back logic)
+    let currentUserFollowing = [];
+    if (currentUser) {
+      const currUserDoc = await db.collection('users').doc(currentUser).get();
+      currentUserFollowing = currUserDoc.data()?.following || [];
+    }
+
+    // ✅ Enrich followers with profilePic and follow-back flag
+    const followers = await Promise.all(
+      followersUsernames.map(async followerUsername => {
+        const uDoc = await db.collection('users').doc(followerUsername).get();
+        const uData = uDoc.data();
+        return {
+          username: followerUsername,
+          profilePic: uData?.profile_pic || '/default-avatar.png',
+          showFollowBack: currentUser &&
+                          currentUser !== followerUsername &&
+                          !currentUserFollowing.includes(followerUsername)
+        };
+      })
+    );
+
+    // ✅ Enrich following with profilePic
+    const following = await Promise.all(
+      followingUsernames.map(async followeeUsername => {
+        const uDoc = await db.collection('users').doc(followeeUsername).get();
+        const uData = uDoc.data();
+        return {
+          username: followeeUsername,
+          profilePic: uData?.profile_pic || '/default-avatar.png'
+        };
+      })
+    );
+
+    // ✅ Get incoming follow requests if viewing own profile
     let followRequests = [];
     if (currentUser === username) {
       const followReqSnap = await db.collection('users')
@@ -1233,6 +1408,7 @@ app.get('/user/:username', async (req, res) => {
       followRequests = followReqSnap.docs.map(doc => doc.id);
     }
 
+    // ✅ Final render
     res.render('user', {
       profileUser: username,
       profilePic,
@@ -1244,7 +1420,9 @@ app.get('/user/:username', async (req, res) => {
       followingCount,
       isFollowing,
       followRequests,
-      requestSent
+      requestSent,
+      followers,
+      following
     });
 
   } catch (err) {
@@ -1309,24 +1487,39 @@ app.get('/inbox', async (req, res) => {
   const currentUser = req.session.user;
 
   try {
+    // 🔴 Unseen chat messages
     const chatSnap = await db.collection('messages')
       .where('receiver', '==', username)
       .where('seenByReceiver', '==', false)
       .get();
-
     const chatNotifications = chatSnap.size;
 
+    // 🏷️ Unseen mentions (tags)
     const tagSnap = await db.collection('tags')
       .where('taggedUserId', '==', username)
       .where('seen', '==', false)
       .get();
-
     const tagNotifications = tagSnap.size;
 
+    // 📸 Unseen story notifications
+    const storySnap = await db.collection('users')
+      .doc(username)
+      .collection('storyNotifications')
+      .get();
+    const storyNotifications = storySnap.size;
+
+    // 📦 Total inbox red badge count
+    const inboxTotalNotifications = chatNotifications + tagNotifications + storyNotifications;
+
+    // 🧠 Inject notifications into user object for header rendering
     res.render('inbox', {
       user: {
+        ...req.session.user,
         chatNotifications,
-        tagNotifications
+        tagNotifications,
+        storyNotifications,
+        inboxTotalNotifications,
+        unreadCount: chatNotifications // used in header
       },
       currentUser
     });
@@ -1335,7 +1528,6 @@ app.get('/inbox', async (req, res) => {
     res.status(500).send("Inbox error");
   }
 });
-
 
 // ✅ Inbox Chat Page: /inbox/chat
 app.get('/inbox/chat', async (req, res) => {
@@ -1390,6 +1582,47 @@ app.get('/inbox/chat', async (req, res) => {
   }
 });
 
+// ✅ Inbox Tags Page: /inbox/tags
+app.get('/inbox/tags', async (req, res) => {
+  if (!req.session.user) return res.redirect('/?error=Login required');
+
+  try {
+    const tagSnap = await db.collection('tags')
+      .where('taggedUserId', '==', req.session.user.username)
+      .orderBy('timestamp', 'desc')
+      .get();
+
+    const taggedComments = tagSnap.docs.map(doc => {
+      const tag = doc.data();
+      return {
+        fromUser: tag.fromUser,
+        content: tag.content,
+        threadType: tag.threadType || 'team',
+        link: tag.link || '#',
+        seen: tag.seen || false
+      };
+    });
+
+    const batch = db.batch();
+    tagSnap.forEach(doc => {
+      if (!doc.data().seen) batch.update(doc.ref, { seen: true });
+    });
+    await batch.commit();
+
+    res.render('inbox-tags', {
+      taggedComments,
+      headerClass: 'header-home',
+      showAuthLinks: true,
+      showLeagueLink: false,
+      useTeamHeader: false,
+      hideAuthModals: false,
+      currentUser: req.session.user
+    });
+  } catch (err) {
+    console.error('❌ Tag inbox error:', err);
+    res.status(500).send("Inbox tags error");
+  }
+});
 
 // ✅ Individual Chat Page: /chat/:username
 app.get('/chat/:username', async (req, res) => {
@@ -1495,50 +1728,6 @@ app.get('/api/messages/conversation/:username', async (req, res) => {
 
   res.json(messages);
 });
-
-
-// ✅ Inbox Tags Page: /inbox/tags
-app.get('/inbox/tags', async (req, res) => {
-  if (!req.session.user) return res.redirect('/?error=Login required');
-
-  try {
-    const tagSnap = await db.collection('tags')
-      .where('taggedUserId', '==', req.session.user.username)
-      .orderBy('timestamp', 'desc')
-      .get();
-
-    const taggedComments = tagSnap.docs.map(doc => {
-      const tag = doc.data();
-      return {
-        fromUser: tag.fromUser,
-        content: tag.content,
-        threadType: tag.threadType || 'team',
-        link: tag.link || '#',
-        seen: tag.seen || false
-      };
-    });
-
-    const batch = db.batch();
-    tagSnap.forEach(doc => {
-      if (!doc.data().seen) batch.update(doc.ref, { seen: true });
-    });
-    await batch.commit();
-
-    res.render('inbox-tags', {
-      taggedComments,
-      headerClass: 'header-home',
-      showAuthLinks: true,
-      showLeagueLink: false,
-      useTeamHeader: false,
-      hideAuthModals: false,
-      currentUser: req.session.user
-    });
-  } catch (err) {
-    console.error('❌ Tag inbox error:', err);
-    res.status(500).send("Inbox tags error");
-  }
-});
-
 
 // ✅ Helper: Save message to Firestore with profile pics
 async function saveMessage({ sender, receiver, content }) {

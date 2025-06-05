@@ -63,6 +63,46 @@
       width: 100%;
       border-radius: 10px;
     }
+    .user-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.user-entry {
+  display: flex;
+  align-items: center;
+  background: #eee;
+  padding: 8px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #333;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.user-entry:hover {
+  background: #ddd;
+}
+
+.user-entry img {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+@media screen and (max-width: 600px) {
+  .user-list {
+    flex-direction: column;
+  }
+
+  .user-entry {
+    font-size: 1rem;
+    padding: 10px;
+  }
+}
   </style>
 </head>
 <body>
@@ -188,6 +228,34 @@
 <% } %>
       </div>
     </div>
+<h3 id="followersToggle" onclick="toggleSection('followersListWrap', 'followersToggle')" style="cursor: pointer;">
+  👥 Followers (<%= followers.length %>) ⬇️
+</h3>
+
+<% if (followers && followers.length > 0) { %>
+  <div id="followersListWrap" style="display: none;">
+    <input id="followersSearch" oninput="filterUsers('followersSearch', 'followersList', followersData)" placeholder="Search followers..." style="padding: 8px; width: 100%; max-width: 400px; margin-bottom: 10px;" />
+    <div id="followersList" class="user-list"></div>
+    <div id="followersPagination" style="margin-top: 10px;"></div>
+  </div>
+<% } else { %>
+  <p style="margin-bottom: 30px;">This user has no followers yet.</p>
+<% } %>
+
+<!-- Following Section -->
+<h3 id="followingToggle" onclick="toggleSection('followingListWrap', 'followingToggle')" style="cursor: pointer;">
+  ➡️ Following (<%= following.length %>) ⬇️
+</h3>
+
+<% if (following && following.length > 0) { %>
+  <div id="followingListWrap" style="display: none;">
+    <input id="followingSearch" oninput="filterUsers('followingSearch', 'followingList', followingData)" placeholder="Search following..." style="padding: 8px; width: 100%; max-width: 400px; margin-bottom: 10px;" />
+    <div id="followingList" class="user-list"></div>
+    <div id="followingPagination" style="margin-top: 10px;"></div>
+  </div>
+<% } else { %>
+  <p>This user isn’t following anyone yet.</p>
+<% } %>
 
     <% if (stories.length > 0) { %>
       <div class="story-carousel">
@@ -271,6 +339,100 @@
   function closeStoryModal() {
     document.getElementById('storyModal').style.display = 'none';
   }
+  
+  function toggleSection(id, btnId) {
+    const section = document.getElementById(id);
+    const button = document.getElementById(btnId);
+    if (section.style.display === 'none') {
+      section.style.display = 'flex';
+      button.innerText = button.innerText.replace('⬇️', '⬆️');
+    } else {
+      section.style.display = 'none';
+      button.innerText = button.innerText.replace('⬆️', '⬇️');
+    }
+  }
+
+  const followersData = <%- JSON.stringify(followers) %>;
+  const followingData = <%- JSON.stringify(following) %>;
+
+  function toggleSection(id, btnId) {
+    const section = document.getElementById(id);
+    const button = document.getElementById(btnId);
+    if (section.style.display === 'none') {
+      section.style.display = 'block';
+      button.innerText = button.innerText.replace('⬇️', '⬆️');
+    } else {
+      section.style.display = 'none';
+      button.innerText = button.innerText.replace('⬆️', '⬇️');
+    }
+  }
+
+ function renderPaginatedUsers(data, listId, paginationId, currentPage = 1, perPage = 10) {
+  const list = document.getElementById(listId);
+  const pagination = document.getElementById(paginationId);
+  list.innerHTML = '';
+
+  const filtered = data.filter(u => !u.hidden);
+  const total = filtered.length;
+  const pages = Math.ceil(total / perPage);
+  const start = (currentPage - 1) * perPage;
+  const end = start + perPage;
+  const pageUsers = filtered.slice(start, end);
+
+  pageUsers.forEach(user => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'user-entry-wrapper';
+
+    const a = document.createElement('a');
+    a.className = 'user-entry';
+    a.href = `/user/${user.username}`;
+    a.innerHTML = `
+      <img src="${user.profilePic || '/default-avatar.png'}" alt="${user.username}" />
+      <span>${user.username}</span>
+    `;
+
+    wrapper.appendChild(a);
+
+    if (user.showFollowBack) {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = `/user/${user.username}/follow`;
+      form.innerHTML = `
+        <button type="submit" class="follow-back-btn">Follow Back</button>
+      `;
+      wrapper.appendChild(form);
+    }
+
+    list.appendChild(wrapper);
+  });
+
+  pagination.innerHTML = '';
+  if (pages > 1) {
+    for (let i = 1; i <= pages; i++) {
+      const btn = document.createElement('button');
+      btn.textContent = i;
+      btn.style.margin = '0 4px';
+      btn.onclick = () => renderPaginatedUsers(data, listId, paginationId, i, perPage);
+      if (i === currentPage) btn.style.fontWeight = 'bold';
+      pagination.appendChild(btn);
+    }
+  }
+}
+
+  function filterUsers(inputId, listId, data) {
+    const input = document.getElementById(inputId).value.toLowerCase();
+    data.forEach(user => {
+      user.hidden = !user.username.toLowerCase().includes(input);
+    });
+    const paginationId = listId === 'followersList' ? 'followersPagination' : 'followingPagination';
+    renderPaginatedUsers(data, listId, paginationId, 1);
+  }
+
+  // Initial render
+  document.addEventListener('DOMContentLoaded', () => {
+    renderPaginatedUsers(followersData, 'followersList', 'followersPagination');
+    renderPaginatedUsers(followingData, 'followingList', 'followingPagination');
+  });
 </script>
 </body>
 </html>
