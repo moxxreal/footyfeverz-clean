@@ -40,17 +40,19 @@
   <div id="replyToast" class="reply-toast">💬 Reply sent!</div>
 
   <div class="story-actions">
-    <div class="reaction-buttons">
-      <button onclick="sendReaction('❤️')">❤️ <span id="count-heart">0</span></button>
-      <button onclick="sendReaction('😂')">😂 <span id="count-laugh">0</span></button>
-      <button onclick="sendReaction('😡')">😡 <span id="count-angry">0</span></button>
-      <button onclick="sendReaction('👍')">👍 <span id="count-like">0</span></button>
-    </div>
-    <div class="reply-container">
-      <input type="text" id="replyInput" placeholder="Reply to this story..." />
-      <button onclick="submitReply()">Send</button>
+  <div class="reply-container">
+    <div class="reply-box">
+      <input type="text" id="replyInput" placeholder="Reply to this story..." oninput="toggleReplyUI()" />
+      <button id="sendButton" onclick="submitReply()">Send</button>
     </div>
   </div>
+  <div class="reaction-buttons" id="reactionButtons">
+    <button onclick="sendReaction('❤️')">❤️ <span id="count-heart">0</span></button>
+    <button onclick="sendReaction('😂')">😂 <span id="count-laugh">0</span></button>
+    <button onclick="sendReaction('😡')">😡 <span id="count-angry">0</span></button>
+    <button onclick="sendReaction('👍')">👍 <span id="count-like">0</span></button>
+  </div>
+</div>
 
   <div class="close-modal" onclick="closeStoryModal()">✖</div>
   <div class="modal-arrow left" onclick="prevStory()">❮</div>
@@ -190,9 +192,65 @@
   width: 100%;
   text-align: center;
 }
-.reaction-buttons {
-  margin-bottom: 10px;
+
+.reply-container {
+  display: flex;
+  justify-content: center;
+  padding: 0 10px;
+  width: 100%;
 }
+
+.reply-box {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+}
+
+.reply-box input {
+  width: 100%;
+  padding: 10px 80px 10px 12px; /* space for Send button */
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  outline: none;
+  font-family: inherit;
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: none;
+  -ms-text-size-adjust: none;
+}
+
+.reply-box input:focus {
+  border-color: navy;
+}
+
+.reply-box button {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 12px;
+  background: navy;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: none;
+  font-size: 14px;
+}
+
+/* Reactions hidden by default */
+.reaction-buttons {
+  margin-top: 12px;
+  display: none;
+}
+
+.reaction-buttons.show {
+  display: block;
+}
+
 .reaction-buttons button {
   font-size: 24px;
   background: none;
@@ -202,45 +260,14 @@
   cursor: pointer;
   transition: transform 0.2s;
 }
+
 .reaction-buttons button:hover {
   transform: scale(1.3);
 }
-.reply-container {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  padding: 0 10px;
-}
-.reply-container input {
-  padding: 8px 12px;
-  width: 50%;
-  max-width: 300px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-}
-.reply-container button {
-  padding: 8px 14px;
-  background: navy;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
 
-/* Replies */
-.story-replies {
-  position: absolute;
-  bottom: 100px;
-  width: 90%;
-  left: 5%;
-  max-height: 100px;
-  overflow-y: auto;
-  color: white;
-  font-size: 14px;
-  text-align: left;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-  padding: 6px 10px;
+/* Disable zoom on mobile */
+input[type="text"] {
+  font-size: 16px;
 }
 .reply-toast {
   position: absolute;
@@ -260,6 +287,25 @@
 .reply-toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(-10px);
+}
+
+@media (max-width: 500px) {
+  .story-caption {
+    font-size: 16px;
+    bottom: 140px;
+  }
+
+  .reply-box input {
+    font-size: 16px;
+  }
+
+  .reply-box button {
+    font-size: 13px;
+  }
+
+  .reaction-buttons button {
+    font-size: 22px;
+  }
 }
 
 /* --- Modal Controls --- */
@@ -287,19 +333,6 @@
   right: 10px;
 }
 
-/* --- Responsive --- */
-@media (max-width: 500px) {
-  .story-caption {
-    font-size: 16px;
-    bottom: 140px;
-  }
-  .reaction-buttons button {
-    font-size: 20px;
-  }
-  .reply-container input {
-    width: 60%;
-  }
-}
 </style>
 <script>
 let isLocked = false;  // 🛑 Prevent auto story switch when locked
@@ -404,6 +437,16 @@ function closeStoryModal() {
 
   clearTimeout(autoCloseTimeout);
   history.pushState({}, '', '/'); // remove query param
+}
+
+function toggleReplyUI() {
+  const input = document.getElementById('replyInput');
+  const sendBtn = document.getElementById('sendButton');
+  const reactions = document.getElementById('reactionButtons');
+  const show = input.value.trim().length > 0;
+
+  sendBtn.style.display = show ? 'block' : 'none';
+  reactions.classList.toggle('show', show);
 }
 
 function pauseStory() {
