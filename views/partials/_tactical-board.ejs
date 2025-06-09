@@ -1,8 +1,13 @@
+<!-- Rotate Warning -->
+<div id="rotateWarning" style="display: none; position: fixed; z-index: 10000; top: 0; left: 0; width: 100vw; height: 100vh; background: black; color: white; justify-content: center; align-items: center; font-size: 2rem; text-align: center; padding: 2rem;">
+  ⚠️ Please rotate your device to <strong>landscape</strong> to use the tactical board.
+</div>
+
 <!-- Tactical Board Modal -->
-<div id="tacticalModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 9999;">
-  <div style="background: white; border-radius: 20px; padding: 20px; width: 95%; max-width: 1000px; height: 90vh; display: flex; flex-direction: row; gap: 20px;">
+<div id="tacticalModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); justify-content: center; align-items: center; z-index: 9999; overflow: hidden;">
+  <div style="background: white; border-radius: 20px; padding: 1rem; width: 100vw; height: 100vh; display: flex; flex-direction: row; flex-wrap: wrap; gap: 1rem; box-sizing: border-box;">
     <!-- Left panel: controls -->
-    <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
+    <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 15px;">
       <h3>Formation</h3>
       <select onchange="loadFormation(this.value)">
         <option value="433">4-3-3</option>
@@ -16,7 +21,6 @@
       <h3>Color</h3>
       <input type="color" id="teamColorPicker" onchange="changeTeamColor(this.value)" value="#007BFF" />
 
-      <button onclick="toggleArrowMode()">Toggle Arrow Mode</button>
       <button onclick="undo()">Undo</button>
       <button onclick="redo()">Redo</button>
       <button onclick="submitTactics()">Submit</button>
@@ -32,21 +36,18 @@
 
 <script>
 let draggedPlayer = null;
-let isDrawingArrow = false;
-let arrowStart = null;
-let arrows = [];
+let dragOffsetX = 0;
+let dragOffsetY = 0;
 let undoStack = [];
 let redoStack = [];
 let playerColor = '#007BFF';
 let tacticalBoardActivated = false;
 let canvas, ctx;
-
 const players = [];
+let currentFormationCode = '433';
 
-function toggleArrowMode() {
-  isDrawingArrow = !isDrawingArrow;
-  arrowStart = null;
-  canvas.style.cursor = isDrawingArrow ? 'crosshair' : 'default';
+function clonePlayers(arr) {
+  return arr.map(p => ({ ...p }));
 }
 
 function changeTeamColor(color) {
@@ -56,35 +57,6 @@ function changeTeamColor(color) {
 
 function drawPlayers() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Draw arrows
-  arrows.forEach(a => {
-    ctx.beginPath();
-    ctx.moveTo(a.from.x, a.from.y);
-    ctx.lineTo(a.to.x, a.to.y);
-    ctx.strokeStyle = 'red';
-    ctx.lineWidth = 4;
-    ctx.stroke();
-
-    const angle = Math.atan2(a.to.y - a.from.y, a.to.x - a.from.x);
-    const headLength = 15;
-    const x = a.to.x, y = a.to.y;
-
-    const arrowX1 = x - headLength * Math.cos(angle - Math.PI / 6);
-    const arrowY1 = y - headLength * Math.sin(angle - Math.PI / 6);
-    const arrowX2 = x - headLength * Math.cos(angle + Math.PI / 6);
-    const arrowY2 = y - headLength * Math.sin(angle + Math.PI / 6);
-
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(arrowX1, arrowY1);
-    ctx.lineTo(arrowX2, arrowY2);
-    ctx.closePath();
-    ctx.fillStyle = 'red';
-    ctx.fill();
-  });
-
-  // Draw players
   players.forEach(p => {
     ctx.beginPath();
     ctx.arc(p.x, p.y, 30, 0, Math.PI * 2);
@@ -102,137 +74,72 @@ function drawPlayers() {
 }
 
 function undo() {
-  if (undoStack.length === 0) return;
-  const last = undoStack.pop();
-  redoStack.push(last);
-
-  if (last.type === 'arrow') {
-    arrows = arrows.filter(a => a !== last.data);
-  }
-
+  if (undoStack.length <= 1) return;
+  redoStack.push(clonePlayers(players));
+  undoStack.pop();
+  const prev = undoStack[undoStack.length - 1];
+  players.length = 0;
+  players.push(...clonePlayers(prev));
   drawPlayers();
 }
 
 function redo() {
   if (redoStack.length === 0) return;
+  undoStack.push(clonePlayers(players));
   const next = redoStack.pop();
-
-  if (next.type === 'arrow') {
-    arrows.push(next.data);
-    undoStack.push(next);
-  }
-
+  players.length = 0;
+  players.push(...next);
   drawPlayers();
 }
 
 function loadFormation(code) {
   const midY = canvas.height / 2;
   const lineX = [60, 180, 300, 420, 540, 660, 780];
+  if (players.length > 0) undoStack.push(clonePlayers(players));
+  redoStack.length = 0;
   players.length = 0;
+  currentFormationCode = code;
 
-  if (code === "433") {
-    players.push(
-      { x: lineX[0], y: midY, label: "GK" },
-      { x: lineX[2], y: midY - 170, label: "LB" },
-      { x: lineX[1], y: midY - 60, label: "CB" },
-      { x: lineX[1], y: midY + 60, label: "CB" },
-      { x: lineX[2], y: midY + 170, label: "RB" },
-      { x: lineX[3], y: midY - 100, label: "CM" },
-      { x: lineX[2], y: midY, label: "CDM" },
-      { x: lineX[3], y: midY + 100, label: "CM" },
-      { x: lineX[4], y: midY - 150, label: "LW" },
-      { x: lineX[4], y: midY + 150, label: "RW" },
-      { x: lineX[5], y: midY, label: "ST" }
-    );
-  }
+  const formations = {
+    '433': [
+      ['GK', 0, 0], ['LB', 2, -170], ['CB', 1, -60], ['CB', 1, 60], ['RB', 2, 170],
+      ['CM', 3, -100], ['CDM', 2, 0], ['CM', 3, 100],
+      ['LW', 4, -150], ['RW', 4, 150], ['ST', 5, 0]
+    ],
+    '433f9': [
+      ['GK', 0, 0], ['LB', 2, -170], ['LCB', 1, -60], ['RCB', 1, 60], ['RB', 2, 170],
+      ['CM', 3, -100], ['CDM', 2, 0], ['CM', 3, 100],
+      ['LW', 5, -130], ['RW', 5, 130], ['False 9', 4, 0]
+    ],
+    '442': [
+      ['GK', 0, 0], ['LB', 2, -170], ['CB', 1, -60], ['CB', 1, 60], ['RB', 2, 170],
+      ['LM', 4, -170], ['CDM', 3, -60], ['CDM', 3, 60], ['RM', 4, 170],
+      ['ST', 5, -60], ['ST', 5, 60]
+    ],
+    '4231': [
+      ['GK', 0, 0], ['LB', 2, -170], ['CB', 1, -60], ['CB', 1, 60], ['RB', 2, 170],
+      ['CDM', 3, -60], ['CDM', 3, 60], ['CAM', 4, 0],
+      ['LM', 4, -170], ['RM', 4, 170], ['ST', 5, 0]
+    ],
+    '532': [
+      ['GK', 0, 0], ['LWB', 3, -190], ['LCB', 2, -110], ['CB', 1, 0], ['RCB', 2, 110], ['RWB', 3, 190],
+      ['CM', 4, -110], ['CDM', 3, 0], ['CM', 4, 110], ['ST', 5, -60], ['ST', 5, 60]
+    ],
+    '523': [
+      ['GK', 0, 0], ['LWB', 3, -190], ['LCB', 2, -110], ['CB', 1, 0], ['RCB', 2, 110], ['RWB', 3, 190],
+      ['CM', 3, -70], ['CM', 3, 70], ['LW', 4, -120], ['RW', 4, 120], ['ST', 5, 0]
+    ]
+  };
 
-  if (code === "433f9") {
-    players.push(
-      { x: lineX[0], y: midY, label: "GK" },
-      { x: lineX[2], y: midY - 170, label: "LB" },
-      { x: lineX[1], y: midY - 60, label: "LCB" },
-      { x: lineX[1], y: midY + 60, label: "RCB" },
-      { x: lineX[2], y: midY + 170, label: "RB" },
-      { x: lineX[3], y: midY - 100, label: "CM" },
-      { x: lineX[2], y: midY, label: "CDM" },
-      { x: lineX[3], y: midY + 100, label: "CM" },
-      { x: lineX[5], y: midY - 130, label: "LW" },
-      { x: lineX[5], y: midY + 130, label: "RW" },
-      { x: lineX[4], y: midY, label: "False 9" }
-    );
-  }
-
-  if (code === "442") {
-    players.push(
-      { x: lineX[0], y: midY, label: "GK" },
-      { x: lineX[2], y: midY - 170, label: "LB" },
-      { x: lineX[1], y: midY - 60, label: "CB" },
-      { x: lineX[1], y: midY + 60, label: "CB" },
-      { x: lineX[2], y: midY + 170, label: "RB" },
-      { x: lineX[4], y: midY - 170, label: "LM" },
-      { x: lineX[3], y: midY - 60, label: "CDM" },
-      { x: lineX[3], y: midY + 60, label: "CDM" },
-      { x: lineX[4], y: midY + 170, label: "RM" },
-      { x: lineX[5], y: midY - 60, label: "ST" },
-      { x: lineX[5], y: midY + 60, label: "ST" }
-    );
-  }
-
-  if (code === "4231") {
-    players.push(
-      { x: lineX[0], y: midY, label: "GK" },
-      { x: lineX[2], y: midY - 170, label: "LB" },
-      { x: lineX[1], y: midY - 60, label: "CB" },
-      { x: lineX[1], y: midY + 60, label: "CB" },
-      { x: lineX[2], y: midY + 170, label: "RB" },
-      { x: lineX[3], y: midY - 60, label: "CDM" },
-      { x: lineX[3], y: midY + 60, label: "CDM" },
-      { x: lineX[4], y: midY, label: "CAM" },
-      { x: lineX[4], y: midY - 170, label: "LM" },
-      { x: lineX[4], y: midY + 170, label: "RM" },
-      { x: lineX[5], y: midY, label: "ST" }
-    );
-  }
-
-  if (code === "532") {
-    players.push(
-      { x: lineX[0], y: midY, label: "GK" },
-      { x: lineX[3], y: midY - 190, label: "LWB" },
-      { x: lineX[2], y: midY - 110, label: "LCB" },
-      { x: lineX[1], y: midY, label: "CB" },
-      { x: lineX[2], y: midY + 110, label: "RCB" },
-      { x: lineX[3], y: midY + 190, label: "RWB" },
-      { x: lineX[4], y: midY - 110, label: "CM" },
-      { x: lineX[3], y: midY, label: "CDM" },
-      { x: lineX[4], y: midY + 110, label: "CM" },
-      { x: lineX[5], y: midY - 60, label: "ST" },
-      { x: lineX[5], y: midY + 60, label: "ST" }
-    );
-  }
-
-  if (code === "523") {
-    players.push(
-      { x: lineX[0], y: midY, label: "GK" },
-      { x: lineX[3], y: midY - 190, label: "LWB" },
-      { x: lineX[2], y: midY - 110, label: "LCB" },
-      { x: lineX[1], y: midY, label: "CB" },
-      { x: lineX[2], y: midY + 110, label: "RCB" },
-      { x: lineX[3], y: midY + 190, label: "RWB" },
-      { x: lineX[3], y: midY - 70, label: "CM" },
-      { x: lineX[3], y: midY + 70, label: "CM" },
-      { x: lineX[4], y: midY - 120, label: "LW" },
-      { x: lineX[4], y: midY + 120, label: "RW" },
-      { x: lineX[5], y: midY, label: "ST" }
-    );
-  }
-
+  formations[code].forEach(([label, xIdx, yOffset]) =>
+    players.push({ x: lineX[xIdx], y: midY + yOffset, label })
+  );
   drawPlayers();
 }
 
 function setupDragListeners() {
   if (!canvas) return;
-
-  canvas.addEventListener('mousedown', (e) => {
+  canvas.addEventListener('mousedown', e => {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -242,50 +149,57 @@ function setupDragListeners() {
     for (let p of players) {
       if (Math.hypot(mx - p.x, my - p.y) < 30) {
         draggedPlayer = p;
-        p.dragging = true;
+        dragOffsetX = mx - p.x;
+        dragOffsetY = my - p.y;
         break;
       }
     }
   });
 
-  canvas.addEventListener('mousemove', (e) => {
-    if (draggedPlayer?.dragging) {
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      draggedPlayer.x = (e.clientX - rect.left) * scaleX;
-      draggedPlayer.y = (e.clientY - rect.top) * scaleY;
-      drawPlayers();
-    }
-  });
-
-  ['mouseup', 'mouseleave'].forEach(event => {
-    canvas.addEventListener(event, () => {
-      if (draggedPlayer) draggedPlayer.dragging = false;
-      draggedPlayer = null;
-    });
-  });
-}
-
-function setupArrowDrawing() {
-  canvas.addEventListener('click', (e) => {
-    if (!isDrawingArrow) return;
-
+  canvas.addEventListener('mousemove', e => {
+    if (!draggedPlayer) return;
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * canvas.width / rect.width;
-    const y = (e.clientY - rect.top) * canvas.height / rect.height;
-
-    if (!arrowStart) {
-      arrowStart = { x, y };
-    } else {
-      const newArrow = { from: arrowStart, to: { x, y } };
-      arrows.push(newArrow);
-      undoStack.push({ type: 'arrow', data: newArrow });
-      arrowStart = null;
-      drawPlayers();
-    }
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
+    draggedPlayer.x = mx - dragOffsetX;
+    draggedPlayer.y = my - dragOffsetY;
+    drawPlayers();
   });
+
+  ['mouseup', 'mouseleave'].forEach(evt =>
+    canvas.addEventListener(evt, () => {
+      if (draggedPlayer) {
+        draggedPlayer = null;
+        undoStack.push(clonePlayers(players));
+        redoStack = [];
+      }
+    })
+  );
 }
+
+function showRotateWarning() {
+  document.getElementById('rotateWarning').style.display = 'flex';
+}
+function hideRotateWarning() {
+  document.getElementById('rotateWarning').style.display = 'none';
+}
+
+function checkOrientationAndOpen() {
+  const isPortrait = window.matchMedia('(orientation: portrait)').matches;
+  if (isPortrait) {
+    showRotateWarning();
+  } else {
+    hideRotateWarning();
+    openTacticalBoard();
+  }
+}
+
+window.addEventListener('orientationchange', () => {
+  if (!tacticalBoardActivated) return;
+  checkOrientationAndOpen();
+});
 
 function openTacticalBoard() {
   tacticalBoardActivated = true;
@@ -295,14 +209,20 @@ function openTacticalBoard() {
   setTimeout(() => {
     canvas = document.getElementById('tacticalCanvas');
     ctx = canvas.getContext('2d');
-
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
 
-    loadFormation('433');
-    setupDragListeners();
-    setupArrowDrawing();
+    if (undoStack.length === 0) {
+      loadFormation('433');
+      undoStack.push(clonePlayers(players));
+    } else {
+      players.length = 0;
+      players.push(...clonePlayers(undoStack[undoStack.length - 1]));
+    }
 
+    redoStack = [];
+    drawPlayers();
+    setupDragListeners();
     document.querySelector('#teamColorPicker').disabled = false;
   }, 10);
 }
@@ -310,6 +230,7 @@ function openTacticalBoard() {
 function closeTacticalBoard() {
   tacticalBoardActivated = false;
   document.getElementById('tacticalModal').style.display = 'none';
+  hideRotateWarning();
 }
 
 function submitTactics() {
@@ -318,47 +239,24 @@ function submitTactics() {
     const dt = new DataTransfer();
     dt.items.add(new File([blob], 'tactic.png', { type: 'image/png' }));
     tacticInput.files = dt.files;
-
     closeTacticalBoard();
     alert('Tactic image attached to your comment!');
   });
 }
 
-function showRotateWarning() {
-  document.getElementById('rotateWarning').style.display = 'flex';
-}
-
-function hideRotateWarning() {
-  document.getElementById('rotateWarning').style.display = 'none';
-}
-
-window.addEventListener('orientationchange', () => {
-  if (!tacticalBoardActivated) return;
-  const isPortrait = window.matchMedia('(orientation: portrait)').matches;
-  if (isPortrait) {
-    closeTacticalBoard();
-    showRotateWarning();
-  } else {
-    hideRotateWarning();
-    openTacticalBoard();
-  }
-});
-
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('rotateWarning').style.display = 'none';
 
   const btn = document.getElementById('openTacticalBoardBtn');
-  console.log("Checking button:", btn);
-
   if (btn) {
     btn.addEventListener('click', e => {
-      if (!isLoggedIn) {
+      if (typeof isLoggedIn !== 'undefined' && !isLoggedIn) {
         e.preventDefault();
         document.getElementById('unauthMessage').classList.remove('hidden');
         btn.classList.add('shake');
         setTimeout(() => btn.classList.remove('shake'), 500);
       } else {
-        openTacticalBoard();
+        checkOrientationAndOpen();
       }
     });
   }
