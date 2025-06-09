@@ -86,82 +86,6 @@ h1 {
   margin: 0 auto;
 }
 
-/* --- FAN BATTLE --- */
-.fan-battle {
-  max-width: 600px;
-  margin: 40px auto;
-  text-align: center;
-  background: rgba(0,0,0,0.75);
-  padding: 30px;
-  border-radius: 20px;
-  color: white;
-  box-shadow: 0 0 15px rgba(255,255,255,0.15);
-  font-family: 'Orbitron', sans-serif;
-}
-
-.fan-battle h2 {
-  font-size: 26px;
-  margin-bottom: 20px;
-}
-
-.fan-battle form button {
-  background: #ffcc00;
-  border: none;
-  color: black;
-  font-weight: bold;
-  font-size: 18px;
-  padding: 12px 20px;
-  margin: 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
-}
-
-.fan-battle form button:hover {
-  background-color: #e6b800;
-  transform: scale(1.05);
-}
-
-.fan-battle p {
-  margin-top: 20px;
-  font-size: 16px;
-  color: #ddd;
-}
-
-/* --- LEADERBOARD --- */
-.leaderboard {
-  margin: 40px auto;
-  text-align: center;
-  background: rgba(255,255,255,0.9);
-  padding: 30px;
-  border-radius: 20px;
-  width: 90%;
-  max-width: 700px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-.leaderboard h2 {
-  margin-bottom: 20px;
-  font-family: 'Orbitron', sans-serif;
-  color: #38003c;
-}
-
-.leaderboard-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.leaderboard-table th,
-.leaderboard-table td {
-  padding: 12px;
-  border-bottom: 1px solid #ccc;
-  font-size: 16px;
-}
-
-.leaderboard-table td:first-child {
-  font-weight: bold;
-}
-
 /* --- USER PROFILE --- */
 .user-profile {
   max-width: 800px;
@@ -638,13 +562,91 @@ body.modal-open {
 #chat-form button:hover {
   background: #0056b3;
 }
-/* Mobile portrait mode force */
-@media screen and (orientation: portrait) {
-  /* Only show the warning inside the modal */
-  #tacticalModal:target #rotateWarning {
-    display: flex !important;
-  }
+/* --- GENERAL MODAL LAYOUT --- */
+#tacticalModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 9999;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
 }
+
+/* Controls section — 20% */
+.tactical-controls {
+  width: 20%;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-start;
+  background: #fff;
+  border-right: 1px solid #ccc;
+  overflow-y: auto;
+}
+
+/* Pitch section — 80% */
+#tacticalPitch {
+  width: 80%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  background: #003300;
+  padding: 20px;
+}
+
+/* Canvas styled to fully fill the pitch area */
+#tacticalCanvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9; /* Keeps pitch proportion */
+  background: url('/images/tactical-pitch.png') center center / cover no-repeat;
+  background-color: #006400;
+  border-radius: 12px;
+  max-height: 95vh;
+}
+
+.tactical-controls button {
+  padding: 14px 22px;
+  font-size: 18px;
+  font-weight: bold;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(to bottom, #007BFF, #0056b3);
+  color: white;
+  cursor: pointer;
+  width: 100%;
+  max-width: 180px;
+  transition: transform 0.2s ease;
+}
+
+.tactical-controls button:hover {
+  transform: scale(1.05);
+}
+
+.tactical-controls select {
+  padding: 12px 16px;
+  font-size: 17px;
+  border-radius: 8px;
+  border: 1px solid #888;
+  width: 100%;
+  max-width: 180px;
+  background-color: #f9f9f9;
+  font-weight: bold;
+  cursor: pointer;
+}
+.tactical-controls > * {
+  margin-bottom: 15px;
+}
+
+/* --- ROTATE WARNING --- */
 #rotateWarning {
   display: none;
   position: fixed;
@@ -654,43 +656,49 @@ body.modal-open {
   height: 100dvh;
   background: white;
   z-index: 99999;
-
-  /* ✅ Perfect vertical + horizontal centering */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
-  /* ✅ Consistent text formatting */
   font-size: 1.6em;
   font-weight: 600;
   color: #007BFF;
   text-align: center;
   padding: 2rem;
-
-  /* ✅ Remove any extra transform */
   transform: none !important;
 }
-@keyframes fadeIn {
-  from { opacity: 0; transform: rotate(-5deg); }
-  to { opacity: 1; transform: rotate(0); }
+
+@media screen and (orientation: portrait) {
+  #tacticalModal:target #rotateWarning {
+    display: flex !important;
+  }
 }
 
-/* Pitch layout - prevent squashing */
+/* --- BUTTONS ABOVE PITCH --- */
+#tacticalControls {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  z-index: 10000;
+}
+
+/* --- PITCH AREA (NO SCROLL) --- */
 #tacticalBoard {
+  position: relative;
   touch-action: none;
   aspect-ratio: 16 / 9;
   width: 100%;
-  height: auto;
   max-width: 900px;
-  margin: 0 auto;
   background: url('/images/tactical-pitch.png') center/cover no-repeat;
   border: 2px solid #333;
   border-radius: 12px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
-/* Player circles */
+/* --- PLAYER CIRCLES --- */
 .tactical-player {
   z-index: 10;
   font-weight: bold;
@@ -699,7 +707,6 @@ body.modal-open {
   white-space: nowrap;
   overflow: hidden;
   touch-action: none;
-
   position: absolute;
   width: 60px;
   height: 60px;
@@ -711,6 +718,10 @@ body.modal-open {
   box-shadow: 0 0 5px rgba(0,0,0,0.4);
   cursor: grab;
   user-select: none;
+}
+body.modal-open {
+  overflow: hidden;
+  height: 100vh;
 }
 
 button.follow-btn,

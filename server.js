@@ -629,6 +629,7 @@ app.post('/stories/:id/react', requireLogin, async (req, res) => {
 
 // --- Comment on a story ---
 app.post('/stories/:id/comment', requireLogin, async (req, res) => {
+  console.log('Incoming comment body:', req.body);
   if (!req.session.user) return res.status(401).json({ success: false });
 
   const { id } = req.params;
@@ -641,23 +642,24 @@ app.post('/stories/:id/comment', requireLogin, async (req, res) => {
     console.log('💬 Story comment:', { id, comment, user: username });
 
     await db.collection('stories').doc(id)
-  .collection('comments').add({
+  .collection('comments')
+  .add({
     user: username,
     comment: comment.trim(),
     timestamp: admin.firestore.FieldValue.serverTimestamp()
   });
 
-// Send notification to story owner
-const storyDoc = await db.collection('stories').doc(id).get();
-const to = storyDoc.data()?.username;
-if (to && to !== username) {
-  await db.collection('users').doc(to).collection('storyNotifications').add({
-    from: username,
-    storyId: id,
-    type: 'reply',
-    timestamp: admin.firestore.FieldValue.serverTimestamp()
-  });
-}
+    // Optional: send notification
+    const storyDoc = await db.collection('stories').doc(id).get();
+    const to = storyDoc.data()?.username;
+    if (to && to !== username) {
+      await db.collection('users').doc(to).collection('storyNotifications').add({
+        from: username,
+        storyId: id,
+        type: 'reply',
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
 
     res.json({ success: true });
   } catch (err) {

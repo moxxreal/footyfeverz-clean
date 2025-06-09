@@ -398,9 +398,14 @@ function openStoryModal(index) {
 
   // Replies
   const replyBox = document.getElementById('storyReplies');
-  replyBox.innerHTML = (story.comments || []).slice(-5).map(r =>
-    `<div><strong>${r.user}:</strong> ${r.comment}</div>`
-  ).join('');
+  if (!story.comments || story.comments.length === 0) {
+  replyBox.innerHTML = `<div style="opacity: 0.5;">No replies yet</div>`;
+} else {
+  replyBox.innerHTML = story.comments
+    .slice(-5)
+    .map(r => `<div><strong>${r.user}:</strong> ${r.comment}</div>`)
+    .join('');
+}
 
   // Focus input listener for pause/resume
   input.removeEventListener('focus', pauseStory);
@@ -523,17 +528,12 @@ function sendReaction(emoji) {
 function submitReply() {
   const inputEl = document.getElementById('replyInput');
   const text = inputEl.value.trim();
-
-  // ⛔ Stop if empty
   if (!text) return;
 
-  // ✅ Capture current story and index at moment of send
-  const replyIndex = currentIndex;
-  const story = stories[replyIndex];
-
+  const lockedIndex = currentIndex; // lock the index at moment of send
+  const story = stories[lockedIndex];
   if (!story || !story._id) return;
 
-  // Lock everything during comment
   isReplying = true;
   isLocked = true;
   pauseStory();
@@ -550,18 +550,17 @@ function submitReply() {
         inputEl.value = '';
 
         const currentUser = "<%= user?.username %>";
-        story.comments = story.comments || [];
+        if (!story.comments) story.comments = [];
         story.comments.push({ user: currentUser, comment: text });
 
-        // Append comment to correct reply box (based on locked index)
-        if (currentIndex === replyIndex) {
-          const replyBox = document.getElementById('storyReplies');
-          const newReply = document.createElement('div');
-          newReply.innerHTML = `<strong>${currentUser}:</strong> ${text}`;
-          replyBox.appendChild(newReply);
-        }
+        // ⬇️ Force update reply box manually with full rebuild
+        const replyBox = document.getElementById('storyReplies');
+        replyBox.innerHTML = story.comments
+          .slice(-5)
+          .map(r => `<div><strong>${r.user}:</strong> ${r.comment}</div>`)
+          .join('');
 
-        // Show toast
+        // ✅ Show toast
         const toast = document.getElementById('replyToast');
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 2000);
@@ -580,7 +579,7 @@ function submitReply() {
     .catch(err => {
       isReplying = false;
       isLocked = false;
-      console.error('❌ Failed to submit reply:', err);
+      console.error('❌ Reply error:', err);
       alert('Reply failed.');
     });
 }
