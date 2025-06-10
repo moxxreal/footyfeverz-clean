@@ -75,12 +75,6 @@
     leagueSlug,
     leagueName
   }) %>
-
-  <!-- Rotate Phone Warning (for tactical board on mobile) -->
-<div id="rotateWarning" style="display: none; justify-content: center; align-items: center; background: rgba(0,0,0,0.9); color: white; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; font-size: 24px; font-weight: bold; text-align: center;">
-  Please rotate your phone to portrait mode to use the Tactical Board.
-</div>
-
   <div style="
   width: 95%;
   max-width: 1400px;
@@ -525,6 +519,7 @@
 
   setInterval(updateCountdowns, 1000);
 </script>
+<!-- 🟩 Tactical Board Modal -->
 <%- include('partials/_tactical-board') %>
 </body>
 </html>
