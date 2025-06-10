@@ -4,33 +4,41 @@
 </div>
 
 <!-- Tactical Board Modal -->
-<div id="tacticalModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); justify-content: center; align-items: center; z-index: 9999; overflow: hidden;">
-  <div style="background: white; border-radius: 20px; padding: 1rem; width: 100vw; height: 100vh; display: flex; flex-direction: row; flex-wrap: wrap; gap: 1rem; box-sizing: border-box;">
+<div id="tacticalModal"
+  style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+         background: rgba(0,0,0,0.95); z-index: 9999; overflow: hidden;
+         display: flex; justify-content: center; align-items: center;">
+
+  <div style="background: white; padding: 0; margin: 0;
+            width: 100vw; height: 100vh; display: flex; flex-direction: row;">
+    
     <!-- Left panel: controls -->
-    <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 15px;">
-      <h3>Formation</h3>
-      <select onchange="loadFormation(this.value)">
-        <option value="433">4-3-3</option>
-        <option value="433f9">4-3-3 False 9</option>
-        <option value="442">4-4-2</option>
-        <option value="4231">4-2-3-1</option>
-        <option value="532">5-3-2</option>
-        <option value="523">5-2-3</option>
-      </select>
+<div style="width: 250px; flex-shrink: 0; padding: 1rem; box-sizing: border-box; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto;">
 
-      <h3>Color</h3>
-      <input type="color" id="teamColorPicker" onchange="changeTeamColor(this.value)" value="#007BFF" />
+  <h3>Formation</h3>
+  <select onchange="loadFormation(this.value)" style="padding: 0.5rem; font-size: 1rem; width: 100%;">
+    <option value="433">4-3-3</option>
+    <option value="433f9">4-3-3 False 9</option>
+    <option value="442">4-4-2</option>
+    <option value="4231">4-2-3-1</option>
+    <option value="532">5-3-2</option>
+    <option value="523">5-2-3</option>
+  </select>
 
-      <button onclick="undo()">Undo</button>
-      <button onclick="redo()">Redo</button>
-      <button onclick="submitTactics()">Submit</button>
-      <button onclick="closeTacticalBoard()">Exit</button>
-    </div>
+  <h3>Color</h3>
+  <input type="color" id="teamColorPicker" onchange="changeTeamColor(this.value)" value="#007BFF" style="height: 2rem; width: 100%;" />
+
+  <button onclick="undo()" style="padding: 0.5rem; font-size: 1rem;">Undo</button>
+  <button onclick="redo()" style="padding: 0.5rem; font-size: 1rem;">Redo</button>
+  <button onclick="submitTactics()" style="padding: 0.5rem; font-size: 1rem;">Submit</button>
+  <button onclick="closeTacticalBoard()" style="padding: 0.5rem; font-size: 1rem;">Exit</button>
+
+</div>
 
     <!-- Right panel: canvas -->
-    <div style="flex: 3; position: relative;">
-      <canvas id="tacticalCanvas" style="width: 100%; height: 100%; border: 2px solid #000; border-radius: 12px;"></canvas>
-    </div>
+<div style="flex: 1; display: flex; align-items: stretch;">
+  <canvas id="tacticalCanvas" style="flex: 1; border: 2px solid #000; border-radius: 12px;"></canvas>
+</div>
   </div>
 </div>
 
@@ -190,6 +198,7 @@ function checkOrientationAndOpen() {
   const isPortrait = window.matchMedia('(orientation: portrait)').matches;
   if (isPortrait) {
     showRotateWarning();
+    document.getElementById('tacticalModal').style.display = 'none';
   } else {
     hideRotateWarning();
     openTacticalBoard();
@@ -203,14 +212,17 @@ window.addEventListener('orientationchange', () => {
 
 function openTacticalBoard() {
   tacticalBoardActivated = true;
+  document.body.style.overflow = 'hidden'; // 🔒 Disable scroll behind
+  document.body.style.touchAction = 'none'; // 🔒 Prevent pinch zoom
   const modal = document.getElementById('tacticalModal');
   modal.style.display = 'flex';
 
   setTimeout(() => {
     canvas = document.getElementById('tacticalCanvas');
     ctx = canvas.getContext('2d');
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+    const rect = canvas.getBoundingClientRect();
+canvas.width = rect.width;
+canvas.height = rect.height;
 
     if (undoStack.length === 0) {
       loadFormation('433');
@@ -230,6 +242,8 @@ function openTacticalBoard() {
 function closeTacticalBoard() {
   tacticalBoardActivated = false;
   document.getElementById('tacticalModal').style.display = 'none';
+   document.body.style.overflow = ''; // ✅ Restore scroll
+  document.body.style.touchAction = ''; // ✅ Restore gestures
   hideRotateWarning();
 }
 
