@@ -1,6 +1,8 @@
 <!-- Rotate Warning -->
-<div id="rotateWarning" style="display: none; position: fixed; z-index: 10000; top: 0; left: 0; width: 100vw; height: 100vh; background: black; color: white; justify-content: center; align-items: center; font-size: 2rem; text-align: center; padding: 2rem;">
-  ⚠️ Please rotate your device to <strong>landscape</strong> to use the tactical board.
+<div id="rotateWarning" style="display: none; position: fixed; z-index: 10000; top: 0; left: 0; width: 100vw; height: 100vh; background: black; color: white; display: flex; justify-content: center; align-items: center; font-size: 2rem; text-align: center; padding: 2rem;">
+  <span id="rotateWarningText" style="display: inline-block;">
+    📱 Please rotate your device to <strong>landscape</strong> to use the tactical board.
+  </span>
 </div>
 
 <!-- Tactical Board Modal -->
@@ -382,15 +384,29 @@ function hideRotateWarning() {
 
 function checkOrientationAndOpen() {
   const isPortrait = window.matchMedia('(orientation: portrait)').matches;
+
   if (isPortrait) {
     showRotateWarning();
+    if (tacticalBoardActivated) {
+      document.getElementById('tacticalModal').style.display = 'none';
+    }
   } else {
     hideRotateWarning();
-    openTacticalBoard();
+    if (tacticalBoardActivated) {
+      document.getElementById('tacticalModal').style.display = 'flex';
+    } else {
+      openTacticalBoard();
+    }
   }
 }
 
 window.addEventListener('orientationchange', () => {
+  if (!tacticalBoardActivated) return;
+  checkOrientationAndOpen();
+});
+
+// Also listen for resize to catch other changes (like desktop dev tools, or weird edge cases)
+window.addEventListener('resize', () => {
   if (!tacticalBoardActivated) return;
   checkOrientationAndOpen();
 });

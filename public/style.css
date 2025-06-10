@@ -562,23 +562,23 @@ body.modal-open {
 #chat-form button:hover {
   background: #0056b3;
 }
-/* --- GENERAL MODAL LAYOUT --- */
+/* --- GENERAL Tactical MODAL LAYOUT --- */
 #tacticalModal {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100dvh;
+  height: 100dvh; /* Using dynamic viewport height */
   background: rgba(0, 0, 0, 0.85);
   z-index: 9999;
   display: flex;
   flex-direction: row;
-  overflow: hidden;
+  overflow: hidden; /* no scroll on modal */
 }
 
-/* Controls section — 20% */
+/* Controls section — about 20%, flexible */
 .tactical-controls {
-  width: 20%;
+  flex: 1 1 20%;
   padding: 15px;
   display: flex;
   flex-direction: column;
@@ -587,12 +587,14 @@ body.modal-open {
   justify-content: flex-start;
   background: #fff;
   border-right: 1px solid #ccc;
-  overflow-y: auto;
+  overflow-y: auto; /* scroll only if content grows vertically */
+  min-width: 180px; /* prevent too narrow on wider screens */
+  box-sizing: border-box;
 }
 
-/* Pitch section — 80% */
+/* Pitch section — flexible 80% */
 #tacticalPitch {
-  width: 80%;
+  flex: 4 1 80%;
   height: 100%;
   display: flex;
   justify-content: center;
@@ -600,6 +602,8 @@ body.modal-open {
   position: relative;
   background: #003300;
   padding: 20px;
+  box-sizing: border-box;
+  overflow: hidden; /* no scroll */
 }
 
 /* Canvas styled to fully fill the pitch area */
@@ -610,9 +614,11 @@ body.modal-open {
   background: url('/images/tactical-pitch.png') center center / cover no-repeat;
   background-color: #006400;
   border-radius: 12px;
-  max-height: 95vh;
+  max-height: 95vh; /* prevent overflow on small screens */
+  display: block;
 }
 
+/* Buttons in left panel: full width, responsive */
 .tactical-controls button {
   padding: 14px 22px;
   font-size: 18px;
@@ -622,26 +628,31 @@ body.modal-open {
   background: linear-gradient(to bottom, #007BFF, #0056b3);
   color: white;
   cursor: pointer;
-  width: 100%;
-  max-width: 180px;
+  width: 100%;  /* full width */
+  max-width: 100%; /* remove fixed max-width */
   transition: transform 0.2s ease;
+  box-sizing: border-box;
 }
 
 .tactical-controls button:hover {
   transform: scale(1.05);
 }
 
-.tactical-controls select {
+/* Selects and inputs styled similarly, full width */
+.tactical-controls select,
+.tactical-controls input[type="color"] {
   padding: 12px 16px;
   font-size: 17px;
   border-radius: 8px;
   border: 1px solid #888;
-  width: 100%;
-  max-width: 180px;
+  width: 100%;  /* full width */
+  max-width: 100%; /* remove fixed max-width */
   background-color: #f9f9f9;
   font-weight: bold;
   cursor: pointer;
+  box-sizing: border-box;
 }
+
 .tactical-controls > * {
   margin-bottom: 15px;
 }
@@ -672,6 +683,21 @@ body.modal-open {
   #tacticalModal:target #rotateWarning {
     display: flex !important;
   }
+}
+
+/* --- ROTATE WARNING TEXT SWING ANIMATION --- */
+@keyframes swing {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(5deg); }
+  50% { transform: rotate(0deg); }
+  75% { transform: rotate(-5deg); }
+  100% { transform: rotate(0deg); }
+}
+
+#rotateWarningText {
+  animation: swing 2s infinite ease-in-out;
+  transform-origin: center bottom;
+  display: inline-block; /* ensure transform works properly */
 }
 
 /* --- BUTTONS ABOVE PITCH --- */
@@ -719,10 +745,53 @@ body.modal-open {
   cursor: grab;
   user-select: none;
 }
+
+/* Prevent body scroll when modal open */
 body.modal-open {
   overflow: hidden;
   height: 100vh;
 }
+
+/* --- Responsive landscape mobile tweaks --- */
+@media (max-width: 700px) and (orientation: landscape) {
+  #tacticalModal {
+    flex-direction: column;
+    height: 100dvh;
+    width: 100vw;
+  }
+
+  .tactical-controls {
+    width: 100%;
+    flex: none;
+    min-width: auto;
+    max-height: 180px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow-y: auto;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .tactical-controls button,
+  .tactical-controls select,
+  .tactical-controls input[type="color"] {
+    max-width: 140px;
+    flex: 1 1 auto;
+  }
+
+  #tacticalPitch {
+    width: 100%;
+    flex: none;
+    height: calc(100dvh - 180px);
+    padding: 10px;
+  }
+
+  #tacticalCanvas {
+    max-height: 100%;
+  }
+}
+
 
 button.follow-btn,
 a.chat-button {
