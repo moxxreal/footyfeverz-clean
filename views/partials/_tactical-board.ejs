@@ -1,13 +1,6 @@
-<!-- Rotate Warning -->
-<div id="rotateWarning" style="display: none; position: fixed; z-index: 10000; top: 0; left: 0; width: 100vw; height: 100vh; background: black; color: white; display: flex; justify-content: center; align-items: center; font-size: 2rem; text-align: center; padding: 2rem;">
-  <span id="rotateWarningText" style="display: inline-block;">
-    📱 Please rotate your device to <strong>landscape</strong> to use the tactical board.
-  </span>
-</div>
-
 <!-- Tactical Board Modal -->
 <div id="tacticalModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); justify-content: center; align-items: center; z-index: 9999; overflow: hidden;">
-  <div style="background: white; border-radius: 20px; padding: 1rem; width: 100vw; height: 100vh; display: flex; flex-direction: row; flex-wrap: wrap; gap: 1rem; box-sizing: border-box;">
+  <div style="background: white; border-radius: 20px; padding: 1rem; width: 90vw; height: 90vh; max-width: 1200px; max-height: 800px; margin: auto; display: flex; flex-direction: row; flex-wrap: wrap; gap: 1rem; box-sizing: border-box;">
     <!-- Left panel: controls -->
     <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 15px;">
       <h3>Formation</h3>
@@ -23,13 +16,13 @@
       <h3>Color</h3>
       <input type="color" id="teamColorPicker" onchange="changeTeamColor(this.value)" value="#007BFF" />
 
-       <button onclick="toggleArrowMode()">🡒 Arrow Mode: <span id='arrowModeStatus'>Off</span></button>
-       <button id="nameModeBtn" onclick="toggleNamingMode()">✎ Add Player’s Name: <span id="namingModeStatus">Off</span></button>
-       <h3>Text Color</h3>
-<select id="textColorPicker" onchange="changeTextColor(this.value)">
-  <option value="white" selected>White</option>
-  <option value="black">Black</option>
-</select>
+      <button onclick="toggleArrowMode()">🡒 Arrow Mode: <span id='arrowModeStatus'>Off</span></button>
+      <button id="nameModeBtn" onclick="toggleNamingMode()">✎ Add Player’s Name: <span id="namingModeStatus">Off</span></button>
+      <h3>Text Color</h3>
+      <select id="textColorPicker" onchange="changeTextColor(this.value)">
+        <option value="white" selected>White</option>
+        <option value="black">Black</option>
+      </select>
 
       <button onclick="undo()">Undo</button>
       <button onclick="redo()">Redo</button>
@@ -41,19 +34,20 @@
     <div style="flex: 3; position: relative;">
       <canvas id="tacticalCanvas" style="width: 100%; height: 100%; border: 2px solid #000; border-radius: 12px;"></canvas>
       <input id="nameInput" type="text" placeholder="Enter name" style="
-  position: absolute;
-pointer-events: auto;
-  display: none;
-  z-index: 10001;
-  font-size: 16px;
-  padding: 5px 8px;
-  border: 1px solid #aaa;
-  border-radius: 6px;
-  background: white;
-" />
+        position: absolute;
+        pointer-events: auto;
+        display: none;
+        z-index: 10001;
+        font-size: 16px;
+        padding: 5px 8px;
+        border: 1px solid #aaa;
+        border-radius: 6px;
+        background: white;
+      " />
     </div>
   </div>
 </div>
+
 <script>
 let draggedPlayer = null;
 let dragOffsetX = 0;
@@ -94,10 +88,6 @@ function changeTeamColor(color) {
   playerColor = color;
   drawPlayers();
 }
-function enableNamingMode() {
-  namingMode = true;
-  alert('Click a player to enter a name');
-}
 
 function toggleNamingMode() {
   namingMode = !namingMode;
@@ -112,6 +102,7 @@ function changeTextColor(color) {
   playerNameColor = color;
   drawPlayers();
 }
+
 function toggleArrowMode() {
   arrowMode = !arrowMode;
   document.getElementById('arrowModeStatus').innerText = arrowMode ? 'On' : 'Off';
@@ -146,18 +137,15 @@ function drawPlayers() {
   if (pitchImage.complete && pitchImage.naturalWidth !== 0) {
     ctx.drawImage(pitchImage, 0, 0, canvas.width, canvas.height);
   } else {
-    // If pitch not loaded yet, just fill with green (optional)
     ctx.fillStyle = '#2c6f2c';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  // Draw arrows first
   arrows.forEach(arrow => drawArrow(arrow.start, arrow.end));
   if (arrowStart && tempArrowEnd) {
     drawArrow(arrowStart, tempArrowEnd);
   }
 
-  // Then draw players
   players.forEach(p => {
     ctx.beginPath();
     ctx.arc(p.x, p.y, 30, 0, Math.PI * 2);
@@ -173,6 +161,7 @@ function drawPlayers() {
     ctx.fillText(p.name || p.label, p.x, p.y);
   });
 }
+
 function undo() {
   if (undoStack.length <= 1) return;
   redoStack.push(captureState());
@@ -201,6 +190,7 @@ function redo() {
   })));
   drawPlayers();
 }
+
 function loadFormation(code) {
   const midY = canvas.height / 2;
   const lineX = [60, 180, 300, 420, 540, 660, 780];
@@ -245,164 +235,128 @@ function loadFormation(code) {
   );
   drawPlayers();
 }
+
 function setupDragListeners() {
   if (!canvas) return;
   canvas.addEventListener('mousedown', e => {
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const mx = (e.clientX - rect.left) * scaleX;
-  const my = (e.clientY - rect.top) * scaleY;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
 
-  // 🎯 Arrow Drawing Mode
-  if (arrowMode) {
-    arrowStart = { x: mx, y: my };
-    return;
-  }
-
-  // ✎ Naming Mode — only when triggered via button
-  if (namingMode) {
-  for (let p of players) {
-    if (Math.hypot(mx - p.x, my - p.y) < 30) {
-      setTimeout(() => {
-        const input = document.getElementById('nameInput');
-        if (!input) return;
-
-        const inputWidth = 120;
-        const inputHeight = 30;
-
-        const canvasContainer = canvas.parentElement;
-        const scaleX = canvasContainer.clientWidth / canvas.width;
-        const scaleY = canvasContainer.clientHeight / canvas.height;
-
-        const screenX = p.x * scaleX;
-        const screenY = p.y * scaleY;
-
-        input.style.left = `${screenX - inputWidth / 2}px`;
-        input.style.top = `${screenY - inputHeight - 10}px`;
-        input.style.width = inputWidth + 'px';
-        input.style.height = inputHeight + 'px';
-
-        input.style.display = 'block';
-        input.value = p.name || '';
-        input.focus();
-
-        input.onkeydown = ev => {
-          if (ev.key === 'Enter') {
-            p.name = input.value.trim();
-            input.style.display = 'none';
-            drawPlayers();
-            undoStack.push(captureState());
-            redoStack = [];
-          } else if (ev.key === 'Escape') {
-            input.style.display = 'none';
-          }
-        };
-      }, 10);
+    if (arrowMode) {
+      arrowStart = { x: mx, y: my };
       return;
     }
-  }
-  return;
-}
 
-  // 🟦 Default: Drag Player
-  for (let p of players) {
-    if (Math.hypot(mx - p.x, my - p.y) < 30) {
-      draggedPlayer = p;
-      dragOffsetX = mx - p.x;
-      dragOffsetY = my - p.y;
-      break;
+    if (namingMode) {
+      for (let p of players) {
+        if (Math.hypot(mx - p.x, my - p.y) < 30) {
+          setTimeout(() => {
+            const input = document.getElementById('nameInput');
+            if (!input) return;
+
+            const inputWidth = 120;
+            const inputHeight = 30;
+
+            const canvasContainer = canvas.parentElement;
+            const scaleX = canvasContainer.clientWidth / canvas.width;
+            const scaleY = canvasContainer.clientHeight / canvas.height;
+
+            const screenX = p.x * scaleX;
+            const screenY = p.y * scaleY;
+
+            input.style.left = `${screenX - inputWidth / 2}px`;
+            input.style.top = `${screenY - inputHeight - 10}px`;
+            input.style.width = inputWidth + 'px';
+            input.style.height = inputHeight + 'px';
+
+            input.style.display = 'block';
+            input.value = p.name || '';
+            input.focus();
+
+            input.onkeydown = ev => {
+              if (ev.key === 'Enter') {
+                p.name = input.value.trim();
+                input.style.display = 'none';
+                drawPlayers();
+                undoStack.push(captureState());
+                redoStack = [];
+              } else if (ev.key === 'Escape') {
+                input.style.display = 'none';
+              }
+            };
+          }, 10);
+          return;
+        }
+      }
+      return;
     }
-  }
-});
 
-canvas.addEventListener('mousemove', e => {
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const mx = (e.clientX - rect.left) * scaleX;
-  const my = (e.clientY - rect.top) * scaleY;
+    for (let p of players) {
+      if (Math.hypot(mx - p.x, my - p.y) < 30) {
+        draggedPlayer = p;
+        dragOffsetX = mx - p.x;
+        dragOffsetY = my - p.y;
+        break;
+      }
+    }
+  });
 
-  if (arrowMode && arrowStart) {
-    tempArrowEnd = { x: mx, y: my };
-    drawPlayers();
-    return;
-  }
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
 
-  if (draggedPlayer) {
-    draggedPlayer.x = mx - dragOffsetX;
-    draggedPlayer.y = my - dragOffsetY;
-    drawPlayers();
-  }
-});
+    if (arrowMode && arrowStart) {
+      tempArrowEnd = { x: mx, y: my };
+      drawPlayers();
+      return;
+    }
+
+    if (draggedPlayer) {
+      draggedPlayer.x = mx - dragOffsetX;
+      draggedPlayer.y = my - dragOffsetY;
+      drawPlayers();
+    }
+  });
 
   canvas.addEventListener('mouseup', e => {
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const mx = (e.clientX - rect.left) * scaleX;
-  const my = (e.clientY - rect.top) * scaleY;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
 
-  if (arrowMode && arrowStart) {
-  arrows.push({ start: arrowStart, end: { x: mx, y: my } });
-  arrowStart = null;
-  tempArrowEnd = null;
-  undoStack.push(captureState()); // 🔥 this line was missing!
-  redoStack = [];
-  drawPlayers();
-}
-
-  if (draggedPlayer) {
-    draggedPlayer = null;
-    undoStack.push(captureState());
-    redoStack = [];
-  }
-});
-
-canvas.addEventListener('mouseleave', () => {
-  if (arrowStart) arrowStart = null;
-  if (draggedPlayer) {
-    draggedPlayer = null;
-    undoStack.push(captureState());
-    redoStack = [];
-  }
-});
-}
-function showRotateWarning() {
-  document.getElementById('rotateWarning').style.display = 'flex';
-}
-function hideRotateWarning() {
-  document.getElementById('rotateWarning').style.display = 'none';
-}
-
-function checkOrientationAndOpen() {
-  const isPortrait = window.matchMedia('(orientation: portrait)').matches;
-
-  if (isPortrait) {
-    showRotateWarning();
-    if (tacticalBoardActivated) {
-      document.getElementById('tacticalModal').style.display = 'none';
+    if (arrowMode && arrowStart) {
+      arrows.push({ start: arrowStart, end: { x: mx, y: my } });
+      arrowStart = null;
+      tempArrowEnd = null;
+      undoStack.push(captureState());
+      redoStack = [];
+      drawPlayers();
     }
-  } else {
-    hideRotateWarning();
-    if (tacticalBoardActivated) {
-      document.getElementById('tacticalModal').style.display = 'flex';
-    } else {
-      openTacticalBoard();
+
+    if (draggedPlayer) {
+      draggedPlayer = null;
+      undoStack.push(captureState());
+      redoStack = [];
     }
-  }
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    if (arrowStart) arrowStart = null;
+    if (draggedPlayer) {
+      draggedPlayer = null;
+      undoStack.push(captureState());
+      redoStack = [];
+    }
+  });
 }
 
-window.addEventListener('orientationchange', () => {
-  if (!tacticalBoardActivated) return;
-  checkOrientationAndOpen();
-});
-
-// Also listen for resize to catch other changes (like desktop dev tools, or weird edge cases)
-window.addEventListener('resize', () => {
-  if (!tacticalBoardActivated) return;
-  checkOrientationAndOpen();
-});
 function openTacticalBoard() {
   tacticalBoardActivated = true;
   const modal = document.getElementById('tacticalModal');
@@ -437,11 +391,9 @@ function openTacticalBoard() {
 function closeTacticalBoard() {
   tacticalBoardActivated = false;
   document.getElementById('tacticalModal').style.display = 'none';
-  hideRotateWarning();
 }
 
 function submitTactics() {
-  // Redraw everything to ensure pitch is present before export
   drawPlayers();
 
   canvas.toBlob(blob => {
@@ -465,7 +417,6 @@ function submitTactics() {
       preview = img;
     }
 
-    // Revoke old blob URL before assigning a new one
     if (preview.src) {
       URL.revokeObjectURL(preview.src);
     }
@@ -478,9 +429,8 @@ function submitTactics() {
     alert('Tactic image attached to your comment!');
   });
 }
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('rotateWarning').style.display = 'none';
 
+document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('openTacticalBoardBtn');
   if (btn) {
     btn.addEventListener('click', e => {
@@ -490,7 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.add('shake');
         setTimeout(() => btn.classList.remove('shake'), 500);
       } else {
-        checkOrientationAndOpen();
+        openTacticalBoard();
       }
     });
   }
