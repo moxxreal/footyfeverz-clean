@@ -667,7 +667,6 @@ body.modal-open {
   height: 100dvh;
   background: white;
   z-index: 99999;
-  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -679,12 +678,6 @@ body.modal-open {
   transform: none !important;
 }
 
-@media screen and (orientation: portrait) {
-  #tacticalModal:target #rotateWarning {
-    display: flex !important;
-  }
-}
-
 /* --- ROTATE WARNING TEXT SWING ANIMATION --- */
 @keyframes swing {
   0% { transform: rotate(0deg); }
@@ -692,22 +685,6 @@ body.modal-open {
   50% { transform: rotate(0deg); }
   75% { transform: rotate(-5deg); }
   100% { transform: rotate(0deg); }
-}
-
-#rotateWarningText {
-  animation: swing 2s infinite ease-in-out;
-  transform-origin: center bottom;
-  display: inline-block; /* ensure transform works properly */
-}
-
-/* --- BUTTONS ABOVE PITCH --- */
-#tacticalControls {
-  width: 100%;
-  max-width: 900px;
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-  z-index: 10000;
 }
 
 /* --- PITCH AREA (NO SCROLL) --- */
