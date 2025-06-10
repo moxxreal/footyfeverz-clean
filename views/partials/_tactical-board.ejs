@@ -54,7 +54,6 @@ pointer-events: auto;
     </div>
   </div>
 </div>
-
 <script>
 let draggedPlayer = null;
 let dragOffsetX = 0;
@@ -95,7 +94,6 @@ function changeTeamColor(color) {
   playerColor = color;
   drawPlayers();
 }
-
 function enableNamingMode() {
   namingMode = true;
   alert('Click a player to enter a name');
@@ -114,7 +112,6 @@ function changeTextColor(color) {
   playerNameColor = color;
   drawPlayers();
 }
-
 function toggleArrowMode() {
   arrowMode = !arrowMode;
   document.getElementById('arrowModeStatus').innerText = arrowMode ? 'On' : 'Off';
@@ -176,7 +173,6 @@ function drawPlayers() {
     ctx.fillText(p.name || p.label, p.x, p.y);
   });
 }
-
 function undo() {
   if (undoStack.length <= 1) return;
   redoStack.push(captureState());
@@ -205,7 +201,6 @@ function redo() {
   })));
   drawPlayers();
 }
-
 function loadFormation(code) {
   const midY = canvas.height / 2;
   const lineX = [60, 180, 300, 420, 540, 660, 780];
@@ -250,7 +245,6 @@ function loadFormation(code) {
   );
   drawPlayers();
 }
-
 function setupDragListeners() {
   if (!canvas) return;
   canvas.addEventListener('mousedown', e => {
@@ -374,7 +368,6 @@ canvas.addEventListener('mouseleave', () => {
   }
 });
 }
-
 function showRotateWarning() {
   document.getElementById('rotateWarning').style.display = 'flex';
 }
@@ -410,7 +403,6 @@ window.addEventListener('resize', () => {
   if (!tacticalBoardActivated) return;
   checkOrientationAndOpen();
 });
-
 function openTacticalBoard() {
   tacticalBoardActivated = true;
   const modal = document.getElementById('tacticalModal');
@@ -428,11 +420,11 @@ function openTacticalBoard() {
     } else {
       players.length = 0;
       const last = undoStack[undoStack.length - 1];
-players.push(...last.players.map(p => ({ ...p })));
-arrows.push(...last.arrows.map(a => ({
-  start: { ...a.start },
-  end: { ...a.end }
-})));
+      players.push(...last.players.map(p => ({ ...p })));
+      arrows.push(...last.arrows.map(a => ({
+        start: { ...a.start },
+        end: { ...a.end }
+      })));
     }
 
     redoStack = [];
@@ -486,7 +478,6 @@ function submitTactics() {
     alert('Tactic image attached to your comment!');
   });
 }
-
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('rotateWarning').style.display = 'none';
 
