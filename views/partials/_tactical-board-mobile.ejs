@@ -1,50 +1,53 @@
 <!-- tactical-board-mobile.ejs -->
 <style>
-  /* Full screen modal */
+  html, body {
+    margin: 0; padding: 0; overflow: hidden; height: 100%; width: 100%;
+  }
+
   #tacticalMobileModal {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0,0,0,0.95);
-  z-index: 9999;
-  display: flex;
-  flex-direction: row; /* horizontal layout */
-  overflow: hidden; /* prevent scrolling */
-  user-select: none;
-  -webkit-overflow-scrolling: auto; /* disable momentum scroll */
-  touch-action: none; /* prevent pinch zoom */
-}
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.95);
+    z-index: 9999;
+    display: flex;
+    flex-direction: row; /* horizontal layout */
+    overflow: hidden; /* prevent scrolling */
+    user-select: none;
+    -webkit-overflow-scrolling: auto; /* disable momentum scroll */
+    touch-action: none; /* prevent pinch zoom */
+  }
 
-#mobileContentLandscape {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  flex-direction: row;
-  overflow: hidden;
-}
+  #mobileContentLandscape {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    flex-direction: row;
+    overflow: hidden;
+  }
 
-.mobile-controls {
-  flex: 0 0 20%;
-  padding: 10px;
-  background: #fff;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow: hidden;
-  max-height: 100vh;
-}
+  .mobile-controls {
+    flex: 0 0 20%;
+    padding: 10px;
+    background: #fff;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+    max-height: 100vh;
+  }
 
-  /* Smaller fonts and padding for buttons/inputs */
   .mobile-controls h3 {
     margin: 0;
     font-size: 1rem;
   }
+
   .mobile-controls select,
   .mobile-controls input[type="color"],
   .mobile-controls button {
-    font-size: 14px;
+    font-size: 16px; /* Avoid iOS zoom on inputs */
     padding: 8px 10px;
     border-radius: 6px;
   }
@@ -62,30 +65,31 @@
   }
 
   #mobileTacticalPitch {
-  flex: 1 1 80%;
-  background: #003300;
-  padding: 5px;
-  box-sizing: border-box;
-  position: relative;
-  overflow: hidden;
-  max-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+    flex: 1 1 80%;
+    background: #003300;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+    max-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
 
-#mobileTacticalCanvas {
-  width: 100% !important;
-  height: 100% !important;
-  max-width: 100%;
-  max-height: 100%;
-  background: url('/images/tactical-pitch.png') center center / cover no-repeat;
-  border-radius: 12px;
-  border: 2px solid #000;
-  touch-action: none;
-  display: block;
-  object-fit: contain;
-}
+  #mobileTacticalCanvas {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100%;
+    max-height: 100%;
+    background: url('/images/tactical-pitch.png') center center / cover no-repeat;
+    border-radius: 12px;
+    border: 2px solid #000;
+    touch-action: none;
+    display: block;
+    object-fit: contain;
+  }
 
   #mobileNameInput {
     position: absolute;
@@ -101,22 +105,22 @@
 
   /* Portrait overlay */
   #rotatePhoneOverlay {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
-  background: rgba(0,0,0,0.9);
-  color: white;
-  font-size: 22px;
-  font-weight: bold;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  padding: 20px;
-  z-index: 10000;
-  user-select: none;
-  display: none;
-}
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.9);
+    color: white;
+    font-size: 22px;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+    z-index: 10000;
+    user-select: none;
+    display: none;
+  }
 </style>
 
 <div id="tacticalMobileModal" style="display:none;">
@@ -159,7 +163,6 @@
 </div>
 
 <script>
-  // Variables
   let mobileDraggedPlayer = null;
   let mobileDragOffsetX = 0;
   let mobileDragOffsetY = 0;
@@ -184,17 +187,14 @@
     if (mobileCanvas && mobileCtx) drawMobilePlayers();
   };
 
-  // Orientation check function
   function checkMobileOrientation() {
     const overlay = document.getElementById('rotatePhoneOverlay');
     const content = document.getElementById('mobileContentLandscape');
 
     if (window.innerWidth < window.innerHeight) {
-      // Portrait: show overlay, hide tactical board UI
       overlay.style.display = 'flex';
       content.style.display = 'none';
     } else {
-      // Landscape: hide overlay, show tactical board UI
       overlay.style.display = 'none';
       content.style.display = 'flex';
       resizeMobileCanvas();
@@ -266,7 +266,6 @@
     mobileCtx.lineTo(end.x, end.y);
     mobileCtx.stroke();
 
-    // Arrowhead
     mobileCtx.beginPath();
     mobileCtx.moveTo(end.x, end.y);
     mobileCtx.lineTo(end.x - headlen * Math.cos(angle - Math.PI / 6), end.y - headlen * Math.sin(angle - Math.PI / 6));
@@ -308,21 +307,21 @@
   }
 
   function resizeMobileCanvas() {
-  if (!mobileCanvas) return;
-  mobileCtx.setTransform(1, 0, 0, 1, 0, 0);
+    if (!mobileCanvas) return;
+    mobileCtx.setTransform(1, 0, 0, 1, 0, 0);
 
-  const container = document.getElementById('mobileTacticalPitch');
-  const rect = container.getBoundingClientRect();
+    const container = document.getElementById('mobileTacticalPitch');
+    const rect = container.getBoundingClientRect();
 
-  mobileCanvas.width = rect.width * window.devicePixelRatio;
-  mobileCanvas.height = rect.height * window.devicePixelRatio;
+    mobileCanvas.width = rect.width * window.devicePixelRatio;
+    mobileCanvas.height = rect.height * window.devicePixelRatio;
 
-  mobileCanvas.style.width = rect.width + 'px';
-  mobileCanvas.style.height = rect.height + 'px';
+    mobileCanvas.style.width = rect.width + 'px';
+    mobileCanvas.style.height = rect.height + 'px';
 
-  mobileCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
-  drawMobilePlayers();
-}
+    mobileCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    drawMobilePlayers();
+  }
 
   function mobileUndo() {
     if (mobileUndoStack.length <= 1) return;
@@ -556,20 +555,20 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-  const tacticalModal = document.getElementById('tacticalMobileModal');
+    const tacticalModal = document.getElementById('tacticalMobileModal');
 
-  function disableZoom(e) {
-    if (e.touches.length > 1) {
-      e.preventDefault();
+    function disableZoom(e) {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
     }
-  }
 
-  if (tacticalModal) {
-    tacticalModal.addEventListener('touchstart', disableZoom, { passive: false });
-    tacticalModal.addEventListener('touchmove', disableZoom, { passive: false });
-    tacticalModal.addEventListener('wheel', e => e.preventDefault(), { passive: false });
-  }
-});
+    if (tacticalModal) {
+      tacticalModal.addEventListener('touchstart', disableZoom, { passive: false });
+      tacticalModal.addEventListener('touchmove', disableZoom, { passive: false });
+      tacticalModal.addEventListener('wheel', e => e.preventDefault(), { passive: false });
+    }
+  });
 
   function closeMobileTacticalBoard() {
     mobileTacticalBoardActivated = false;
