@@ -1,6 +1,6 @@
 <!-- tactical-board-mobile.ejs -->
 <style>
-  /* Modal full screen on mobile */
+  /* Full screen modal */
   #tacticalMobileModal {
     position: fixed;
     top: 0; left: 0;
@@ -8,39 +8,39 @@
     background: rgba(0,0,0,0.95);
     z-index: 9999;
     display: flex;
-    flex-direction: column;
     overflow: hidden;
+    user-select: none;
   }
 
-  /* Controls stacked vertically */
+  /* Landscape layout: controls left 20%, pitch right 80% */
+  #mobileContentLandscape {
+    display: flex;
+    width: 100%;
+    height: 100%;
+  }
+
   .mobile-controls {
-    padding: 15px;
+    flex: 0 0 20%;
+    padding: 10px;
     background: #fff;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    overflow-y: auto;
-    max-height: 40vh;
+    gap: 8px;
+    overflow: hidden; /* no scroll */
   }
 
+  /* Smaller fonts and padding for buttons/inputs */
   .mobile-controls h3 {
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 1rem;
   }
-
-  /* Inputs and selects full width and large */
   .mobile-controls select,
   .mobile-controls input[type="color"],
   .mobile-controls button {
-    width: 100%;
-    font-size: 18px;
-    padding: 14px 16px;
-    border-radius: 10px;
-    border: 1px solid #888;
-    font-weight: bold;
-    cursor: pointer;
-    box-sizing: border-box;
+    font-size: 14px;
+    padding: 8px 10px;
+    border-radius: 6px;
   }
 
   .mobile-controls button {
@@ -48,19 +48,20 @@
     color: white;
     border: none;
     user-select: none;
+    cursor: pointer;
   }
 
   .mobile-controls button:active {
     transform: scale(0.95);
   }
 
-  /* Tactical pitch area fills remaining height */
   #mobileTacticalPitch {
     flex: 1;
     background: #003300;
-    padding: 10px;
+    padding: 5px;
     box-sizing: border-box;
     position: relative;
+    overflow: hidden; /* no scroll */
   }
 
   #mobileTacticalCanvas {
@@ -73,53 +74,74 @@
     display: block;
   }
 
-  /* Player name input */
   #mobileNameInput {
     position: absolute;
     pointer-events: auto;
     display: none;
     z-index: 10001;
-    font-size: 18px;
-    padding: 8px 10px;
+    font-size: 16px;
+    padding: 6px 8px;
     border: 1px solid #aaa;
-    border-radius: 8px;
+    border-radius: 6px;
     background: white;
+  }
+
+  /* Portrait overlay */
+  #rotatePhoneOverlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.9);
+    color: white;
+    font-size: 22px;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+    z-index: 10000;
+    user-select: none;
+    display: none;
   }
 </style>
 
 <div id="tacticalMobileModal" style="display:none;">
-  <div class="mobile-controls">
-    <h3>Formation</h3>
-    <select onchange="loadMobileFormation(this.value)">
-      <option value="433">4-3-3</option>
-      <option value="433f9">4-3-3 False 9</option>
-      <option value="442">4-4-2</option>
-      <option value="4231">4-2-3-1</option>
-      <option value="532">5-3-2</option>
-      <option value="523">5-2-3</option>
-    </select>
+  <div id="rotatePhoneOverlay">Please rotate your phone to landscape mode to use the tactical board.</div>
+  <div id="mobileContentLandscape" style="display:none;">
+    <div class="mobile-controls">
+      <h3>Formation</h3>
+      <select onchange="loadMobileFormation(this.value)">
+        <option value="433">4-3-3</option>
+        <option value="433f9">4-3-3 False 9</option>
+        <option value="442">4-4-2</option>
+        <option value="4231">4-2-3-1</option>
+        <option value="532">5-3-2</option>
+        <option value="523">5-2-3</option>
+      </select>
 
-    <h3>Color</h3>
-    <input type="color" id="mobileTeamColorPicker" onchange="changeMobileTeamColor(this.value)" value="#007BFF" />
+      <h3>Color</h3>
+      <input type="color" id="mobileTeamColorPicker" onchange="changeMobileTeamColor(this.value)" value="#007BFF" />
 
-    <button onclick="toggleMobileArrowMode()">🡒 Arrow Mode: <span id='mobileArrowModeStatus'>Off</span></button>
-    <button id="mobileNameModeBtn" onclick="toggleMobileNamingMode()">✎ Add Player’s Name: <span id="mobileNamingModeStatus">Off</span></button>
+      <button onclick="toggleMobileArrowMode()">🡒 Arrow Mode: <span id='mobileArrowModeStatus'>Off</span></button>
+      <button id="mobileNameModeBtn" onclick="toggleMobileNamingMode()">✎ Add Player’s Name: <span id="mobileNamingModeStatus">Off</span></button>
 
-    <h3>Text Color</h3>
-    <select id="mobileTextColorPicker" onchange="changeMobileTextColor(this.value)">
-      <option value="white" selected>White</option>
-      <option value="black">Black</option>
-    </select>
+      <h3>Text Color</h3>
+      <select id="mobileTextColorPicker" onchange="changeMobileTextColor(this.value)">
+        <option value="white" selected>White</option>
+        <option value="black">Black</option>
+      </select>
 
-    <button onclick="mobileUndo()">Undo</button>
-    <button onclick="mobileRedo()">Redo</button>
-    <button onclick="submitMobileTactics()">Submit</button>
-    <button onclick="closeMobileTacticalBoard()">Exit</button>
-  </div>
+      <button onclick="mobileUndo()">Undo</button>
+      <button onclick="mobileRedo()">Redo</button>
+      <button onclick="submitMobileTactics()">Submit</button>
+      <button onclick="closeMobileTacticalBoard()">Exit</button>
+    </div>
 
-  <div id="mobileTacticalPitch">
-    <canvas id="mobileTacticalCanvas"></canvas>
-    <input id="mobileNameInput" type="text" placeholder="Enter name" />
+    <div id="mobileTacticalPitch">
+      <canvas id="mobileTacticalCanvas"></canvas>
+      <input id="mobileNameInput" type="text" placeholder="Enter name" />
+    </div>
   </div>
 </div>
 
@@ -148,6 +170,36 @@
   mobilePitchImage.onload = () => {
     if (mobileCanvas && mobileCtx) drawMobilePlayers();
   };
+
+  // Orientation check function
+  function checkMobileOrientation() {
+    const overlay = document.getElementById('rotatePhoneOverlay');
+    const content = document.getElementById('mobileContentLandscape');
+
+    if (window.innerWidth < window.innerHeight) {
+      // Portrait: show overlay, hide tactical board UI
+      overlay.style.display = 'flex';
+      content.style.display = 'none';
+    } else {
+      // Landscape: hide overlay, show tactical board UI
+      overlay.style.display = 'none';
+      content.style.display = 'flex';
+      resizeMobileCanvas();
+      drawMobilePlayers();
+    }
+  }
+
+  window.addEventListener('resize', () => {
+    if (mobileTacticalBoardActivated) {
+      checkMobileOrientation();
+    }
+  });
+
+  window.addEventListener('orientationchange', () => {
+    if (mobileTacticalBoardActivated) {
+      setTimeout(checkMobileOrientation, 300);
+    }
+  });
 
   function captureMobileState() {
     return {
@@ -250,10 +302,6 @@
     mobileCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
     drawMobilePlayers();
   }
-
-  window.addEventListener('resize', () => {
-    if (mobileTacticalBoardActivated) resizeMobileCanvas();
-  });
 
   function mobileUndo() {
     if (mobileUndoStack.length <= 1) return;
@@ -480,7 +528,7 @@
       }
 
       mobileRedoStack = [];
-      drawMobilePlayers();
+      checkMobileOrientation();
       setupMobileDragListeners();
       document.querySelector('#mobileTeamColorPicker').disabled = false;
     }, 10);
