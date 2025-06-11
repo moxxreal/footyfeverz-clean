@@ -2,33 +2,35 @@
 <style>
   /* Full screen modal */
   #tacticalMobileModal {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background: rgba(0,0,0,0.95);
-    z-index: 9999;
-    display: flex;
-    overflow: hidden;
-    user-select: none;
-  }
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.95);
+  z-index: 9999;
+  display: flex;
+  overflow: hidden;
+  user-select: none;
+  flex-direction: row; /* important */
+}
 
-  /* Landscape layout: controls left 20%, pitch right 80% */
-  #mobileContentLandscape {
-    display: flex;
-    width: 100%;
-    height: 100%;
-  }
+#mobileContentLandscape {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: row; /* ensure horizontal layout */
+}
 
-  .mobile-controls {
-    flex: 0 0 20%;
-    padding: 10px;
-    background: #fff;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    overflow: hidden; /* no scroll */
-  }
+.mobile-controls {
+  flex: 0 0 20%;
+  padding: 10px;
+  background: #fff;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  max-height: 100vh; /* prevent overflow */
+}
 
   /* Smaller fonts and padding for buttons/inputs */
   .mobile-controls h3 {
@@ -56,23 +58,30 @@
   }
 
   #mobileTacticalPitch {
-    flex: 1;
-    background: #003300;
-    padding: 5px;
-    box-sizing: border-box;
-    position: relative;
-    overflow: hidden; /* no scroll */
-  }
+  flex: 1 1 80%;
+  background: #003300;
+  padding: 5px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  max-height: 100vh; /* prevent overflow */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
-  #mobileTacticalCanvas {
-    width: 100%;
-    height: 100%;
-    background: url('/images/tactical-pitch.png') center center / cover no-repeat;
-    border-radius: 12px;
-    border: 2px solid #000;
-    touch-action: none;
-    display: block;
-  }
+#mobileTacticalCanvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+  background: url('/images/tactical-pitch.png') center center / cover no-repeat;
+  border-radius: 12px;
+  border: 2px solid #000;
+  touch-action: none;
+  display: block;
+  object-fit: contain;
+}
 
   #mobileNameInput {
     position: absolute;
@@ -295,13 +304,22 @@
   }
 
   function resizeMobileCanvas() {
-    if (!mobileCanvas) return;
-    mobileCtx.setTransform(1, 0, 0, 1, 0, 0);
-    mobileCanvas.width = mobileCanvas.clientWidth * window.devicePixelRatio;
-    mobileCanvas.height = mobileCanvas.clientHeight * window.devicePixelRatio;
-    mobileCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    drawMobilePlayers();
-  }
+  if (!mobileCanvas) return;
+  mobileCtx.setTransform(1, 0, 0, 1, 0, 0);
+
+  // Set canvas width/height to the container's inner size to avoid cropping
+  const container = document.getElementById('mobileTacticalPitch');
+  const rect = container.getBoundingClientRect();
+
+  mobileCanvas.width = rect.width * window.devicePixelRatio;
+  mobileCanvas.height = rect.height * window.devicePixelRatio;
+
+  mobileCanvas.style.width = rect.width + 'px';
+  mobileCanvas.style.height = rect.height + 'px';
+
+  mobileCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  drawMobilePlayers();
+}
 
   function mobileUndo() {
     if (mobileUndoStack.length <= 1) return;
