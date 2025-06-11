@@ -164,22 +164,23 @@ function drawPlayers() {
 
 function resizeCanvas() {
   if (!canvas) return;
+  // Reset transform before resizing to avoid scale compounding
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+  // Set canvas size to actual pixel size of its container
   canvas.width = canvas.clientWidth * window.devicePixelRatio;
   canvas.height = canvas.clientHeight * window.devicePixelRatio;
+
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
   drawPlayers();
 }
 
 window.addEventListener('resize', () => {
-  if (tacticalBoardActivated) {
-    resizeCanvas();
-  }
+  if (tacticalBoardActivated) resizeCanvas();
 });
 
 window.addEventListener('orientationchange', () => {
-  if (tacticalBoardActivated) {
-    setTimeout(resizeCanvas, 300); // slight delay for orientation switch
-  }
+  if (tacticalBoardActivated) setTimeout(resizeCanvas, 300);
 });
 
 function undo() {
@@ -512,8 +513,8 @@ function openTacticalBoard() {
   setTimeout(() => {
     canvas = document.getElementById('tacticalCanvas');
     ctx = canvas.getContext('2d');
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+
+    resizeCanvas(); // << important call here
 
     if (undoStack.length === 0) {
       loadFormation('433');

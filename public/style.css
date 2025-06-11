@@ -739,59 +739,63 @@ body.modal-open {
 /* --- Responsive landscape mobile tweaks --- */
 @media (max-width: 700px) and (orientation: landscape) {
   #tacticalModal {
-    flex-direction: row; /* side by side */
-    height: 100dvh;
-    width: 100vw;
-    overflow: hidden;
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+    margin: 0;
+    padding: 0;
   }
 
   .tactical-controls {
-    flex: 0 0 20vw;  /* fixed 20% width */
-    max-width: 20vw;
-    height: 100dvh;
-    padding: 8px 6px; /* smaller padding */
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    flex-wrap: wrap; /* allow wrapping */
-    gap: 6px; /* smaller gap */
-    overflow-y: auto; /* allow vertical scroll only if needed */
-    justify-content: flex-start;
-    align-items: stretch;
+    flex: 0 0 20vw !important;
+    max-width: 20vw !important;
+    height: 100dvh !important;
+    padding: 5px 6px !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: wrap !important;
+    gap: 5px !important;
+    overflow-y: auto !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    margin: 0 !important;
   }
 
-  /* Buttons and inputs smaller font and padding, full width */
   .tactical-controls button,
   .tactical-controls select,
   .tactical-controls input[type="color"] {
-    font-size: 13px;
-    padding: 8px 12px;
-    max-width: 100%;
-    flex: none;
+    font-size: 13px !important;
+    padding: 8px 12px !important;
+    max-width: 100% !important;
+    flex: none !important;
+    margin: 0 !important;
   }
 
-  /* Right panel: fill rest 80%, full height */
   #tacticalPitch {
-    flex: 1 1 80vw;
-    height: 100dvh;
-    padding: 0; /* remove padding to maximize space */
-    box-sizing: border-box;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
+    flex: 1 1 80vw !important;
+    height: 100dvh !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    overflow: hidden !important;
   }
 
-  /* Canvas fills container fully, maintaining aspect ratio */
   #tacticalCanvas {
-    width: 100%;
-    height: 100%;
-    max-height: 100dvh;
-    max-width: 100%;
-    aspect-ratio: 16 / 9;
-    border-radius: 12px;
-    background-size: cover;
-    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100dvh !important;
+    max-width: 100% !important;
+    aspect-ratio: 16 / 9 !important;
+    border-radius: 12px !important;
+    background-size: cover !important;
+    display: block !important;
+    margin: 0 !important;
   }
 }
 
