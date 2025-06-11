@@ -74,12 +74,17 @@
     align-items: center;
   }
 
+  #mobileTacticalPitch {
+  /* usual flex setup… */
+  aspect-ratio: 105 / 68; /* match your pitch image’s width/height ratio */
+}
+
   #mobileTacticalCanvas {
     width: 100% !important;
     height: 100% !important;
     max-width: 100%;
     max-height: 100%;
-    background: url('/images/tactical-pitch.png') center center / cover no-repeat;
+    background: url('/images/tactical-pitch.png') center center / contain no-repeat;
     border-radius: 12px;
     border: 2px solid #000;
     touch-action: none;
