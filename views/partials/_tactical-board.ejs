@@ -162,6 +162,26 @@ function drawPlayers() {
   });
 }
 
+function resizeCanvas() {
+  if (!canvas) return;
+  canvas.width = canvas.clientWidth * window.devicePixelRatio;
+  canvas.height = canvas.clientHeight * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  drawPlayers();
+}
+
+window.addEventListener('resize', () => {
+  if (tacticalBoardActivated) {
+    resizeCanvas();
+  }
+});
+
+window.addEventListener('orientationchange', () => {
+  if (tacticalBoardActivated) {
+    setTimeout(resizeCanvas, 300); // slight delay for orientation switch
+  }
+});
+
 function undo() {
   if (undoStack.length <= 1) return;
   redoStack.push(captureState());
@@ -238,6 +258,20 @@ function loadFormation(code) {
 
 function setupDragListeners() {
   if (!canvas) return;
+
+  // Helper to get touch coordinates relative to canvas, similar to mouse event coords
+  function getTouchPos(touchEvent) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const touch = touchEvent.touches[0] || touchEvent.changedTouches[0];
+    return {
+      x: (touch.clientX - rect.left) * scaleX,
+      y: (touch.clientY - rect.top) * scaleY,
+    };
+  }
+
+  // MOUSE EVENTS (existing)
   canvas.addEventListener('mousedown', e => {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
@@ -355,6 +389,119 @@ function setupDragListeners() {
       redoStack = [];
     }
   });
+
+  // TOUCH EVENTS - new handlers mirroring mouse logic
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault(); // Prevent scrolling while interacting
+    const { x: tx, y: ty } = getTouchPos(e);
+
+    if (arrowMode) {
+      arrowStart = { x: tx, y: ty };
+      return;
+    }
+
+    if (namingMode) {
+      for (let p of players) {
+        if (Math.hypot(tx - p.x, ty - p.y) < 30) {
+          setTimeout(() => {
+            const input = document.getElementById('nameInput');
+            if (!input) return;
+
+            const inputWidth = 120;
+            const inputHeight = 30;
+
+            const canvasContainer = canvas.parentElement;
+            const scaleX = canvasContainer.clientWidth / canvas.width;
+            const scaleY = canvasContainer.clientHeight / canvas.height;
+
+            const screenX = p.x * scaleX;
+            const screenY = p.y * scaleY;
+
+            input.style.left = `${screenX - inputWidth / 2}px`;
+            input.style.top = `${screenY - inputHeight - 10}px`;
+            input.style.width = inputWidth + 'px';
+            input.style.height = inputHeight + 'px';
+
+            input.style.display = 'block';
+            input.value = p.name || '';
+            input.focus();
+
+            input.onkeydown = ev => {
+              if (ev.key === 'Enter') {
+                p.name = input.value.trim();
+                input.style.display = 'none';
+                drawPlayers();
+                undoStack.push(captureState());
+                redoStack = [];
+              } else if (ev.key === 'Escape') {
+                input.style.display = 'none';
+              }
+            };
+          }, 10);
+          return;
+        }
+      }
+      return;
+    }
+
+    for (let p of players) {
+      if (Math.hypot(tx - p.x, ty - p.y) < 30) {
+        draggedPlayer = p;
+        dragOffsetX = tx - p.x;
+        dragOffsetY = ty - p.y;
+        break;
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (!draggedPlayer && !arrowMode) return;
+
+    const { x: tx, y: ty } = getTouchPos(e);
+
+    if (arrowMode && arrowStart) {
+      tempArrowEnd = { x: tx, y: ty };
+      drawPlayers();
+      return;
+    }
+
+    if (draggedPlayer) {
+      draggedPlayer.x = tx - dragOffsetX;
+      draggedPlayer.y = ty - dragOffsetY;
+      drawPlayers();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    if (arrowMode && arrowStart) {
+      const { x: tx, y: ty } = getTouchPos(e);
+      arrows.push({ start: arrowStart, end: { x: tx, y: ty } });
+      arrowStart = null;
+      tempArrowEnd = null;
+      undoStack.push(captureState());
+      redoStack = [];
+      drawPlayers();
+    }
+
+    if (draggedPlayer) {
+      draggedPlayer = null;
+      undoStack.push(captureState());
+      redoStack = [];
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchcancel', e => {
+    e.preventDefault();
+    if (arrowStart) arrowStart = null;
+    if (draggedPlayer) {
+      draggedPlayer = null;
+      undoStack.push(captureState());
+      redoStack = [];
+    }
+  }, { passive: false });
 }
 
 function openTacticalBoard() {

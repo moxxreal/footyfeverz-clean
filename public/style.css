@@ -563,6 +563,42 @@ body.modal-open {
   background: #0056b3;
 }
 
+
+button.follow-btn,
+a.chat-button {
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+button.follow-btn:hover {
+  background: #218838; /* darker green */
+  transform: translateY(-1px);
+}
+
+button.follow-btn.unfollow:hover {
+  background: #c82333; /* darker red */
+}
+
+a.chat-button:hover {
+  background: #0062cc; /* darker blue */
+  transform: translateY(-1px);
+}
+.btn-shared:hover {
+  opacity: 0.9;
+  filter: brightness(1.1);
+}
+.shake {
+  animation: shake 0.4s;
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px); }
+  100% { transform: translateX(0); }
+}
+
 /* --- GENERAL Tactical MODAL LAYOUT --- */
 #tacticalModal {
   position: fixed;
@@ -703,76 +739,57 @@ body.modal-open {
 /* --- Responsive landscape mobile tweaks --- */
 @media (max-width: 700px) and (orientation: landscape) {
   #tacticalModal {
-    flex-direction: column;
+    flex-direction: row; /* keep side by side */
     height: 100dvh;
     width: 100vw;
+    overflow: hidden; /* no scroll */
   }
 
   .tactical-controls {
-    width: 100%;
-    flex: none;
-    min-width: auto;
-    max-height: 180px;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    overflow-y: auto;
-    gap: 10px;
-    padding: 10px;
+    flex: 0 0 20vw;  /* fixed 20% of viewport width */
+    max-width: 20vw;
+    height: 100dvh;
+    padding: 10px 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap; /* wrap controls if needed */
+    gap: 8px;
+    overflow: hidden; /* prevent scroll */
+    justify-content: flex-start;
+    align-items: stretch;
   }
 
+  /* Controls inside left panel: make buttons smaller and wrap nicely */
   .tactical-controls button,
   .tactical-controls select,
   .tactical-controls input[type="color"] {
-    max-width: 140px;
-    flex: 1 1 auto;
+    font-size: 14px;
+    padding: 10px 14px;
+    max-width: 100%; /* full width within panel */
+    flex: none; /* do not stretch */
   }
 
+  /* Right panel: canvas area */
   #tacticalPitch {
-    width: 100%;
-    flex: none;
-    height: calc(100dvh - 180px);
+    flex: 1 1 80vw;
+    height: 100dvh;
     padding: 10px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 
   #tacticalCanvas {
-    max-height: 100%;
+    width: 100%;
+    height: auto;
+    max-height: 95vh;
+    aspect-ratio: 16 / 9;
+    border-radius: 12px;
+    background-size: cover;
+    display: block;
   }
-}
-
-button.follow-btn,
-a.chat-button {
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-button.follow-btn:hover {
-  background: #218838; /* darker green */
-  transform: translateY(-1px);
-}
-
-button.follow-btn.unfollow:hover {
-  background: #c82333; /* darker red */
-}
-
-a.chat-button:hover {
-  background: #0062cc; /* darker blue */
-  transform: translateY(-1px);
-}
-.btn-shared:hover {
-  opacity: 0.9;
-  filter: brightness(1.1);
-}
-.shake {
-  animation: shake 0.4s;
-}
-
-@keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  50% { transform: translateX(5px); }
-  75% { transform: translateX(-5px); }
-  100% { transform: translateX(0); }
 }
 
 /* --- BIG POKE RIVAL BUTTON (Clean Version) --- */
