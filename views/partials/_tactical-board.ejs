@@ -513,8 +513,8 @@ function openTacticalBoard() {
   setTimeout(() => {
     canvas = document.getElementById('tacticalCanvas');
     ctx = canvas.getContext('2d');
-
-    resizeCanvas(); // << important call here
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
 
     if (undoStack.length === 0) {
       loadFormation('433');
