@@ -739,52 +739,55 @@ body.modal-open {
 /* --- Responsive landscape mobile tweaks --- */
 @media (max-width: 700px) and (orientation: landscape) {
   #tacticalModal {
-    flex-direction: row; /* keep side by side */
+    flex-direction: row; /* side by side */
     height: 100dvh;
     width: 100vw;
-    overflow: hidden; /* no scroll */
+    overflow: hidden;
   }
 
   .tactical-controls {
-    flex: 0 0 20vw;  /* fixed 20% of viewport width */
+    flex: 0 0 20vw;  /* fixed 20% width */
     max-width: 20vw;
     height: 100dvh;
-    padding: 10px 8px;
+    padding: 8px 6px; /* smaller padding */
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    flex-wrap: wrap; /* wrap controls if needed */
-    gap: 8px;
-    overflow: hidden; /* prevent scroll */
+    flex-wrap: wrap; /* allow wrapping */
+    gap: 6px; /* smaller gap */
+    overflow-y: auto; /* allow vertical scroll only if needed */
     justify-content: flex-start;
     align-items: stretch;
   }
 
-  /* Controls inside left panel: make buttons smaller and wrap nicely */
+  /* Buttons and inputs smaller font and padding, full width */
   .tactical-controls button,
   .tactical-controls select,
   .tactical-controls input[type="color"] {
-    font-size: 14px;
-    padding: 10px 14px;
-    max-width: 100%; /* full width within panel */
-    flex: none; /* do not stretch */
+    font-size: 13px;
+    padding: 8px 12px;
+    max-width: 100%;
+    flex: none;
   }
 
-  /* Right panel: canvas area */
+  /* Right panel: fill rest 80%, full height */
   #tacticalPitch {
     flex: 1 1 80vw;
     height: 100dvh;
-    padding: 10px;
+    padding: 0; /* remove padding to maximize space */
     box-sizing: border-box;
     display: flex;
     justify-content: center;
     align-items: center;
+    overflow: hidden;
   }
 
+  /* Canvas fills container fully, maintaining aspect ratio */
   #tacticalCanvas {
     width: 100%;
-    height: auto;
-    max-height: 95vh;
+    height: 100%;
+    max-height: 100dvh;
+    max-width: 100%;
     aspect-ratio: 16 / 9;
     border-radius: 12px;
     background-size: cover;
