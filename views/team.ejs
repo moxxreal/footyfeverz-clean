@@ -518,8 +518,41 @@
   }
 
   setInterval(updateCountdowns, 1000);
+
+function isMobileDevice() {
+  return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+document.getElementById('openTacticalBoardBtn').addEventListener('click', e => {
+  e.preventDefault();
+
+  if (typeof isLoggedIn !== 'undefined' && !isLoggedIn) {
+    document.getElementById('unauthMessage').classList.remove('hidden');
+    e.target.classList.add('shake');
+    setTimeout(() => e.target.classList.remove('shake'), 500);
+    return;
+  }
+
+  if (isMobileDevice()) {
+    // Open mobile tactical board
+    if (typeof openMobileTacticalBoard === 'function') {
+      openMobileTacticalBoard();
+    } else {
+      alert('Mobile tactical board not loaded.');
+    }
+  } else {
+    // Open desktop tactical board
+    if (typeof openTacticalBoard === 'function') {
+      openTacticalBoard();
+    } else {
+      alert('Desktop tactical board not loaded.');
+    }
+  }
+});
 </script>
 <!-- 🟩 Tactical Board Modal -->
 <%- include('partials/_tactical-board') %>
+<!-- 🟩 Tactical Board Mobile Modal -->
+<%- include('partials/_tactical-board-mobile') %>
 </body>
 </html>

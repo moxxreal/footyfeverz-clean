@@ -6,118 +6,129 @@
     top: 0;
     left: 0;
     width: 100vw;
-    height: 100dvh; /* Dynamic viewport height */
+    height: 100dvh; /* Using dynamic viewport height */
     background: rgba(0, 0, 0, 0.85);
     z-index: 9999;
-    display: none; /* hidden by default */
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-  }
-
-  #tacticalModal.active {
-    display: flex; /* show modal */
-  }
-
-  /* Inner container */
-  #tacticalContainer {
-    background: white;
-    border-radius: 20px;
-    padding: 1rem;
-    width: 90vw;
-    height: 90vh;
-    max-width: 1200px;
-    max-height: 800px;
     display: flex;
     flex-direction: row;
-    gap: 1rem;
-    box-sizing: border-box;
-    overflow: hidden; /* prevent scroll */
+    overflow: hidden; /* no scroll on modal */
   }
 
-  /* Controls panel */
-  #tacticalControls {
+  /* Controls section — about 20%, flexible */
+  .tactical-controls {
     flex: 1 1 20%;
-    min-width: 200px;
+    padding: 15px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-start;
     background: #fff;
     border-right: 1px solid #ccc;
-    padding-right: 15px;
+    overflow-y: auto; /* scroll only if content grows vertically */
+    min-width: 180px; /* prevent too narrow on wider screens */
     box-sizing: border-box;
-    overflow-y: auto;
   }
 
-  /* Buttons and selects full width */
-  #tacticalControls button,
-  #tacticalControls select,
-  #tacticalControls input[type="color"] {
-    width: 100%;
-    box-sizing: border-box;
-    font-weight: bold;
-    cursor: pointer;
-    border-radius: 10px;
-    border: 1px solid #888;
-    font-size: 16px;
-    padding: 12px 15px;
-    background: linear-gradient(to bottom, #007BFF, #0056b3);
-    color: white;
-    transition: transform 0.2s ease;
-  }
-
-  #tacticalControls button:hover {
-    transform: scale(1.05);
-  }
-
-  #tacticalControls select,
-  #tacticalControls input[type="color"] {
-    background-color: #f9f9f9;
-    border: 1px solid #888;
-    color: black;
-  }
-
-  #tacticalControls h3 {
-    margin: 0 0 5px 0;
-  }
-
-  /* Pitch and canvas container */
+  /* Pitch section — flexible 80% */
   #tacticalPitch {
     flex: 4 1 80%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     position: relative;
     background: #003300;
     padding: 20px;
     box-sizing: border-box;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
+    overflow: hidden; /* no scroll */
   }
 
-  /* Canvas: fill container, keep aspect ratio */
+  /* Canvas styled to fully fill the pitch area */
   #tacticalCanvas {
     width: 100%;
-    height: 100%;
-    max-width: 100%;
-    max-height: 100%;
-    border: 2px solid #000;
-    border-radius: 12px;
+    height: auto;
+    aspect-ratio: 16 / 9; /* Keeps pitch proportion */
     background: url('/images/tactical-pitch.png') center center / cover no-repeat;
-    touch-action: none;
+    background-color: #006400;
+    border-radius: 12px;
+    max-height: 95vh; /* prevent overflow on small screens */
     display: block;
   }
 
-  /* Input for naming players */
-  #nameInput {
+  /* Buttons in left panel: full width, responsive */
+  .tactical-controls button {
+    padding: 14px 22px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(to bottom, #007BFF, #0056b3);
+    color: white;
+    cursor: pointer;
+    width: 100%;  /* full width */
+    max-width: 100%; /* remove fixed max-width */
+    transition: transform 0.2s ease;
+    box-sizing: border-box;
+  }
+
+  .tactical-controls button:hover {
+    transform: scale(1.05);
+  }
+
+  /* Selects and inputs styled similarly, full width */
+  .tactical-controls select,
+  .tactical-controls input[type="color"] {
+    padding: 12px 16px;
+    font-size: 17px;
+    border-radius: 8px;
+    border: 1px solid #888;
+    width: 100%;  /* full width */
+    max-width: 100%; /* remove fixed max-width */
+    background-color: #f9f9f9;
+    font-weight: bold;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+
+  .tactical-controls > * {
+    margin-bottom: 15px;
+  }
+
+  /* --- PITCH AREA (NO SCROLL) --- */
+  #tacticalBoard {
+    position: relative;
+    touch-action: none;
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    max-width: 900px;
+    background: url('/images/tactical-pitch.png') center/cover no-repeat;
+    border: 2px solid #333;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  /* --- PLAYER CIRCLES --- */
+  .tactical-player {
+    z-index: 10;
+    font-weight: bold;
+    font-size: 13px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    touch-action: none;
     position: absolute;
-    pointer-events: auto;
-    display: none;
-    z-index: 10001;
-    font-size: 16px;
-    padding: 5px 8px;
-    border: 1px solid #aaa;
-    border-radius: 6px;
-    background: white;
+    width: 60px;
+    height: 60px;
+    line-height: 60px;
+    border-radius: 50%;
+    background-color: #ddd;
+    color: black;
+    border: 2px solid white;
+    box-shadow: 0 0 5px rgba(0,0,0,0.4);
+    cursor: grab;
+    user-select: none;
   }
 
   /* Prevent body scroll when modal open */
@@ -125,40 +136,14 @@
     overflow: hidden;
     height: 100vh;
   }
-
-  /* Responsive landscape tweaks */
-  @media (max-width: 700px) and (orientation: landscape) {
-    #tacticalContainer {
-      flex-wrap: nowrap;
-      width: 100vw;
-      height: 100dvh;
-      border-radius: 0;
-      padding: 10px;
-    }
-
-    #tacticalControls {
-      flex: 0 0 20vw;
-      max-width: 20vw;
-      height: 100%;
-      overflow-y: auto;
-      padding-right: 10px;
-    }
-
-    #tacticalCanvas {
-      width: 80vw !important;
-      height: 100% !important;
-      max-width: none !important;
-      max-height: none !important;
-    }
-  }
 </style>
 
-<div id="tacticalModal" aria-modal="true" role="dialog" aria-labelledby="tacticalModalTitle" tabindex="-1">
-  <div id="tacticalContainer">
-    <!-- Left controls -->
-    <div id="tacticalControls" class="tactical-controls">
-      <h3 id="tacticalModalTitle">Formation</h3>
-      <select id="formationSelect" aria-label="Select formation">
+<div id="tacticalModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); justify-content: center; align-items: center; z-index: 9999; overflow: hidden;">
+  <div style="background: white; border-radius: 20px; padding: 1rem; width: 90vw; height: 90vh; max-width: 1200px; max-height: 800px; margin: auto; display: flex; flex-direction: row; flex-wrap: wrap; gap: 1rem; box-sizing: border-box;">
+    <!-- Left panel: controls -->
+    <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 15px;">
+      <h3>Formation</h3>
+      <select onchange="loadFormation(this.value)">
         <option value="433">4-3-3</option>
         <option value="433f9">4-3-3 False 9</option>
         <option value="442">4-4-2</option>
@@ -168,556 +153,465 @@
       </select>
 
       <h3>Color</h3>
-      <input type="color" id="teamColorPicker" value="#007BFF" aria-label="Pick team color" />
+      <input type="color" id="teamColorPicker" onchange="changeTeamColor(this.value)" value="#007BFF" />
 
-      <button id="arrowModeBtn" type="button" aria-pressed="false">🡒 Arrow Mode: <span id="arrowModeStatus">Off</span></button>
-      <button id="namingModeBtn" type="button" aria-pressed="false">✎ Add Player’s Name: <span id="namingModeStatus">Off</span></button>
-
+      <button onclick="toggleArrowMode()">🡒 Arrow Mode: <span id='arrowModeStatus'>Off</span></button>
+      <button id="nameModeBtn" onclick="toggleNamingMode()">✎ Add Player’s Name: <span id="namingModeStatus">Off</span></button>
       <h3>Text Color</h3>
-      <select id="textColorPicker" aria-label="Select text color">
+      <select id="textColorPicker" onchange="changeTextColor(this.value)">
         <option value="white" selected>White</option>
         <option value="black">Black</option>
       </select>
 
-      <button id="undoBtn" type="button">Undo</button>
-      <button id="redoBtn" type="button">Redo</button>
-      <button id="submitBtn" type="button">Submit</button>
-      <button id="closeBtn" type="button">Exit</button>
+      <button onclick="undo()">Undo</button>
+      <button onclick="redo()">Redo</button>
+      <button onclick="submitTactics()">Submit</button>
+      <button onclick="closeTacticalBoard()">Exit</button>
     </div>
 
-    <!-- Right pitch -->
-    <div id="tacticalPitch">
-      <canvas id="tacticalCanvas" width="800" height="450" aria-label="Tactical pitch"></canvas>
-      <input id="nameInput" type="text" placeholder="Enter name" />
+    <!-- Right panel: canvas -->
+    <div style="flex: 3; position: relative;">
+      <canvas id="tacticalCanvas" style="width: 100%; height: 100%; border: 2px solid #000; border-radius: 12px;"></canvas>
+      <input id="nameInput" type="text" placeholder="Enter name" style="
+        position: absolute;
+        pointer-events: auto;
+        display: none;
+        z-index: 10001;
+        font-size: 16px;
+        padding: 5px 8px;
+        border: 1px solid #aaa;
+        border-radius: 6px;
+        background: white;
+      " />
     </div>
   </div>
 </div>
 
 <script>
-(() => {
-  let draggedPlayer = null;
-  let dragOffsetX = 0;
-  let dragOffsetY = 0;
-  let undoStack = [];
-  let redoStack = [];
-  let playerColor = '#007BFF';
-  let tacticalBoardActivated = false;
-  let arrowMode = false;
-  let arrows = [];
-  let arrowStart = null;
-  let tempArrowEnd = null;
-  let namingMode = false;
-  let playerNameColor = 'white';
-  let canvas, ctx;
-  const players = [];
-  let currentFormationCode = '433';
+let draggedPlayer = null;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+let undoStack = [];
+let redoStack = [];
+let playerColor = '#007BFF';
+let tacticalBoardActivated = false;
+let arrowMode = false;
+let arrows = [];
+let arrowStart = null;
+let tempArrowEnd = null; // for in-progress arrow drawing
+let namingMode = false;
+let playerNameColor = 'white';
+let canvas, ctx;
+const players = [];
+let currentFormationCode = '433';
 
-  const pitchImage = new Image();
-  pitchImage.src = '/images/tactical-pitch.png';
+// Add this pitch image here:
+const pitchImage = new Image();
+pitchImage.src = '/images/tactical-pitch.png';
 
-  pitchImage.onload = () => {
-    if (canvas && ctx) drawPlayers();
+pitchImage.onload = () => {
+  if (canvas && ctx) drawPlayers();
+};
+
+function captureState() {
+  return {
+    players: players.map(p => ({ ...p })),
+    arrows: arrows.map(a => ({
+      start: { ...a.start },
+      end: { ...a.end }
+    }))
+  };
+}
+
+function changeTeamColor(color) {
+  playerColor = color;
+  drawPlayers();
+}
+
+function toggleNamingMode() {
+  namingMode = !namingMode;
+  if (namingMode) {
+    // Turn off arrow mode if naming mode is turned on
+    arrowMode = false;
+    document.getElementById('arrowModeStatus').innerText = 'Off';
+    alert("Naming mode ON: Click a player to set a name.");
+  }
+  document.getElementById('namingModeStatus').innerText = namingMode ? 'On' : 'Off';
+}
+
+function changeTextColor(color) {
+  playerNameColor = color;
+  drawPlayers();
+}
+
+function toggleArrowMode() {
+  arrowMode = !arrowMode;
+  if (arrowMode) {
+    // Turn off naming mode if arrow mode is turned on
+    namingMode = false;
+    document.getElementById('namingModeStatus').innerText = 'Off';
+  }
+  document.getElementById('arrowModeStatus').innerText = arrowMode ? 'On' : 'Off';
+}
+
+function drawArrow(start, end) {
+  const headlen = 15;
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const angle = Math.atan2(dy, dx);
+
+  ctx.strokeStyle = 'red';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(start.x, start.y);
+  ctx.lineTo(end.x, end.y);
+  ctx.stroke();
+
+  // Arrowhead
+  ctx.beginPath();
+  ctx.moveTo(end.x, end.y);
+  ctx.lineTo(end.x - headlen * Math.cos(angle - Math.PI / 6), end.y - headlen * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(end.x - headlen * Math.cos(angle + Math.PI / 6), end.y - headlen * Math.sin(angle + Math.PI / 6));
+  ctx.lineTo(end.x, end.y);
+  ctx.fillStyle = 'red';
+  ctx.fill();
+}
+
+function drawPlayers() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (pitchImage.complete && pitchImage.naturalWidth !== 0) {
+    ctx.drawImage(pitchImage, 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = '#2c6f2c';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  arrows.forEach(arrow => drawArrow(arrow.start, arrow.end));
+  if (arrowStart && tempArrowEnd) {
+    drawArrow(arrowStart, tempArrowEnd);
+  }
+
+  players.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 30, 0, Math.PI * 2);
+    ctx.fillStyle = playerColor;
+    ctx.fill();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = playerNameColor;
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(p.name || p.label, p.x, p.y);
+  });
+}
+
+function resizeCanvas() {
+  if (!canvas) return;
+  // Reset transform before resizing to avoid scale compounding
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+  // Set canvas size to actual pixel size of its container
+  canvas.width = canvas.clientWidth * window.devicePixelRatio;
+  canvas.height = canvas.clientHeight * window.devicePixelRatio;
+
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  drawPlayers();
+}
+
+window.addEventListener('resize', () => {
+  if (tacticalBoardActivated) resizeCanvas();
+});
+
+// Removed orientationchange event listener
+
+function undo() {
+  if (undoStack.length <= 1) return;
+  redoStack.push(captureState());
+  undoStack.pop();
+  const prev = undoStack[undoStack.length - 1];
+  players.length = 0;
+  players.push(...prev.players.map(p => ({ ...p })));
+  arrows.length = 0;
+  arrows.push(...prev.arrows.map(a => ({
+    start: { ...a.start },
+    end: { ...a.end }
+  })));
+  drawPlayers();
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+  undoStack.push(captureState());
+  const next = redoStack.pop();
+  players.length = 0;
+  players.push(...next.players.map(p => ({ ...p })));
+  arrows.length = 0;
+  arrows.push(...next.arrows.map(a => ({
+    start: { ...a.start },
+    end: { ...a.end }
+  })));
+  drawPlayers();
+}
+
+function loadFormation(code) {
+  const midY = canvas.height / 2;
+  const lineX = [60, 180, 300, 420, 540, 660, 780];
+  if (players.length > 0) undoStack.push(captureState());
+  redoStack.length = 0;
+  players.length = 0;
+  currentFormationCode = code;
+
+  const formations = {
+    '433': [
+      ['GK', 0, 0], ['LB', 2, -170], ['CB', 1, -60], ['CB', 1, 60], ['RB', 2, 170],
+      ['CM', 3, -100], ['CDM', 2, 0], ['CM', 3, 100],
+      ['LW', 4, -150], ['RW', 4, 150], ['ST', 5, 0]
+    ],
+    '433f9': [
+      ['GK', 0, 0], ['LB', 2, -170], ['LCB', 1, -60], ['RCB', 1, 60], ['RB', 2, 170],
+      ['CM', 3, -100], ['CDM', 2, 0], ['CM', 3, 100],
+      ['LW', 5, -130], ['RW', 5, 130], ['False 9', 4, 0]
+    ],
+    '442': [
+      ['GK', 0, 0], ['LB', 2, -170], ['CB', 1, -60], ['CB', 1, 60], ['RB', 2, 170],
+      ['LM', 4, -170], ['CDM', 3, -60], ['CDM', 3, 60], ['RM', 4, 170],
+      ['ST', 5, -60], ['ST', 5, 60]
+    ],
+    '4231': [
+      ['GK', 0, 0], ['LB', 2, -170], ['CB', 1, -60], ['CB', 1, 60], ['RB', 2, 170],
+      ['CDM', 3, -60], ['CDM', 3, 60], ['CAM', 4, 0],
+      ['LM', 4, -170], ['RM', 4, 170], ['ST', 5, 0]
+    ],
+    '532': [
+      ['GK', 0, 0], ['LWB', 3, -190], ['LCB', 2, -110], ['CB', 1, 0], ['RCB', 2, 110], ['RWB', 3, 190],
+      ['CM', 4, -110], ['CDM', 3, 0], ['CM', 4, 110], ['ST', 5, -60], ['ST', 5, 60]
+    ],
+    '523': [
+      ['GK', 0, 0], ['LWB', 3, -190], ['LCB', 2, -110], ['CB', 1, 0], ['RCB', 2, 110], ['RWB', 3, 190],
+      ['CM', 3, -70], ['CM', 3, 70], ['LW', 4, -120], ['RW', 4, 120], ['ST', 5, 0]
+    ]
   };
 
-  function captureState() {
-    return {
-      players: players.map(p => ({ ...p })),
-      arrows: arrows.map(a => ({ start: { ...a.start }, end: { ...a.end } }))
-    };
-  }
+  formations[code].forEach(([label, xIdx, yOffset]) =>
+    players.push({ x: lineX[xIdx], y: midY + yOffset, label })
+  );
+  drawPlayers();
+}
 
-  function changeTeamColor(color) {
-    playerColor = color;
-    drawPlayers();
-  }
+function setupDragListeners() {
+  if (!canvas) return;
 
-  function toggleNamingMode() {
-    namingMode = !namingMode;
-    document.getElementById('namingModeStatus').innerText = namingMode ? 'On' : 'Off';
-    document.getElementById('namingModeBtn').setAttribute('aria-pressed', namingMode);
-    if (namingMode) alert("Naming mode ON: Click a player to set a name.");
-  }
+  // MOUSE EVENTS (existing)
+  canvas.addEventListener('mousedown', e => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
 
-  function changeTextColor(color) {
-    playerNameColor = color;
-    drawPlayers();
-  }
-
-  function toggleArrowMode() {
-    arrowMode = !arrowMode;
-    document.getElementById('arrowModeStatus').innerText = arrowMode ? 'On' : 'Off';
-    document.getElementById('arrowModeBtn').setAttribute('aria-pressed', arrowMode);
-  }
-
-  function drawArrow(start, end) {
-    const headlen = 15;
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const angle = Math.atan2(dy, dx);
-
-    ctx.strokeStyle = 'red';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(start.x, start.y);
-    ctx.lineTo(end.x, end.y);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(end.x, end.y);
-    ctx.lineTo(end.x - headlen * Math.cos(angle - Math.PI / 6), end.y - headlen * Math.sin(angle - Math.PI / 6));
-    ctx.lineTo(end.x - headlen * Math.cos(angle + Math.PI / 6), end.y - headlen * Math.sin(angle + Math.PI / 6));
-    ctx.lineTo(end.x, end.y);
-    ctx.fillStyle = 'red';
-    ctx.fill();
-  }
-
-  function drawPlayers() {
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (pitchImage.complete && pitchImage.naturalWidth !== 0) {
-      ctx.drawImage(pitchImage, 0, 0, canvas.width, canvas.height);
-    } else {
-      ctx.fillStyle = '#2c6f2c';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (arrowMode) {
+      arrowStart = { x: mx, y: my };
+      return;
     }
 
-    arrows.forEach(arrow => drawArrow(arrow.start, arrow.end));
-    if (arrowStart && tempArrowEnd) drawArrow(arrowStart, tempArrowEnd);
-
-    players.forEach(p => {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 30, 0, Math.PI * 2);
-      ctx.fillStyle = playerColor;
-      ctx.fill();
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.fillStyle = playerNameColor;
-      ctx.font = 'bold 16px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(p.name || p.label, p.x, p.y);
-    });
-  }
-
-  function resizeCanvas() {
-    if (!canvas) return;
-
-    // Reset transform first
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-    // Match canvas pixel size with CSS size multiplied by devicePixelRatio
-    const styleWidth = canvas.clientWidth;
-    const styleHeight = canvas.clientHeight;
-
-    canvas.width = styleWidth * window.devicePixelRatio;
-    canvas.height = styleHeight * window.devicePixelRatio;
-
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-
-    drawPlayers();
-  }
-
-  window.addEventListener('resize', () => {
-    if (tacticalBoardActivated) resizeCanvas();
-  });
-
-  window.addEventListener('orientationchange', () => {
-    if (tacticalBoardActivated) setTimeout(resizeCanvas, 300);
-  });
-
-  function undo() {
-    if (undoStack.length <= 1) return;
-    redoStack.push(captureState());
-    undoStack.pop();
-    const prev = undoStack[undoStack.length - 1];
-    players.length = 0;
-    players.push(...prev.players.map(p => ({ ...p })));
-    arrows.length = 0;
-    arrows.push(...prev.arrows.map(a => ({ start: { ...a.start }, end: { ...a.end } })));
-    drawPlayers();
-  }
-
-  function redo() {
-    if (redoStack.length === 0) return;
-    undoStack.push(captureState());
-    const next = redoStack.pop();
-    players.length = 0;
-    players.push(...next.players.map(p => ({ ...p })));
-    arrows.length = 0;
-    arrows.push(...next.arrows.map(a => ({ start: { ...a.start }, end: { ...a.end } })));
-    drawPlayers();
-  }
-
-  function loadFormation(code) {
-    if (!canvas) return;
-    const midY = canvas.height / (2 * window.devicePixelRatio);
-    const lineX = [60, 180, 300, 420, 540, 660, 780];
-
-    if (players.length > 0) undoStack.push(captureState());
-    redoStack.length = 0;
-    players.length = 0;
-    currentFormationCode = code;
-
-    const formations = {
-      '433': [
-        ['GK', 0, 0], ['LB', 2, -170], ['CB', 1, -60], ['CB', 1, 60], ['RB', 2, 170],
-        ['CM', 3, -100], ['CDM', 2, 0], ['CM', 3, 100],
-        ['LW', 4, -150], ['RW', 4, 150], ['ST', 5, 0]
-      ],
-      '433f9': [
-        ['GK', 0, 0], ['LB', 2, -170], ['LCB', 1, -60], ['RCB', 1, 60], ['RB', 2, 170],
-        ['CM', 3, -100], ['CDM', 2, 0], ['CM', 3, 100],
-        ['LW', 5, -130], ['RW', 5, 130], ['False 9', 4, 0]
-      ],
-      '442': [
-        ['GK', 0, 0], ['LB', 2, -170], ['CB', 1, -60], ['CB', 1, 60], ['RB', 2, 170],
-        ['LM', 4, -170], ['CDM', 3, -60], ['CDM', 3, 60], ['RM', 4, 170],
-        ['ST', 5, -60], ['ST', 5, 60]
-      ],
-      '4231': [
-        ['GK', 0, 0], ['LB', 2, -170], ['CB', 1, -60], ['CB', 1, 60], ['RB', 2, 170],
-        ['CDM', 3, -60], ['CDM', 3, 60], ['CAM', 4, 0],
-        ['LM', 4, -170], ['RM', 4, 170], ['ST', 5, 0]
-      ],
-      '532': [
-        ['GK', 0, 0], ['LWB', 3, -190], ['LCB', 2, -110], ['CB', 1, 0], ['RCB', 2, 110], ['RWB', 3, 190],
-        ['CM', 4, -110], ['CDM', 3, 0], ['CM', 4, 110], ['ST', 5, -60], ['ST', 5, 60]
-      ],
-      '523': [
-        ['GK', 0, 0], ['LWB', 3, -190], ['LCB', 2, -110], ['CB', 1, 0], ['RCB', 2, 110], ['RWB', 3, 190],
-        ['CM', 3, -70], ['CM', 3, 70], ['LW', 4, -120], ['RW', 4, 120], ['ST', 5, 0]
-      ]
-    };
-
-    formations[code].forEach(([label, xIdx, yOffset]) => {
-      players.push({ x: lineX[xIdx], y: midY + yOffset, label });
-    });
-    drawPlayers();
-  }
-
-  function getCanvasCoordinates(clientX, clientY) {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY
-    };
-  }
-
-  function setupDragListeners() {
-    if (!canvas) return;
-
-    // Mouse events
-    canvas.onmousedown = e => {
-      const { x: mx, y: my } = getCanvasCoordinates(e.clientX, e.clientY);
-
-      if (arrowMode) {
-        arrowStart = { x: mx, y: my };
-        return;
-      }
-
-      if (namingMode) {
-        for (const p of players) {
-          if (Math.hypot(mx - p.x, my - p.y) < 30) {
-            showNameInput(p);
-            return;
-          }
-        }
-        return;
-      }
-
-      for (const p of players) {
+    if (namingMode) {
+      for (let p of players) {
         if (Math.hypot(mx - p.x, my - p.y) < 30) {
-          draggedPlayer = p;
-          dragOffsetX = mx - p.x;
-          dragOffsetY = my - p.y;
-          break;
+          setTimeout(() => {
+            const input = document.getElementById('nameInput');
+            if (!input) return;
+
+            const inputWidth = 120;
+            const inputHeight = 30;
+
+            const canvasContainer = canvas.parentElement;
+            const scaleX = canvasContainer.clientWidth / canvas.width;
+            const scaleY = canvasContainer.clientHeight / canvas.height;
+
+            const screenX = p.x * scaleX;
+            const screenY = p.y * scaleY;
+
+            input.style.left = `${screenX - inputWidth / 2}px`;
+            input.style.top = `${screenY - inputHeight - 10}px`;
+            input.style.width = inputWidth + 'px';
+            input.style.height = inputHeight + 'px';
+
+            input.style.display = 'block';
+            input.value = p.name || '';
+            input.focus();
+
+            input.onkeydown = ev => {
+              if (ev.key === 'Enter') {
+                p.name = input.value.trim();
+                input.style.display = 'none';
+                drawPlayers();
+                undoStack.push(captureState());
+                redoStack = [];
+              } else if (ev.key === 'Escape') {
+                input.style.display = 'none';
+              }
+            };
+          }, 10);
+          return;
         }
       }
-    };
+      return;
+    }
 
-    canvas.onmousemove = e => {
-      const { x: mx, y: my } = getCanvasCoordinates(e.clientX, e.clientY);
-
-      if (arrowMode && arrowStart) {
-        tempArrowEnd = { x: mx, y: my };
-        drawPlayers();
-        return;
+    for (let p of players) {
+      if (Math.hypot(mx - p.x, my - p.y) < 30) {
+        draggedPlayer = p;
+        dragOffsetX = mx - p.x;
+        dragOffsetY = my - p.y;
+        break;
       }
+    }
+  });
 
-      if (draggedPlayer) {
-        draggedPlayer.x = mx - dragOffsetX;
-        draggedPlayer.y = my - dragOffsetY;
-        drawPlayers();
-      }
-    };
-
-    canvas.onmouseup = e => {
-      const { x: mx, y: my } = getCanvasCoordinates(e.clientX, e.clientY);
-
-      if (arrowMode && arrowStart) {
-        arrows.push({ start: arrowStart, end: { x: mx, y: my } });
-        arrowStart = null;
-        tempArrowEnd = null;
-        undoStack.push(captureState());
-        redoStack = [];
-        drawPlayers();
-      }
-
-      if (draggedPlayer) {
-        draggedPlayer = null;
-        undoStack.push(captureState());
-        redoStack = [];
-      }
-    };
-
-    canvas.onmouseleave = () => {
-      if (arrowStart) arrowStart = null;
-      if (draggedPlayer) {
-        draggedPlayer = null;
-        undoStack.push(captureState());
-        redoStack = [];
-      }
-    };
-
-    // Touch events
-    canvas.addEventListener('touchstart', e => {
-      e.preventDefault();
-      const touch = e.touches[0];
-      const { x: tx, y: ty } = getCanvasCoordinates(touch.clientX, touch.clientY);
-
-      if (arrowMode) {
-        arrowStart = { x: tx, y: ty };
-        return;
-      }
-
-      if (namingMode) {
-        for (const p of players) {
-          if (Math.hypot(tx - p.x, ty - p.y) < 30) {
-            showNameInput(p);
-            return;
-          }
-        }
-        return;
-      }
-
-      for (const p of players) {
-        if (Math.hypot(tx - p.x, ty - p.y) < 30) {
-          draggedPlayer = p;
-          dragOffsetX = tx - p.x;
-          dragOffsetY = ty - p.y;
-          break;
-        }
-      }
-    }, { passive: false });
-
-    canvas.addEventListener('touchmove', e => {
-      e.preventDefault();
-      if (!draggedPlayer && !arrowMode) return;
-
-      const touch = e.touches[0];
-      const { x: tx, y: ty } = getCanvasCoordinates(touch.clientX, touch.clientY);
-
-      if (arrowMode && arrowStart) {
-        tempArrowEnd = { x: tx, y: ty };
-        drawPlayers();
-        return;
-      }
-
-      if (draggedPlayer) {
-        draggedPlayer.x = tx - dragOffsetX;
-        draggedPlayer.y = ty - dragOffsetY;
-        drawPlayers();
-      }
-    }, { passive: false });
-
-    canvas.addEventListener('touchend', e => {
-      e.preventDefault();
-      if (arrowMode && arrowStart) {
-        const touch = e.changedTouches[0];
-        const { x: tx, y: ty } = getCanvasCoordinates(touch.clientX, touch.clientY);
-
-        arrows.push({ start: arrowStart, end: { x: tx, y: ty } });
-        arrowStart = null;
-        tempArrowEnd = null;
-        undoStack.push(captureState());
-        redoStack = [];
-        drawPlayers();
-      }
-
-      if (draggedPlayer) {
-        draggedPlayer = null;
-        undoStack.push(captureState());
-        redoStack = [];
-      }
-    }, { passive: false });
-
-    canvas.addEventListener('touchcancel', e => {
-      e.preventDefault();
-      if (arrowStart) arrowStart = null;
-      if (draggedPlayer) {
-        draggedPlayer = null;
-        undoStack.push(captureState());
-        redoStack = [];
-      }
-    }, { passive: false });
-  }
-
-  function showNameInput(player) {
-    const input = document.getElementById('nameInput');
-    if (!input || !canvas) return;
-
-    const inputWidth = 120;
-    const inputHeight = 30;
-
+  canvas.addEventListener('mousemove', e => {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
 
-    // Position input in CSS pixels relative to canvas container
-    const screenX = player.x / scaleX;
-    const screenY = player.y / scaleY;
+    if (arrowMode && arrowStart) {
+      tempArrowEnd = { x: mx, y: my };
+      drawPlayers();
+      return;
+    }
 
-    input.style.left = `${screenX - inputWidth / 2}px`;
-    input.style.top = `${screenY - inputHeight - 10}px`;
-    input.style.width = `${inputWidth}px`;
-    input.style.height = `${inputHeight}px`;
-    input.style.display = 'block';
-    input.value = player.name || '';
-    input.focus();
+    if (draggedPlayer) {
+      draggedPlayer.x = mx - dragOffsetX;
+      draggedPlayer.y = my - dragOffsetY;
+      drawPlayers();
+    }
+  });
 
-    input.onkeydown = ev => {
-      if (ev.key === 'Enter') {
-        player.name = input.value.trim();
-        input.style.display = 'none';
-        drawPlayers();
-        undoStack.push(captureState());
-        redoStack = [];
-      } else if (ev.key === 'Escape') {
-        input.style.display = 'none';
-      }
-    };
-  }
+  canvas.addEventListener('mouseup', e => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
 
-  function openTacticalBoard() {
-    tacticalBoardActivated = true;
-    document.body.classList.add('modal-open');
-
-    const modal = document.getElementById('tacticalModal');
-    modal.classList.add('active');
-
-    setTimeout(() => {
-      canvas = document.getElementById('tacticalCanvas');
-      ctx = canvas.getContext('2d');
-
-      resizeCanvas();
-
-      if (undoStack.length === 0) {
-        loadFormation('433');
-        undoStack.push(captureState());
-      } else {
-        players.length = 0;
-        const last = undoStack[undoStack.length - 1];
-        players.push(...last.players.map(p => ({ ...p })));
-        arrows.push(...last.arrows.map(a => ({ start: { ...a.start }, end: { ...a.end } })));
-      }
-
+    if (arrowMode && arrowStart) {
+      arrows.push({ start: arrowStart, end: { x: mx, y: my } });
+      arrowStart = null;
+      tempArrowEnd = null;
+      undoStack.push(captureState());
       redoStack = [];
       drawPlayers();
-      setupDragListeners();
+    }
 
-      // Hook UI buttons:
-      document.getElementById('formationSelect').value = currentFormationCode;
-      document.getElementById('formationSelect').onchange = e => loadFormation(e.target.value);
-      document.getElementById('teamColorPicker').value = playerColor;
-      document.getElementById('teamColorPicker').onchange = e => changeTeamColor(e.target.value);
-      document.getElementById('arrowModeBtn').onclick = toggleArrowMode;
-      document.getElementById('namingModeBtn').onclick = toggleNamingMode;
-      document.getElementById('textColorPicker').value = playerNameColor;
-      document.getElementById('textColorPicker').onchange = e => changeTextColor(e.target.value);
-      document.getElementById('undoBtn').onclick = undo;
-      document.getElementById('redoBtn').onclick = redo;
-      document.getElementById('submitBtn').onclick = submitTactics;
-      document.getElementById('closeBtn').onclick = closeTacticalBoard;
-
-    }, 50);
-  }
-
-  function closeTacticalBoard() {
-    tacticalBoardActivated = false;
-    document.body.classList.remove('modal-open');
-    const modal = document.getElementById('tacticalModal');
-    modal.classList.remove('active');
-
-    // Hide naming input if visible
-    const input = document.getElementById('nameInput');
-    if (input) input.style.display = 'none';
-  }
-
-  function submitTactics() {
-    drawPlayers();
-
-    canvas.toBlob(blob => {
-      const tacticInput = document.getElementById('tacticImageInput');
-      if (!tacticInput) {
-        alert('No tactic input element found!');
-        return;
-      }
-      const dt = new DataTransfer();
-      dt.items.add(new File([blob], 'tactic.png', { type: 'image/png' }));
-      tacticInput.files = dt.files;
-
-      let preview = document.getElementById('tacticImagePreview');
-      if (!preview) {
-        const img = document.createElement('img');
-        img.id = 'tacticImagePreview';
-        img.style.maxWidth = '200px';
-        img.style.marginTop = '10px';
-        img.style.borderRadius = '12px';
-        img.style.display = 'block';
-
-        const commentText = document.getElementById('commentText');
-        if (commentText && commentText.parentNode) {
-          commentText.parentNode.insertBefore(img, commentText.nextSibling);
-        }
-
-        preview = img;
-      }
-
-      if (preview.src) {
-        URL.revokeObjectURL(preview.src);
-      }
-
-      const url = URL.createObjectURL(blob);
-      preview.src = url;
-      preview.style.display = 'block';
-
-      closeTacticalBoard();
-      alert('Tactic image attached to your comment!');
-    });
-  }
-
-  // Expose open/close to global for demo
-  window.openTacticalBoard = openTacticalBoard;
-  window.closeTacticalBoard = closeTacticalBoard;
-
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('openTacticalBoardBtn');
-    if (btn) {
-      btn.addEventListener('click', e => {
-        if (typeof isLoggedIn !== 'undefined' && !isLoggedIn) {
-          e.preventDefault();
-          document.getElementById('unauthMessage').classList.remove('hidden');
-          btn.classList.add('shake');
-          setTimeout(() => btn.classList.remove('shake'), 500);
-        } else {
-          openTacticalBoard();
-        }
-      });
+    if (draggedPlayer) {
+      draggedPlayer = null;
+      undoStack.push(captureState());
+      redoStack = [];
     }
   });
-})();
+
+  canvas.addEventListener('mouseleave', () => {
+    if (arrowStart) arrowStart = null;
+    if (draggedPlayer) {
+      draggedPlayer = null;
+      undoStack.push(captureState());
+      redoStack = [];
+    }
+  });
+
+  // Removed all touch event listeners
+}
+
+function openTacticalBoard() {
+  tacticalBoardActivated = true;
+  const modal = document.getElementById('tacticalModal');
+  modal.style.display = 'flex';
+
+  setTimeout(() => {
+    canvas = document.getElementById('tacticalCanvas');
+    ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    if (undoStack.length === 0) {
+      loadFormation('433');
+      undoStack.push(captureState());
+    } else {
+      players.length = 0;
+      const last = undoStack[undoStack.length - 1];
+      players.push(...last.players.map(p => ({ ...p })));
+      arrows.push(...last.arrows.map(a => ({
+        start: { ...a.start },
+        end: { ...a.end }
+      })));
+    }
+
+    redoStack = [];
+    drawPlayers();
+    setupDragListeners();
+    document.querySelector('#teamColorPicker').disabled = false;
+  }, 10);
+}
+
+function closeTacticalBoard() {
+  tacticalBoardActivated = false;
+  document.getElementById('tacticalModal').style.display = 'none';
+}
+
+function submitTactics() {
+  drawPlayers();
+
+  canvas.toBlob(blob => {
+    const tacticInput = document.getElementById('tacticImageInput');
+    const dt = new DataTransfer();
+    dt.items.add(new File([blob], 'tactic.png', { type: 'image/png' }));
+    tacticInput.files = dt.files;
+
+    let preview = document.getElementById('tacticImagePreview');
+    if (!preview) {
+      const img = document.createElement('img');
+      img.id = 'tacticImagePreview';
+      img.style.maxWidth = '200px';
+      img.style.marginTop = '10px';
+      img.style.borderRadius = '12px';
+      img.style.display = 'block';
+
+      const commentText = document.getElementById('commentText');
+      commentText.parentNode.insertBefore(img, commentText.nextSibling);
+
+      preview = img;
+    }
+
+    if (preview.src) {
+      URL.revokeObjectURL(preview.src);
+    }
+
+    const url = URL.createObjectURL(blob);
+    preview.src = url;
+    preview.style.display = 'block';
+
+    closeTacticalBoard();
+    alert('Tactic image attached to your comment!');
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('openTacticalBoardBtn');
+  if (btn) {
+    btn.addEventListener('click', e => {
+      if (typeof isLoggedIn !== 'undefined' && !isLoggedIn) {
+        e.preventDefault();
+        document.getElementById('unauthMessage').classList.remove('hidden');
+        btn.classList.add('shake');
+        setTimeout(() => btn.classList.remove('shake'), 500);
+      } else {
+        openTacticalBoard();
+      }
+    });
+  }
+});
 </script>
