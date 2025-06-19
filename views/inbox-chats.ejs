@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+  />
+  <title>My Chats | Footy Feverz</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .inbox-container {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    .inbox-container h2 {
+      font-size: 1.8rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      color: #333;
+    }
+    .chat-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+    .chat-card {
+      position: relative;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 1rem 1.2rem;
+      text-decoration: none;
+      color: #222;
+      width: calc(33% - 1rem);
+      min-width: 200px;
+      transition: box-shadow 0.2s ease, transform 0.1s ease;
+    }
+    .chat-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      transform: translateY(-2px);
+    }
+    .chat-card h3 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .notif-badge {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      background: #e74c3c;
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 12px;
+    }
+    @media (max-width: 768px) {
+      .chat-card {
+        width: calc(50% - 1rem);
+      }
+    }
+    @media (max-width: 480px) {
+      .chat-card {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <%- include('partials/_header', {
+    headerClass: 'header-home',
+    useTeamHeader,
+    showAuthLinks,
+    showLeagueLink,
+    user,
+    request,
+    loginError,
+    signupError
+  }) %>
+
+  <section class="inbox-container">
+    <h2>💬 My Chats</h2>
+
+    <% if (chats.length === 0) { %>
+      <p style="text-align:center; color:#666;">You don’t have any active chats yet.</p>
+    <% } else { %>
+      <div class="chat-list">
+        <% chats.forEach(c => { %>
+          <a href="/chat/<%= c.username %>" class="chat-card">
+            <h3><%= c.username %></h3>
+            <% if (c.unread > 0) { %>
+              <span class="notif-badge"><%= c.unread %></span>
+            <% } %>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+  </section>
+</body>
+</html>

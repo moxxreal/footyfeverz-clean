@@ -1,6 +1,4 @@
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
 const path = require('path');
 const bodyParser = require('body-parser');
 const multer = require('multer');
@@ -11,204 +9,10 @@ const bcrypt = require('bcrypt');
 const admin = require('firebase-admin');
 const teamToLeagueMap = require('./teamToLeagueMap');
 const sanitizeHtml = require('sanitize-html');
-const rateLimit = require('express-rate-limit');
+const teamImages = require('./teamImages');
+const http = require('http');
+const { Server } = require('socket.io');
 
-// Rate limiter for story uploads (5 per minute per IP)
-const storyLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 5,              // max 5 uploads/comments per minute
-  message: 'Too many uploads, please slow down.'
-});
-
-const teamImages = {
-  'la-liga': {
-    'real-madrid': '/la-liga-images/real-madrid.png',
-    'barcelona': '/la-liga-images/barcelona.png',
-    'atletico-madrid': '/la-liga-images/atletico.png',
-    'athletic-bilbao': '/la-liga-images/athletic-bilbao.png',
-    'sevilla': '/la-liga-images/sevilla.png',
-    'real-sociedad': '/la-liga-images/real-sociedad.png',
-    'valencia': '/la-liga-images/valencia.png',
-    'villarreal': '/la-liga-images/villarreal.png',
-    'real-betis': '/la-liga-images/real-betis.png',
-    'celta-vigo': '/la-liga-images/celta-vigo.png',
-    'getafe': '/la-liga-images/getafe.png',
-    'osasuna': '/la-liga-images/osasuna.png',
-    'real-mallorca': '/la-liga-images/real-mallorca.png',
-    'rayo-vallecano': '/la-liga-images/rayo-vallecano.png',
-    'espanyol': '/la-liga-images/rcd-espanyol.png',
-    'girona': '/la-liga-images/girona.png',
-    'alaves': '/la-liga-images/deportivo-alaves.png',
-    'las-palmas': '/la-liga-images/las-palmas.png',
-    'leganes': '/la-liga-images/cd-leganes.png',
-    'real-valladolid': '/la-liga-images/real-valladolid.png',
-  },
-  'bundesliga': {
-    'bayern-munich': '/bundesliga-images/bayern-munich.jpg',
-    'borussia-dortmund': '/bundesliga-images/borussia-dortmund.jpg',
-    'bayer-leverkusen': '/bundesliga-images/bayer-leverkusen.jpg',
-    'rb-leipzig': '/bundesliga-images/rb-leipzig.jpg',
-    'eintracht-frankfurt': '/bundesliga-images/eintracht-frankfurt.jpg',
-    'borussia-monchengladbach': '/bundesliga-images/borussia-monchengladbach.jpg',
-    'union-berlin': '/bundesliga-images/union-berlin.jpg',
-    'vfl-wolfsburg': '/bundesliga-images/vfl-wolfsburg.jpg',
-    'freiburg': '/bundesliga-images/freiburg.jpg',
-    'mainz': '/bundesliga-images/mainz.jpg',
-    'augsburg': '/bundesliga-images/augsburg.jpg',
-    'hoffenheim': '/bundesliga-images/hoffenheim.jpg',
-    'vfl-bochum': '/bundesliga-images/vfl-bochum.jpg',
-    'stuttgart': '/bundesliga-images/stuttgart.jpg',
-    'heidenheim': '/bundesliga-images/heidenheim.jpg',
-    'st-pauli': '/bundesliga-images/st-pauli.jpg',
-    'werder-bremen': '/bundesliga-images/werder-bremen.jpg',
-    'holstein': '/bundesliga-images/holstein.jpg',
-  },
-  'eredivisie': {
-    'ajax': '/eredivisie-images/ajax.jpg',
-    'psv-eindhoven': '/eredivisie-images/psv-eindhoven.jpg',
-    'feyenoord': '/eredivisie-images/feyenoord.jpg',
-    'az-alkmaar': '/eredivisie-images/az-alkmaar.jpg',
-    'fc-twente': '/eredivisie-images/fc-twente.jpg',
-    'fc-utrecht': '/eredivisie-images/fc-utrecht.jpg',
-    'sc-heerenveen': '/eredivisie-images/sc-heerenveen.jpg',
-    'nec-nijmegen': '/eredivisie-images/nec-nijmegen.jpg',
-    'sparta-rotterdam': '/eredivisie-images/sparta-rotterdam.jpg',
-    'go-ahead-eagles': '/eredivisie-images/go-ahead-eagles.jpg',
-    'fc-groningen': '/eredivisie-images/fc-groningen.jpg',
-    'pec-zwolle': '/eredivisie-images/pec-zwolle.jpg',
-    'fortuna-sittard': '/eredivisie-images/fortuna-sittard.jpg',
-    'nac-breda': '/eredivisie-images/nac-breda.jpg',
-    'heracles-almelo': '/eredivisie-images/heracles-almelo.jpg',
-    'willem-ii': '/eredivisie-images/willem-ii.jpg',
-    'almere-city': '/eredivisie-images/almere-city.jpg',
-    'rkc-waalwijk': '/eredivisie-images/rkc-waalwijk.jpg',
-  },
-  'liga-portugal': {
-    'sporting-cp': '/liga-portugal-images/sporting-cp.png',
-    'sl-benfica': '/liga-portugal-images/sl-benfica.png',
-    'fc-porto': '/liga-portugal-images/fc-porto.png',
-    'sc-braga': '/liga-portugal-images/sc-braga.png',
-    'vitoria-guimaraes': '/liga-portugal-images/vitoria-guimaraes.png',
-    'cd-santa-clara': '/liga-portugal-images/cd-santa-clara.png',
-    'fc-famalicao': '/liga-portugal-images/fc-famalicao.png',
-    'casa-pia': '/liga-portugal-images/casa-pia.png',
-    'gd-estoril-praia': '/liga-portugal-images/gd-estoril-praia.png',
-    'rio-ave': '/liga-portugal-images/rio-ave.png',
-    'moreirense': '/liga-portugal-images/moreirense.png',
-    'cd-nacional': '/liga-portugal-images/cd-nacional.png',
-    'gil-vicente': '/liga-portugal-images/gil-vicente.png',
-    'fc-arouca': '/liga-portugal-images/fc-arouca.png',
-    'sc-farense': '/liga-portugal-images/sc-farense.png',
-    'cf-estrela-amadora': '/liga-portugal-images/cf-estrela-amadora.png',
-    'boavista': '/liga-portugal-images/boavista.png',
-    'afs': '/liga-portugal-images/afs.png',
-  },
-  'ligue-1': {
-    'psg': '/ligue1-images/psg.jpg',
-    'olympique-marseille': '/ligue1-images/olympique-marseille.jpg',
-    'monaco': '/ligue1-images/monaco.jpg',
-    'lyon': '/ligue1-images/lyon.jpg',
-    'lille': '/ligue1-images/lille.jpg',
-    'nice': '/ligue1-images/nice.jpg',
-    'rennes': '/ligue1-images/rennes.jpg',
-    'lens': '/ligue1-images/lens.jpg',
-    'strasbourg': '/ligue1-images/strasbourg.jpg',
-    'reims': '/ligue1-images/reims.jpg',
-    'brest': '/ligue1-images/brest.jpg',
-    'toulouse': '/ligue1-images/toulouse.jpg',
-    'montpellier': '/ligue1-images/montpellier.jpg',
-    'nantes': '/ligue1-images/nantes.jpg',
-    'le-havre': '/ligue1-images/le-havre.jpg',
-    'auxerre': '/ligue1-images/auxerre.jpg',
-    'angers': '/ligue1-images/angers.jpg',
-    'saint-etienne': '/ligue1-images/saint-etienne.jpg',
-  },
-  'premier-league': {
-    'manchester-united': '/premier-images/man-united.png',
-    'liverpool': '/premier-images/liverpool.png',
-    'manchester-city': '/premier-images/man-city.png',
-    'arsenal': '/premier-images/arsenal.png',
-    'chelsea': '/premier-images/chelsea.png',
-    'tottenham': '/premier-images/tottenham.png',
-    'newcastle': '/premier-images/newcastle.png',
-    'aston-villa': '/premier-images/aston-villa.png',
-    'west-ham': '/premier-images/west-ham.png',
-    'brighton': '/premier-images/brighton.png',
-    'brentford': '/premier-images/brentford.png',
-    'wolves': '/premier-images/wolves.png',
-    'everton': '/premier-images/everton.png',
-    'crystal-palace': '/premier-images/crystal-palace.png',
-    'fulham': '/premier-images/fulham.png',
-    'bournemouth': '/premier-images/bournemouth.png',
-    'leicester-city': '/premier-images/leicester-city.png',
-    'nottingham-forest': '/premier-images/nottingham-forest.png',
-    'ipswich-town': '/premier-images/ipswich-town.png',
-    'southampton': '/premier-images/southampton.png',
-  },
-  'roshn-saudi-league': {
-    'al-hilal': '/roshn-saudi-images/al-hilal.png',
-    'al-nassr': '/roshn-saudi-images/al-nassr.png',
-    'al-ittihad': '/roshn-saudi-images/al-ittihad.png',
-    'al-ahli': '/roshn-saudi-images/al-ahli.png',
-    'al-shabab': '/roshn-saudi-images/al-shabab.png',
-    'al-taawoun': '/roshn-saudi-images/al-taawoun.png',
-    'al-ettifaq': '/roshn-saudi-images/al-ettifaq.png',
-    'al-fateh': '/roshn-saudi-images/al-fateh.png',
-    'al-fayha': '/roshn-saudi-images/al-fayha.png',
-    'damac': '/roshn-saudi-images/damac.png',
-    'al-wehda': '/roshn-saudi-images/al-wehda.png',
-    'al-raed': '/roshn-saudi-images/al-raed.png',
-    'al-khaleej': '/roshn-saudi-images/al-khaleej.png',
-    'al-riyadh': '/roshn-saudi-images/al-riyadh.png',
-    'al-okhdood': '/roshn-saudi-images/al-okhdood.png',
-    'al-qadsiah': '/roshn-saudi-images/al-qadsiah.png',
-    'al-kholood': '/roshn-saudi-images/al-kholood.png',
-    'al-orobah': '/roshn-saudi-images/al-orobah.png',
-  },
-  'serie-a': {
-    'inter-milan': '/serie-a-images/inter-milan.png',
-    'juventus': '/serie-a-images/juventus.png',
-    'ac-milan': '/serie-a-images/ac-milan.png',
-    'napoli': '/serie-a-images/napoli.png',
-    'roma': '/serie-a-images/roma.png',
-    'fiorentina': '/serie-a-images/fiorentina.png',
-    'atalanta': '/serie-a-images/atalanta.png',
-    'lazio': '/serie-a-images/lazio.png',
-    'bologna': '/serie-a-images/bologna.png',
-    'como': '/serie-a-images/como.png',
-    'torino': '/serie-a-images/torino.png',
-    'udinese': '/serie-a-images/udinese.png',
-    'genoa': '/serie-a-images/genoa.png',
-    'cagliari': '/serie-a-images/cagliari.png',
-    'verona': '/serie-a-images/verona.png',
-    'parma': '/serie-a-images/parma.png',
-    'lecce': '/serie-a-images/lecce.png',
-    'venezia': '/serie-a-images/venezia.png',
-    'empoli': '/serie-a-images/empoli.png',
-    'monza': '/serie-a-images/monza.png',
-  },
-  'super-lig': {
-    'galatasaray': '/super-lig-images/galatasaray.png',
-    'fenerbahce': '/super-lig-images/fenerbahce.png',
-    'besiktas': '/super-lig-images/besiktas.png',
-    'trabzonspor': '/super-lig-images/trabzonspor.png',
-    'istanbul-basaksehir': '/super-lig-images/istanbul-basaksehir.png',
-    'kasimpasa': '/super-lig-images/kasimpasa.png',
-    'eyupspor': '/super-lig-images/eyupspor.png',
-    'goztepe': '/super-lig-images/goztepe.png',
-    'bodrum-fk': '/super-lig-images/bodrum-fk.png',
-    'samsunspor': '/super-lig-images/samsunspor.png',
-    'konyaspor': '/super-lig-images/konyaspor.png',
-    'antalyaspor': '/super-lig-images/antalyaspor.png',
-    'sivasspor': '/super-lig-images/sivasspor.png',
-    'alanyaspor': '/super-lig-images/alanyaspor.png',
-    'caykur-rizespor': '/super-lig-images/caykur-rizespor.png',
-    'gaziantep-fk': '/super-lig-images/gaziantep-fk.png',
-    'kayserispor': '/super-lig-images/kayserispor.png',
-    'hatayspor': '/super-lig-images/hatayspor.png',
-    'adana-demirspor': '/super-lig-images/adana-demirspor.png',
-  },
-};
 
 require('dotenv').config();
 
@@ -228,29 +32,143 @@ const db = admin.firestore();
 })();
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server is UP on port ${PORT}`));
+// ─── Session setup ──────────────────────────────────────────────────────────
+const sessionMiddleware = session({
+  secret: process.env.SESSION_SECRET || 'super-secret-key',
+  resave: false,
+  saveUninitialized: true
+});
+app.use(sessionMiddleware);
+
+// Create HTTP server and Socket.IO server
+const server = http.createServer(app);
+const io = new Server(server);
+
+// --- Chat notification middleware ---
+app.use(async (req, res, next) => {
+  try {
+    if (req.session.user?.username) {
+      const username = req.session.user.username;
+      const chatsSnap = await db.collection('chats')
+        .where(`participants.${username}.unreadCount`, '>', 0)
+        .get();
+      req.session.user.chatNotifications = chatsSnap.size;
+    }
+  } catch (err) {
+    console.error('Chat notification middleware error:', err);
+  }
+  next();
+});
+
+// --- List of chats (inbox/chats) ---
+app.get('/inbox/chats', async (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+  const me = req.session.user.username;
+  const chatDocs = await db.collection('chats')
+    .where(`participants.${me}`, '!=', null)
+    .get();
+
+  const chats = chatDocs.docs.map(doc => {
+    const data = doc.data();
+    const other = Object.keys(data.participants).find(u => u !== me);
+    return { username: other, unread: data.participants[me].unreadCount || 0 };
+  });
+
+  res.render('inbox-chats', {
+    user: req.session.user,
+    request: req,             // so header can read request.originalUrl
+    loginError: null,         // satisfy header’s loginError check
+    signupError: null,        // satisfy header’s signupError check
+    showAuthLinks: true,      // show “Sign Up” / “Login” if you want
+    showLeagueLink: false,
+    useTeamHeader: false,
+    chats
+  });
+});
+
+// --- Single chat page ---
+app.get('/chat/:other', async (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+
+  const me     = req.session.user.username;
+  const other  = req.params.other;
+  const chatId = [me, other].sort().join('_');
+  const chatRef = db.collection('chats').doc(chatId);
+
+  // Load existing messages or initialize chat
+  const chatDoc = await chatRef.get();
+  let messages = [];
+
+  if (chatDoc.exists) {
+    const snap = await chatRef
+      .collection('messages')
+      .orderBy('timestamp', 'asc')
+      .get();
+    messages = snap.docs.map(d => d.data());
+
+    // Reset my unread count
+    await chatRef.update({
+      [`participants.${me}.unreadCount`]: 0
+    });
+  } else {
+    // Create new chat document with both participants
+    await chatRef.set({
+      participants: {
+        [me]:    { unreadCount: 0 },
+        [other]: { unreadCount: 0 }
+      }
+    });
+  }
+
+  // Render the chat view, passing all header/context vars
+  res.render('chat', {
+    user:          req.session.user,
+    request:       req,           // for request.originalUrl in header
+    loginError:    null,          // satisfy header checks
+    signupError:   null,
+    showAuthLinks: true,          // toggle as desired
+    showLeagueLink: false,
+    useTeamHeader: false,
+    other,
+    messages
+  });
+});
+
+// --- Socket.IO live chat ---
+io.on('connection', socket => {
+  socket.on('join', room => socket.join(room));
+
+  socket.on('message', async ({ room, from, to, text }) => {
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+    const chatRef = db.collection('chats').doc(room);
+
+    // persist message
+    await chatRef.collection('messages').add({ from, to, text, timestamp });
+    // bump unread count
+    await chatRef.update({
+      [`participants.${to}.unreadCount`]: admin.firestore.FieldValue.increment(1)
+    });
+
+    // broadcast
+    io.to(room).emit('message', { from, text, timestamp: Date.now() });
+  });
+});
+
+// Replace your app.listen with:
+server.listen(PORT, () => console.log(`🚀 Server UP on port ${PORT}`));
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'super-secret-key',
-  resave: false,
-  saveUninitialized: true
-}));
 
-// --- 🔐 Login Check Middleware ---
-function requireLogin(req, res, next) {
-  if (!req.session.user) {
-    return res.redirect('/?error=Login required to view stories');
-  }
-  next();
+function computeFeverScore(fever) {
+  const ageHours = (Date.now() - fever.createdAt.toDate().getTime()) / 36e5;
+  // simple: each like + comment gives 10 points, decays 2 points per hour
+  return (fever.likes + fever.comments) * 10 - ageHours * 2;
 }
 
 // Storage engine with sanitized filename
@@ -281,25 +199,214 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB max
 });
 
-// Multi-field upload for comments, profiles, tactical images
+// Multi-field upload for comments, profiles, tactical images, fevers etc
 const multiUpload = upload.fields([
   { name: 'media', maxCount: 1 },
   { name: 'profile_pic', maxCount: 1 },
-  { name: 'tacticImage', maxCount: 1 } // ✅ for tactical board
+  { name: 'tacticImage', maxCount: 1 },
+  { name: 'feverMedia', maxCount: 1 }
 ]);
+
+// Firestore document: fevers/{feverId}
+// {
+//   user:      "alice",
+//   caption:   "Epic goal celebration!",
+//   mediaURL:  "/uploads/1623456789-1a2b3c.gif",
+//   mediaType: "video" | "image",
+//   createdAt: FieldValue.serverTimestamp(),
+//   likes:     0,
+//   comments:  0
+// }
+
+//fevers
+app.post('/fever', multiUpload, async (req, res) => {
+  if (!req.session.user) return res.status(401).send("Login required");
+
+  const file = req.files?.feverMedia?.[0];
+  if (!file) return res.status(400).send("Please upload an image or video");
+
+  const mediaURL = `/uploads/${file.filename}`;
+  const mediaType = file.mimetype.startsWith('video/') ? 'video' : 'image';
+  const caption = sanitizeHtml(req.body.caption || '');
+
+  try {
+    await db.collection('fevers').add({
+      user: req.session.user.username,
+      caption,
+      mediaURL,
+      mediaType,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      likes: 0,
+      comments: 0
+    });
+    res.redirect('/');
+  } catch (err) {
+    console.error('Fever post error:', err);
+    res.status(500).send("Could not post your Fever");
+  }
+});
+
+app.get('/api/fevers', async (req, res) => {
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const lastCreated = req.query.lastCreated; // ISO string
+
+  // 1) Fetch up to 50 documents ordered by Timestamp
+  let query = db.collection('fevers')
+    .orderBy('createdAt', 'desc')
+    .limit(50);
+
+  if (lastCreated) {
+    query = query.startAfter(
+      admin.firestore.Timestamp.fromDate(new Date(lastCreated))
+    );
+  }
+
+  const snap = await query.get();
+
+  // 2) Map to keep the raw Timestamp around for scoring
+  const fevers = snap.docs.map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      user: data.user,
+      caption: data.caption,
+      mediaURL: data.mediaURL,
+      mediaType: data.mediaType,
+      likes: data.likes,
+      comments: data.comments,
+      createdAtTimestamp: data.createdAt,            // Firestore Timestamp
+    };
+  });
+
+  // 3) Compute score using the Timestamp
+  fevers.forEach(f => {
+    f.score = computeFeverScore({ 
+      likes: f.likes, 
+      comments: f.comments, 
+      createdAt: f.createdAtTimestamp 
+    });
+  });
+
+  // 4) Sort by score descending
+  fevers.sort((a, b) => b.score - a.score);
+
+  // 5) Trim to the client’s requested page size
+  const page = fevers.slice(0, limit);
+
+  // 6) Convert for JSON output (timestamps → ISO strings)
+  const output = page.map(f => ({
+    id: f.id,
+    user: f.user,
+    caption: f.caption,
+    mediaURL: f.mediaURL,
+    mediaType: f.mediaType,
+    likes: f.likes,
+    comments: f.comments,
+    createdAt: f.createdAtTimestamp.toDate().toISOString(),
+    score: f.score
+  }));
+
+  res.json(output);
+});
+// ─── Fetch comments for a fever ─────────────────────────────────────────────
+app.get('/api/fevers/:id/comments', async (req, res) => {
+  try {
+    const snap = await db.collection('feverComments')
+      .where('feverId', '==', req.params.id)
+      .orderBy('timestamp', 'asc')
+      .get();
+
+    const comments = snap.docs.map(doc => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        user: d.user,
+        text: d.text,
+        timestamp: d.timestamp.toDate().toISOString()
+      };
+    });
+    res.json(comments);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load comments' });
+  }
+});
+
+// ─── Post a new comment on a fever ─────────────────────────────────────────
+app.post('/api/fevers/:id/comments', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Login required' });
+  const { text } = req.body;
+  if (!text?.trim()) return res.status(400).json({ error: 'Comment cannot be empty' });
+
+  try {
+    const comment = {
+      feverId: req.params.id,
+      user: req.session.user.username,
+      text: sanitizeHtml(text),
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    };
+    const ref = await db.collection('feverComments').add(comment);
+    res.json({ id: ref.id, ...comment, timestamp: new Date().toISOString() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to post comment' });
+  }
+});
+
+// ─── Like a fever (1 per user) ───────────────────────────────────────────
+app.post('/api/fevers/:id/like', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Login required' });
+
+  const feverId = req.params.id;
+  const username = req.session.user.username;
+
+  const likeDocRef = db
+    .collection('fevers')
+    .doc(feverId)
+    .collection('likes')
+    .doc(username);
+
+  try {
+    const likeDoc = await likeDocRef.get();
+    if (likeDoc.exists) {
+      // already liked
+      const feverSnap = await db.collection('fevers').doc(feverId).get();
+      return res.json({ likes: feverSnap.data().likes, alreadyLiked: true });
+    }
+
+    // record the user’s like
+    await likeDocRef.set({ timestamp: admin.firestore.FieldValue.serverTimestamp() });
+
+    // increment the fever’s total
+    const feverRef = db.collection('fevers').doc(feverId);
+    await feverRef.update({ likes: admin.firestore.FieldValue.increment(1) });
+
+    const updated = await feverRef.get();
+    res.json({ likes: updated.data().likes, alreadyLiked: false });
+  } catch (err) {
+    console.error('Like error:', err);
+    res.status(500).json({ error: 'Could not like' });
+  }
+});
+
+// ─── (Optional) Serve a single fever page for sharing ──────────────────────
+app.get('/fever/:id', async (req, res) => {
+  try {
+    const doc = await db.collection('fevers').doc(req.params.id).get();
+    if (!doc.exists) return res.status(404).send('Not found');
+    const f = doc.data();
+    res.render('fever-share', { fever: { id: doc.id, ...f, createdAt: f.createdAt.toDate() } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error');
+  }
+});
 
 // ✅ First middleware: fetch unread messages
 app.use(async (req, res, next) => {
   try {
     if (req.session.user?.username) {
       const username = req.session.user.username;
-
-      // Count unread messages
-      const msgSnap = await db.collection('messages')
-        .where('receiver', '==', username)
-        .where('seenByReceiver', '==', false)
-        .get();
-      req.session.user.unreadCount = msgSnap.size;
 
       // Count pending follow requests (if you store them in a subcollection)
       const followSnap = await db.collection('users')
@@ -320,82 +427,43 @@ app.use((req, res, next) => {
   res.locals.request = req;
   res.locals.loginError = null;
   res.locals.signupError = null;
-  res.locals.hideAuthModals = false; // ✅ This line fixes your current issue
+  res.locals.hideAuthModals = false;
+  res.locals.chatNotifications  = req.session.user?.chatNotifications || 0;
   next();
 });
 
 async function loadHomeData() {
-  const cutoff = dayjs().subtract(24, 'hour').toDate();
-
-  const statsSnap = await db.collection('userStats')
-    .orderBy('score', 'desc')
-    .limit(5)
+  const statsSnap = await db
+    .collection('userStats')
     .get();
+let topFans = statsSnap.docs.map(doc => {
+  const data = doc.data();
+  return {
+    username: doc.id,
+    comments: data.comments || 0,
+     likes:
+       (data.like  || data.likes  || 0) +
+       (data.funny || 0) +
+       (data.angry || 0) +
+       (data.love  || 0)
+  };
+});
+topFans.forEach(fan => {
+  fan.score = fan.comments * 5 + fan.likes;
+});
+topFans.sort((a, b) => b.score - a.score);
+topFans = topFans.slice(0, 5);
 
-  const topFans = statsSnap.docs.map(doc => {
-    const data = doc.data();
-    return {
-      username: doc.id,
-      comments: data.comments || 0,
-      likes: (data.likes || 0) + (data.funny || 0) + (data.angry || 0) + (data.love || 0)
-    };
-  });
-
-  const storiesSnap = await db.collection('stories')
-    .where('createdAt', '>=', cutoff)
-    .orderBy('createdAt', 'desc')
-    .get();
-
-  const storyDocs = storiesSnap.docs;
-
-  const commentPromises = storyDocs.map(doc =>
-    db.collection('stories').doc(doc.id).collection('comments').get()
-  );
-  const reactionPromises = storyDocs.map(doc =>
-    db.collection('stories').doc(doc.id).collection('reactions').get()
-  );
-
-  const [commentSnaps, reactionSnaps] = await Promise.all([
-    Promise.all(commentPromises),
-    Promise.all(reactionPromises)
-  ]);
-
-  const stories = storyDocs.map((doc, i) => {
-    const story = doc.data();
-    const reactions = {};
-    reactionSnaps[i].forEach(r => {
-      const { reaction_type } = r.data();
-      reactions[reaction_type] = (reactions[reaction_type] || 0) + 1;
-    });
-
-    return {
-      _id: doc.id,
-      ...story,
-      relativeTime: dayjs(story.createdAt.toDate()).fromNow(),
-      comments: commentSnaps[i].docs.map(c => c.data()),
-      reactions: Object.entries(reactions).map(([type, count]) => ({ type, count }))
-    };
-  });
-
-  const battleSnap = await db.collection('battles')
-    .orderBy('created_at', 'desc')
-    .limit(1)
-    .get();
-
-  const battle = battleSnap.empty ? null : { id: battleSnap.docs[0].id, ...battleSnap.docs[0].data() };
-
-  return { stories, topFans, battle };
+  return {topFans};
 }
 
 // --- Reusable Homepage Error Renderer ---
 async function renderHomeWithError(res, errorType, errorMsg) {
   try {
-    const { stories, topFans, battle } = await loadHomeData();
+    const { topFans } = await loadHomeData();
 
     const data = {
-      stories,
       topFans,
-      battle,
       loginError: null,
       signupError: null
     };
@@ -494,232 +562,35 @@ app.get('/logout', (req, res) => {
 // --- Home Page ---
 app.get('/', async (req, res) => {
   try {
-    const { stories, topFans, battle } = await loadHomeData();
+    const {topFans} = await loadHomeData();
 
     let user = req.session.user || null;
 
     if (user) {
       const username = user.username;
 
-      const [chatSnap, tagSnap, storySnap] = await Promise.all([
-        db.collection('messages')
-          .where('receiver', '==', username)
-          .where('seenByReceiver', '==', false)
-          .get(),
-        db.collection('tags')
-          .where('taggedUserId', '==', username)
-          .where('seen', '==', false)
-          .get(),
-        db.collection('users')
-          .doc(username)
-          .collection('storyNotifications')
-          .get()
-      ]);
+      const tagSnap = await db.collection('tags')
+        .where('taggedUserId', '==', username)
+        .where('seen', '==', false)
+        .get();
 
       user = {
         ...user,
-        chatNotifications: chatSnap.size,
         tagNotifications: tagSnap.size,
-        storyNotifications: storySnap.size,
-        unreadCount: chatSnap.size + tagSnap.size + storySnap.size
-      };
+        // if you still use unreadCount elsewhere, you can set it to tags only:
+        unreadCount: tagSnap.size
+     };
     }
 
     res.render('index', {
       user,
-      stories,
       topFans,
-      battle,
       signupError: null,
       loginError: null
     });
   } catch (err) {
     console.error('❌ Home load error:', err);
     res.status(500).send("Failed to load homepage");
-  }
-});
-
-// --- Upload Story ---
-app.get('/story/:id', requireLogin, async (req, res) => {
-  const { id } = req.params;
-
-  // Optionally: validate ID format
-  if (!id) return res.redirect('/');
-
-  // Redirect to homepage with ?story=ID (handled client-side)
-  res.redirect(`/?story=${id}`);
-});
-
-app.post('/stories/upload', storyLimiter, upload.single('storyMedia'), async (req, res) => {
-  console.log('📦 req.file =', req.file);
-  if (!req.session.user) return res.redirect('/?error=Login required');
-  if (!req.file) return res.redirect('/?error=No file uploaded');
-
-  const filePath = `/uploads/${req.file.filename}`;
-  const username = req.session.user.username;
-
-  // Sanitize caption to prevent XSS
-  const caption = sanitizeHtml(req.body.caption || '', {
-    allowedTags: [],
-    allowedAttributes: {}
-  });
-
-  try {
-    const storyRef = await db.collection('stories').add({
-      image: filePath,
-      username,
-      caption,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    await storyRef.update({ _id: storyRef.id }); // Save the Firestore doc ID
-
-    res.redirect('/');
-  } catch (err) {
-    console.error('❌ Error uploading story:', err);
-    res.redirect('/?error=Failed to save story');
-  }
-});
-
-// --- React to a story ---
-app.post('/stories/:id/react', requireLogin, async (req, res) => {
-  const { id } = req.params;
-  const { reaction_type } = req.body;
-  const username = req.session.user.username;
-
-  try {
-    console.log('📌 Reaction:', { id, reaction_type, username });
-
-    const reactionRef = db.collection('stories').doc(id)
-      .collection('reactions').doc(username); // Unique doc per user
-
-    await reactionRef.set({ reaction_type, user: username }, { merge: true });
-
-    // Notify the story owner
-    const storyDoc = await db.collection('stories').doc(id).get();
-    const to = storyDoc.data()?.username;
-
-    if (to && to !== username) {
-      const notifRef = db.collection('users').doc(to).collection('storyNotifications');
-      
-      // Only send notification if one doesn’t already exist for this reaction
-      const existingSnap = await notifRef
-        .where('from', '==', username)
-        .where('storyId', '==', id)
-        .where('type', '==', 'reaction')
-        .limit(1)
-        .get();
-
-      if (existingSnap.empty) {
-        await notifRef.add({
-          from: username,
-          storyId: id,
-          type: 'reaction',
-          timestamp: admin.firestore.FieldValue.serverTimestamp()
-        });
-      }
-    }
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error('❌ Story reaction error:', err);
-    res.status(500).json({ success: false });
-  }
-});
-
-// --- Comment on a story ---
-app.post('/stories/:id/comment', requireLogin, async (req, res) => {
-  console.log('Incoming comment body:', req.body);
-  if (!req.session.user) return res.status(401).json({ success: false });
-
-  const { id } = req.params;
-  const { comment } = req.body;
-  const username = req.session.user.username;
-
-  if (!comment?.trim()) return res.status(400).json({ success: false });
-
-  try {
-    console.log('💬 Story comment:', { id, comment, user: username });
-
-    await db.collection('stories').doc(id)
-  .collection('comments')
-  .add({
-    user: username,
-    comment: comment.trim(),
-    timestamp: admin.firestore.FieldValue.serverTimestamp()
-  });
-
-    // Optional: send notification
-    const storyDoc = await db.collection('stories').doc(id).get();
-    const to = storyDoc.data()?.username;
-    if (to && to !== username) {
-      await db.collection('users').doc(to).collection('storyNotifications').add({
-        from: username,
-        storyId: id,
-        type: 'reply',
-        timestamp: admin.firestore.FieldValue.serverTimestamp()
-      });
-    }
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error('❌ Story comment error:', err);
-    res.status(500).json({ success: false });
-  }
-});
-
-// --- Story Notifications Inbox ---
-app.get('/inbox/stories', requireLogin, async (req, res) => {
-  const currentUser = req.session.user?.username;
-  if (!currentUser) return res.redirect('/login');
-
-  try {
-    const snap = await db.collection('users')
-      .doc(currentUser)
-      .collection('storyNotifications')
-      .orderBy('timestamp', 'desc')
-      .get();
-
-    const storyNotifications = snap.docs.map(doc => doc.data());
-
-    res.render('inbox-stories', { storyNotifications });
-  } catch (err) {
-    console.error('❌ Story inbox error:', err);
-    res.status(500).send('Error loading story notifications');
-  }
-});
-
-// --- Notify when someone views a story ---
-app.post('/notify-story-view', requireLogin, async (req, res) => {
-  const { to, from, storyId } = req.body;
-
-  if (!to || !from || !storyId || to === from) {
-    return res.status(400).send('Invalid notification data');
-  }
-
-  try {
-    const notifRef = db.collection('users')
-      .doc(to)
-      .collection('storyNotifications');
-
-    const existingSnap = await notifRef
-      .where('from', '==', from)
-      .where('storyId', '==', storyId)
-      .limit(1)
-      .get();
-
-    if (!existingSnap.empty) return res.status(200).send('Already notified');
-
-    await notifRef.add({
-      from,
-      storyId,
-      timestamp: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    res.status(200).send('Notification sent');
-  } catch (err) {
-    console.error('🔥 Firestore error in notify-story-view:', err);
-    res.status(500).send('Error sending notification');
   }
 });
 
@@ -839,19 +710,22 @@ app.post('/poke-rival', multiUpload, async (req, res) => {
       });
     }
 
-    // ✅ Save the poke thread
+        // ✅ Save the poke thread (with expiresAt for 4-hour TTL)
+    const now       = admin.firestore.Timestamp.now();
+    const expiresAt = admin.firestore.Timestamp.fromMillis(
+      Date.now() + 4 * 60 * 60 * 1000
+    );
+
     const newDocRef = await db.collection('rivalPokes').add({
-  teamA,
-  teamB,
-  createdBy: username,
-  text: text.trim(),
-  media,
-  createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  score: {
-    teamA: 0,
-    teamB: 0
-  }
-});
+      teamA,
+      teamB,
+      createdBy: username,
+      text: text.trim(),
+      media,
+      createdAt: now,
+      expiresAt,              // ← new field for TTL
+      score: { teamA: 0, teamB: 0 }
+    });
 
     const pokeId = newDocRef.id;
 
@@ -895,17 +769,19 @@ app.get('/team/:teamname', async (req, res) => {
     // Build image path dynamically
     const imagePath = `/images/teams/${leagueSlug}/${teamname}.png`;
 
-    // Fetch comments for the team
+    // Parse pagination & sort from query (with defaults)
+    const page = parseInt(req.query.page, 10) || 1;
+    const sort = req.query.sort || 'new';
+
+    const limit  = 40;
+    const offset = (page - 1) * limit;
+
+    // Fetch all comments for the team (then paginate in memory)
     const commentsRef = db.collection('comments')
       .where('team', '==', teamname)
       .orderBy('timestamp', 'desc');
-
     const snapshot = await commentsRef.get();
-    const allDocs = snapshot.docs;
-
-    const page = parseInt(req.query.page) || 1;
-    const limit = 40;
-    const offset = (page - 1) * limit;
+    const allDocs  = snapshot.docs;
 
     const paginatedDocs = allDocs.slice(offset, offset + limit);
     const comments = paginatedDocs.map(doc => {
@@ -913,80 +789,85 @@ app.get('/team/:teamname', async (req, res) => {
       return {
         id: doc.id,
         ...data,
-        relativeTime: data.timestamp ? dayjs(data.timestamp.toDate()).fromNow() : ''
+        relativeTime: data.timestamp
+          ? dayjs(data.timestamp.toDate()).fromNow()
+          : ''
       };
     });
 
     const totalPages = Math.ceil(allDocs.length / limit);
 
     // Fetch Rival Pokes for this team
-const pokeSnapA = await db.collection('rivalPokes')
-  .where('teamA', '==', teamname)
-  .get();
+    const pokeSnapA = await db.collection('rivalPokes')
+      .where('teamA', '==', teamname)
+      .get();
+    const pokeSnapB = await db.collection('rivalPokes')
+      .where('teamB', '==', teamname)
+      .get();
 
-const pokeSnapB = await db.collection('rivalPokes')
-  .where('teamB', '==', teamname)
-  .get();
+    const allPokes = [...pokeSnapA.docs, ...pokeSnapB.docs];
+    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
 
-const allPokes = [...pokeSnapA.docs, ...pokeSnapB.docs];
+    const pokeThreads = allPokes
+      .filter(doc => {
+        const data = doc.data();
+        return data.createdAt?.toDate?.() > fourHoursAgo;
+      })
+      .sort((a, b) =>
+        b.data().createdAt.toMillis() - a.data().createdAt.toMillis()
+      )
+      .slice(0, 3)
+      .map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          relativeTime: data.createdAt
+            ? dayjs(data.createdAt.toDate()).fromNow()
+            : '',
+          createdAtMillis: data.createdAt?.toMillis?.() || 0
+        };
+      });
 
-const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000); // 4 hours ago
-
-const pokeThreads = allPokes
-  .filter(doc => {
-    const data = doc.data();
-    return data.createdAt?.toDate?.() > fourHoursAgo;
-  })
-  .sort((a, b) => b.data().createdAt.toMillis() - a.data().createdAt.toMillis())
-  .slice(0, 3)
-  .map(doc => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      ...data,
-      relativeTime: data.createdAt ? dayjs(data.createdAt.toDate()).fromNow() : '',
-      createdAtMillis: data.createdAt?.toMillis?.() || 0 // needed for countdown
-    };
-  });
-
-    const teamDoc = await db.collection('teams').doc(teamname).get();
+    // Fetch team metadata
+    const teamDoc  = await db.collection('teams').doc(teamname).get();
     const teamData = teamDoc.exists ? teamDoc.data() : null;
 
+    // Build simple relative times array if you still need it
     const relativeTimes = comments.map(comment => {
-      const timestamp = comment.timestamp?.toDate?.();
-      if (!timestamp) return 'Just now';
-
-      const now = new Date();
-      const secondsAgo = Math.floor((now - timestamp) / 1000);
-
-      if (secondsAgo < 60) return `${secondsAgo}s ago`;
-      const minutesAgo = Math.floor(secondsAgo / 60);
-      if (minutesAgo < 60) return `${minutesAgo}m ago`;
-      const hoursAgo = Math.floor(minutesAgo / 60);
-      if (hoursAgo < 24) return `${hoursAgo}h ago`;
-      const daysAgo = Math.floor(hoursAgo / 24);
-      return `${daysAgo}d ago`;
+      const ts = comment.timestamp?.toDate?.();
+      if (!ts) return 'Just now';
+      const diffSeconds = Math.floor((Date.now() - ts) / 1000);
+      if (diffSeconds < 60) return `${diffSeconds}s ago`;
+      const diffMinutes = Math.floor(diffSeconds / 60);
+      if (diffMinutes < 60) return `${diffMinutes}m ago`;
+      const diffHours = Math.floor(diffMinutes / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      return `${diffDays}d ago`;
     });
 
+    // Render view with page, sort, and all your other vars
     res.render('team', {
-  user: req.session.user || null,
-  teamname,
-  teamData,
-  comments,
-  currentPage: page,
-  totalPages,
-  relativeTimes,
-  pokeThreads,
-  leagueSlug,
-  leagueName,
-  useTeamHeader: true,
-  imagePath,
-  teamToLeagueMap, // ✅ THIS FIXES THE CRASH
-  pokeError: 'A reverse rivalry is already active. Please wait until it expires.'
-});
+      user:            req.session.user || null,
+      teamname,
+      teamData,
+      comments,
+      page, 
+      sort, 
+      totalPages,
+      relativeTimes,
+      pokeThreads,
+      leagueSlug,
+      leagueName,
+      useTeamHeader:   true,
+      imagePath,
+      teamToLeagueMap,
+      pokeError:       'A reverse rivalry is already active. Please wait until it expires.'
+    });
 
   } catch (err) {
-    console.error('❌ Team page error:', err.message);
+    console.error('❌ Team page error:', err);
     res.status(500).send('Failed to load team page');
   }
 });
@@ -1012,30 +893,6 @@ await db.collection('userStats').doc(commentUser).set({
   } catch (err) {
     console.error('React error:', err);
     res.status(500).json({ success: false });
-  }
-});
-
-// --- Fan Battle Voting ---
-app.post('/battle/vote', async (req, res) => {
-  const { battleId, vote } = req.body;
-  const username = req.session.user?.username;
-
-  if (!username || !vote) return res.status(400).json({ success: false, message: 'Missing data' });
-
-  try {
-    const voteRef = db.collection('battles').doc(battleId).collection('votes').doc(username);
-    const voteSnap = await voteRef.get();
-
-    if (voteSnap.exists) return res.json({ success: false, message: 'Already voted' });
-
-    await voteRef.set({ username, voted_for: vote });
-    const battleRef = db.collection('battles').doc(battleId);
-    await battleRef.update({ [vote === 'team1' ? 'votes_team1' : 'votes_team2']: admin.firestore.FieldValue.increment(1) });
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Vote error:', err);
-    res.status(500).json({ success: false, message: 'Vote failed' });
   }
 });
 
@@ -1210,90 +1067,64 @@ app.post('/poke/:id/reset-votes', async (req, res) => {
   }
 });
 
-// 💬 Post a comment in a Rival Poke thread
+// --- Full comment handler for rival-poke posts (no tagging allowed) ---
 app.post('/poke/:id/comment', multiUpload, async (req, res) => {
   const { id } = req.params;
   const { text } = req.body;
   const username = req.session.user?.username;
 
-  if (!username || !text?.trim()) return res.status(400).send("Missing data");
+  if (!username || !text?.trim()) {
+    return res.status(400).send("Missing data");
+  }
 
+  // Handle uploaded media (image/video)
   const media =
-    req.files?.media?.[0]?.path?.includes('uploads')
+    req.files?.media?.[0]?.path.includes('uploads')
       ? `/uploads/${req.files.media[0].filename}`
       : '';
 
-  const mentionRegex = /@([a-zA-Z0-9_]+)/g;
-  const mentions = [...text.matchAll(mentionRegex)].map(m => m[1]);
-
   try {
-    // Get poke data for fan side
-    const pokeDoc = await db.collection('rivalPokes').doc(id).get();
-    const pokeData = pokeDoc.data();
+    // 1) Determine fan side from existing vote only
+    let fanSide = null;
+    const voteDoc = await db
+      .collection('rivalPokes')
+      .doc(id)
+      .collection('votes')
+      .doc(username)
+      .get();
 
-    const fanSide = (username === pokeData.createdBy) ? 'teamA' : 'teamB';
+    if (voteDoc.exists) {
+      const vote = voteDoc.data().team;
+      if (vote === 'teamA') fanSide = 'teamA';
+      else if (vote === 'teamB') fanSide = 'teamB';
+    }
 
-    // Save comment
-    await db.collection('rivalPokes').doc(id).collection('comments').add({
+    // 2) Save the comment under the poke thread, include `team` only when fanSide is set
+    const commentData = {
       user: username,
       text: text.trim(),
       media,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      team: fanSide
-    });
+    };
+    if (fanSide) commentData.team = fanSide;
+
+    await db
+      .collection('rivalPokes')
+      .doc(id)
+      .collection('comments')
+      .add(commentData);
+
+    // 3) Update the user's stats
     await db.collection('userStats').doc(username).set({
-  comments: admin.firestore.FieldValue.increment(1),
-  likes: 0,
-  funny: 0,
-  angry: 0,
-  love: 0,
-  score: admin.firestore.FieldValue.increment(1)
-}, { merge: true });
+      comments: admin.firestore.FieldValue.increment(1),
+      likes: 0,
+      funny: 0,
+      angry: 0,
+      love: 0,
+      score: admin.firestore.FieldValue.increment(1)
+    }, { merge: true });
 
-    // Loop through mentions
-    for (const mentionedUsername of mentions) {
-      const userSnapshot = await db.collection('users')
-        .where('username', '==', mentionedUsername)
-        .limit(1)
-        .get();
-
-      if (!userSnapshot.empty) {
-        const mentionedUserDoc = userSnapshot.docs[0];
-        const mentionedUserId = mentionedUserDoc.id;
-
-        // ✅ Store in notifications (for your real-time socket stuff)
-        await db.collection('notifications').add({
-          toUser: mentionedUserId,
-          fromUser: username,
-          type: 'mention',
-          text,
-          link: `/poke/${id}`,
-          timestamp: new Date(),
-          read: false
-        });
-
-        // ✅ Store in tags (for inbox-tags.ejs)
-        await db.collection('tags').add({
-          fromUser: username,
-          taggedUserId: mentionedUsername,
-          content: text,
-          threadType: 'poke',
-          link: `/poke/${id}#comments`,
-          timestamp: new Date(),
-          seen: false
-        });
-
-        // ✅ Emit via socket.io if user is online
-        if (io && io.to) {
-          io.to(mentionedUserId).emit('newMention', {
-            fromUser: username,
-            text,
-            link: `/poke/${id}`
-          });
-        }
-      }
-    }
-
+    // 4) Redirect back to thread
     res.redirect(`/poke/${id}`);
   } catch (err) {
     console.error('❌ Failed to post comment:', err);
@@ -1348,20 +1179,6 @@ app.get('/user/:username', async (req, res) => {
     const totalComments = comments.length;
     const totalLikes = comments.reduce((sum, c) => sum + (c.like_reactions || 0), 0);
 
-    // ✅ Fetch user's stories
-    const storiesSnap = await db.collection('stories')
-      .where('username', '==', username)
-      .orderBy('createdAt', 'desc')
-      .get();
-
-    const stories = storiesSnap.docs.map(doc => {
-      const data = doc.data();
-      return {
-        ...data,
-        relativeTime: data.createdAt ? dayjs(data.createdAt.toDate()).fromNow() : ''
-      };
-    });
-
     const followersCount = followersUsernames.length;
     const followingCount = followingUsernames.length;
 
@@ -1399,6 +1216,22 @@ app.get('/user/:username', async (req, res) => {
       })
     );
 
+    // ✅ Fetch the user’s own Fevers
+    const feversSnap = await db
+     .collection('fevers')
+    .where('user', '==', username)
+     .orderBy('createdAt', 'desc')
+     .get();
+    const fevers = feversSnap.docs.map(doc => {
+      const d = doc.data();
+      return {
+       id: doc.id,
+       mediaURL: d.mediaURL,
+       mediaType: d.mediaType,
+       createdAt: d.createdAt.toDate().toISOString()
+     };
+    });
+
     // ✅ Get incoming follow requests if viewing own profile
     let followRequests = [];
     if (currentUser === username) {
@@ -1415,7 +1248,6 @@ app.get('/user/:username', async (req, res) => {
       profileUser: username,
       profilePic,
       comments,
-      stories,
       totalComments,
       totalLikes,
       followersCount,
@@ -1424,7 +1256,8 @@ app.get('/user/:username', async (req, res) => {
       followRequests,
       requestSent,
       followers,
-      following
+      following,
+      fevers
     });
 
   } catch (err) {
@@ -1485,45 +1318,20 @@ app.post('/user/:fromUser/reject-follow', async (req, res) => {
 app.get('/inbox', async (req, res) => {
   if (!req.session.user) return res.redirect('/?error=Login required');
 
+  // Only “mentions” badges now
   const username = req.session.user.username;
-  const currentUser = req.session.user;
-
-  try {
-    // 🔴 Unseen chat messages
-    const chatSnap = await db.collection('messages')
-      .where('receiver', '==', username)
-      .where('seenByReceiver', '==', false)
-      .get();
-    const chatNotifications = chatSnap.size;
-
-    // 🏷️ Unseen mentions (tags)
+ try {
     const tagSnap = await db.collection('tags')
       .where('taggedUserId', '==', username)
       .where('seen', '==', false)
       .get();
     const tagNotifications = tagSnap.size;
-
-    // 📸 Unseen story notifications
-    const storySnap = await db.collection('users')
-      .doc(username)
-      .collection('storyNotifications')
-      .get();
-    const storyNotifications = storySnap.size;
-
-    // 📦 Total inbox red badge count
-    const inboxTotalNotifications = chatNotifications + tagNotifications + storyNotifications;
-
-    // 🧠 Inject notifications into user object for header rendering
     res.render('inbox', {
       user: {
         ...req.session.user,
-        chatNotifications,
         tagNotifications,
-        storyNotifications,
-        inboxTotalNotifications,
-        unreadCount: chatNotifications // used in header
-      },
-      currentUser
+        unreadCount: tagNotifications
+      }
     });
   } catch (err) {
     console.error('❌ Inbox error:', err);
@@ -1531,326 +1339,47 @@ app.get('/inbox', async (req, res) => {
   }
 });
 
-// ✅ Inbox Chat Page: /inbox/chat
-app.get('/inbox/chat', async (req, res) => {
-  if (!req.session.user) return res.redirect('/?error=Login required');
-
-  const username = req.session.user.username;
-  const currentUser = req.session.user;
-
-  try {
-    const snapshot = await db.collection('messages')
-      .where('participants', 'array-contains', username)
-      .orderBy('timestamp', 'desc')
-      .get();
-
-    const conversations = {};
-    snapshot.forEach(doc => {
-      const msg = doc.data();
-      const otherUser = msg.sender === username ? msg.receiver : msg.sender;
-
-      if (
-        !conversations[otherUser] ||
-        new Date(msg.timestamp).getTime() > conversations[otherUser].timestamp.getTime()
-      ) {
-        conversations[otherUser] = {
-          user: otherUser,
-          lastMessage: msg.content,
-          timestamp: new Date(msg.timestamp),
-          seenByReceiver: msg.seenByReceiver || false,
-          profile_pic: msg.sender === username ? msg.receiverPic : msg.senderPic
-        };
-      }
-    });
-
-    const sorted = Object.values(conversations).sort((a, b) => b.timestamp - a.timestamp);
-
-    const unseen = await db.collection('messages')
-      .where('receiver', '==', username)
-      .where('seenByReceiver', '==', false)
-      .get();
-
-    await Promise.all(unseen.docs.map(doc => doc.ref.update({ seenByReceiver: true })));
-
-    res.render('inbox-chat', {
-      conversations: sorted,
-      currentUser,
-      messages: [],
-      otherUser: null
-    });
-  } catch (err) {
-    console.error('❌ Inbox Chat error:', err);
-    res.status(500).send("Inbox chat error");
-  }
-});
-
-// ✅ Inbox Tags Page: /inbox/tags
+// 🔔 Inbox Tags Page: /inbox/tags
 app.get('/inbox/tags', async (req, res) => {
   if (!req.session.user) return res.redirect('/?error=Login required');
 
   try {
+    const username = req.session.user.username;
     const tagSnap = await db.collection('tags')
-      .where('taggedUserId', '==', req.session.user.username)
+      .where('taggedUserId', '==', username)
       .orderBy('timestamp', 'desc')
       .get();
 
     const taggedComments = tagSnap.docs.map(doc => {
       const tag = doc.data();
       return {
-        fromUser: tag.fromUser,
-        content: tag.content,
-        threadType: tag.threadType || 'team',
-        link: tag.link || '#',
-        seen: tag.seen || false
+        fromUser:      tag.fromUser,
+        content:       tag.content,
+        threadType:    tag.threadType || 'team',
+        link:          tag.link || '#',
+        seen:          tag.seen || false
       };
     });
 
+    // mark all as seen
     const batch = db.batch();
-    tagSnap.forEach(doc => {
+    tagSnap.docs.forEach(doc => {
       if (!doc.data().seen) batch.update(doc.ref, { seen: true });
     });
     await batch.commit();
 
+    // Render, passing teamToLeagueMap for the template
     res.render('inbox-tags', {
+      user: req.session.user,
       taggedComments,
+      teamToLeagueMap,      // <<-- add this line
       headerClass: 'header-home',
-      showAuthLinks: true,
-      showLeagueLink: false,
-      useTeamHeader: false,
-      hideAuthModals: false,
-      currentUser: req.session.user
+      useTeamHeader: false
     });
   } catch (err) {
     console.error('❌ Tag inbox error:', err);
     res.status(500).send("Inbox tags error");
   }
-});
-
-// ✅ Individual Chat Page: /chat/:username
-app.get('/chat/:username', async (req, res) => {
-  if (!req.session.user) return res.redirect('/?error=Login required');
-
-  const currentUser = req.session.user;
-  const username = currentUser.username;
-  const otherUser = req.params.username;
-
-  try {
-    const convoRef = db.collection('messages')
-      .where('participants', 'array-contains-any', [username, otherUser])
-      .orderBy('timestamp', 'asc');
-
-    const snapshot = await convoRef.get();
-    const participantsSorted = [username, otherUser].sort().join(',');
-
-    const messages = [];
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const dataSorted = data.participants.sort().join(',');
-      if (dataSorted === participantsSorted) {
-        messages.push({ id: doc.id, ...data });
-      }
-    });
-
-    const convoSnapshot = await db.collection('messages')
-      .where('participants', 'array-contains', username)
-      .orderBy('timestamp', 'desc')
-      .get();
-
-    const conversations = {};
-    convoSnapshot.forEach(doc => {
-      const msg = doc.data();
-      const other = msg.sender === username ? msg.receiver : msg.sender;
-      if (
-        !conversations[other] ||
-        new Date(msg.timestamp).getTime() > conversations[other].timestamp.getTime()
-      ) {
-        conversations[other] = {
-          user: other,
-          lastMessage: msg.content,
-          timestamp: new Date(msg.timestamp),
-          seenByReceiver: msg.seenByReceiver || false,
-          profile_pic: msg.sender === username ? msg.receiverPic : msg.senderPic
-        };
-      }
-    });
-
-    const sortedConversations = Object.values(conversations).sort((a, b) => b.timestamp - a.timestamp);
-
-    res.render('inbox-chat', {
-      currentUser,
-      messages,
-      otherUser,
-      conversations: sortedConversations
-    });
-  } catch (err) {
-    console.error('❌ Direct chat error:', err);
-    res.status(500).send("Chat page error");
-  }
-});
-
-
-// ✅ API: Send a message
-app.post('/api/messages/send', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Login required' });
-
-  const sender = req.session.user.username;
-  const { receiver, content } = req.body;
-
-  try {
-    const savedMessage = await saveMessage({ sender, receiver, content });
-    console.log('✅ Saved message to Firestore:', savedMessage);
-    res.json({ success: true, message: savedMessage });
-  } catch (err) {
-    console.error('❌ /api/messages/send error:', err);
-    res.status(500).json({ error: 'Failed to send message' });
-  }
-});
-
-
-// ✅ API: Get full message history between two users
-app.get('/api/messages/conversation/:username', async (req, res) => {
-  const user1 = req.session.user.username;
-  const user2 = req.params.username;
-
-  const convoRef = db.collection('messages')
-    .where('participants', 'array-contains-any', [user1, user2])
-    .orderBy('timestamp');
-
-  const snapshot = await convoRef.get();
-  const messages = [];
-
-  snapshot.forEach(doc => {
-    const data = doc.data();
-    const participantsSorted = [user1, user2].sort().join(',');
-    const dataSorted = data.participants.sort().join(',');
-    if (participantsSorted === dataSorted) {
-      messages.push({ id: doc.id, ...data });
-    }
-  });
-
-  res.json(messages);
-});
-
-// ✅ Helper: Save message to Firestore with profile pics
-async function saveMessage({ sender, receiver, content }) {
-  const timestamp = new Date();
-
-  const [senderDoc, receiverDoc] = await Promise.all([
-    db.collection('users').doc(sender).get(),
-    db.collection('users').doc(receiver).get()
-  ]);
-
-  const senderData = senderDoc.exists ? senderDoc.data() : {};
-  const receiverData = receiverDoc.exists ? receiverDoc.data() : {};
-
-  const message = {
-    sender,
-    receiver,
-    participants: [sender, receiver].sort(),
-    senderPic: senderData.profile_pic || null,
-    receiverPic: receiverData.profile_pic || null,
-    content: content.trim(),
-    timestamp: admin.firestore.Timestamp.fromDate(timestamp),
-    seenByReceiver: false
-  };
-
-  const ref = await db.collection('messages').add(message);
-  return { id: ref.id, ...message };
-}
-
-// ✅ WebSocket setup
-const connectedUsers = new Map();
-
-io.on('connection', (socket) => {
-  console.log('🔌 Socket connected:', socket.id);
-
-  socket.on('joinRoom', ({ sender, receiver }) => {
-  const room = [sender, receiver].sort().join('-');
-  socket.join(room);
-  connectedUsers.set(sender, socket.id);
-  // Optional: you can log room membership
-  console.log(`👥 ${sender} joined room ${room}`);
-});
-
-  socket.on('checkOnlineStatus', async ({ userToCheck }) => {
-    if (!userToCheck) return;
-    if (connectedUsers.has(userToCheck)) {
-      socket.emit('userOnline', { username: userToCheck });
-    } else {
-      try {
-        const doc = await db.collection('users').doc(userToCheck).get();
-        const lastSeen = doc.exists ? doc.data().lastSeen : null;
-        socket.emit('userOffline', { username: userToCheck, lastSeen });
-      } catch (err) {
-        console.error('❌ Failed to check user last seen:', err);
-      }
-    }
-  });
-
-  socket.on('chatMessage', async ({ sender, receiver, content }) => {
-    console.log('✉️ Incoming socket message:', { sender, receiver, content });
-    if (!sender || !receiver || !content?.trim()) return;
-    const room = [sender, receiver].sort().join('-');
-
-    try {
-      const saved = await saveMessage({ sender, receiver, content });
-      io.to(room).emit('newMessage', saved);
-    } catch (err) {
-      console.error('❌ Socket message save error:', err);
-    }
-  });
-
-  socket.on('typing', ({ to, from }) => {
-    const room = [to, from].sort().join('-');
-    socket.to(room).emit('typing', { from });
-  });
-
-  socket.on('stopTyping', ({ to, from }) => {
-    const room = [to, from].sort().join('-');
-    socket.to(room).emit('stopTyping', { from });
-  });
-
-  socket.on('reactToMessage', async ({ messageId, reactor, emoji }) => {
-  try {
-    const ref = db.collection('messages').doc(messageId);
-    const doc = await ref.get();
-    if (!doc.exists) return;
-
-    const data = doc.data();
-    const reactions = data.reactions || {};
-    reactions[reactor] = emoji;
-
-    await ref.update({ reactions });
-
-    const updatedMsg = { id: messageId, ...data, reactions };
-
-    const room = [data.sender, data.receiver].sort().join('-');
-
-    // ✅ This ensures both users get the reaction update
-    io.in(room).emit('reactionUpdated', updatedMsg);
-
-  } catch (err) {
-    console.error('❌ Reaction error:', err);
-  }
-});
-
-  socket.on('disconnect', () => {
-    for (const [username, id] of connectedUsers.entries()) {
-      if (id === socket.id) {
-        connectedUsers.delete(username);
-        const lastSeen = new Date();
-        db.collection('users').doc(username).update({ lastSeen })
-          .catch(err => console.error('❌ Failed to update lastSeen:', err));
-        socket.broadcast.emit('userOffline', {
-          username,
-          lastSeen: lastSeen.toISOString()
-        });
-        break;
-      }
-    }
-
-    console.log('❌ Socket disconnected:', socket.id);
-  });
 });
 
 // --- Follow a user ---

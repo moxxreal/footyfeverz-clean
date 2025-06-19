@@ -1,530 +1,523 @@
-<!-- tactical-board-mobile.ejs -->
-<style>
-  /* Modal full screen on mobile */
-  #tacticalMobileModal {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background: rgba(0,0,0,0.95);
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+<div id="tacticalBoardMobileModal" class="tactical-board-mobile-modal" style="display: none;">
+  <!-- Portrait hint -->
+   <div class="orientation-hint">
+  <p class="rotate-hint">
+    📱🔄 Please rotate your device to use the tactical board.
+  </p>
+</div>
 
-  /* Controls stacked vertically */
-  .mobile-controls {
-    padding: 15px;
-    background: #fff;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    overflow-y: auto;
-    max-height: 40vh;
-  }
+  <!-- Landscape board -->
+  <div class="tactical-board-mobile-content">
+    <div class="control-panel">
+      <button id="mobileCloseBtn" class="tb-btn">Close ✕</button>
 
-  .mobile-controls h3 {
-    margin: 0;
-    font-size: 1.2rem;
-  }
+      <div class="formation-selector">
+        <label for="formationSelect" style="color:#fff;">Formation:</label>
+        <select id="formationSelect">
+          <option value="4-3-3">4-3-3</option>
+          <option value="4-3-3-f9">4-3-3 (False 9)</option>
+          <option value="4-4-2">4-4-2</option>
+          <option value="4-2-3-1">4-2-3-1</option>
+          <option value="5-3-2">5-3-2</option>
+          <option value="5-2-3">5-2-3</option>
+        </select>
+      </div>
 
-  /* Inputs and selects full width and large */
-  .mobile-controls select,
-  .mobile-controls input[type="color"],
-  .mobile-controls button {
-    width: 100%;
-    font-size: 18px;
-    padding: 14px 16px;
-    border-radius: 10px;
-    border: 1px solid #888;
-    font-weight: bold;
-    cursor: pointer;
-    box-sizing: border-box;
-  }
+      <div class="color-picker">
+        <label for="circleColor" style="color:#fff;">Circle Color:</label>
+        <input type="color" id="circleColor" value="#ffff00">
+      </div>
 
-  .mobile-controls button {
-    background: linear-gradient(to bottom, #007BFF, #0056b3);
-    color: white;
-    border: none;
-    user-select: none;
-  }
+      <div class="text-color-picker">
+        <label for="textColor" style="color:#fff;">Text Color:</label>
+        <select id="textColor">
+          <option value="#000000">Black</option>
+          <option value="#ffffff">White</option>
+        </select>
+      </div>
 
-  .mobile-controls button:active {
-    transform: scale(0.95);
-  }
+      <button id="mobileNameBtn" class="tb-btn">Naming: OFF</button>
+      <button id="mobileUndoBtn" class="tb-btn" disabled>Undo ←</button>
+<button id="mobileRedoBtn" class="tb-btn" disabled>Redo →</button>
+<button id="mobileSaveBtn" class="tb-btn">Save</button>
+    </div>
 
-  /* Tactical pitch area fills remaining height */
-  #mobileTacticalPitch {
-    flex: 1;
-    background: #003300;
-    padding: 10px;
-    box-sizing: border-box;
-    position: relative;
-  }
-
-  #mobileTacticalCanvas {
-    width: 100%;
-    height: 100%;
-    background: url('/images/tactical-pitch.png') center center / cover no-repeat;
-    border-radius: 12px;
-    border: 2px solid #000;
-    touch-action: none;
-    display: block;
-  }
-
-  /* Player name input */
-  #mobileNameInput {
-    position: absolute;
-    pointer-events: auto;
-    display: none;
-    z-index: 10001;
-    font-size: 18px;
-    padding: 8px 10px;
-    border: 1px solid #aaa;
-    border-radius: 8px;
-    background: white;
-  }
-</style>
-
-<div id="tacticalMobileModal" style="display:none;">
-  <div class="mobile-controls">
-    <h3>Formation</h3>
-    <select onchange="loadMobileFormation(this.value)">
-      <option value="433">4-3-3</option>
-      <option value="433f9">4-3-3 False 9</option>
-      <option value="442">4-4-2</option>
-      <option value="4231">4-2-3-1</option>
-      <option value="532">5-3-2</option>
-      <option value="523">5-2-3</option>
-    </select>
-
-    <h3>Color</h3>
-    <input type="color" id="mobileTeamColorPicker" onchange="changeMobileTeamColor(this.value)" value="#007BFF" />
-
-    <button onclick="toggleMobileArrowMode()">🡒 Arrow Mode: <span id='mobileArrowModeStatus'>Off</span></button>
-    <button id="mobileNameModeBtn" onclick="toggleMobileNamingMode()">✎ Add Player’s Name: <span id="mobileNamingModeStatus">Off</span></button>
-
-    <h3>Text Color</h3>
-    <select id="mobileTextColorPicker" onchange="changeMobileTextColor(this.value)">
-      <option value="white" selected>White</option>
-      <option value="black">Black</option>
-    </select>
-
-    <button onclick="mobileUndo()">Undo</button>
-    <button onclick="mobileRedo()">Redo</button>
-    <button onclick="submitMobileTactics()">Submit</button>
-    <button onclick="closeMobileTacticalBoard()">Exit</button>
-  </div>
-
-  <div id="mobileTacticalPitch">
-    <canvas id="mobileTacticalCanvas"></canvas>
-    <input id="mobileNameInput" type="text" placeholder="Enter name" />
+    <div class="canvas-panel">
+      <canvas id="tacticalCanvasMobile"></canvas>
+      <!-- inline input will be injected here -->
+    </div>
   </div>
 </div>
 
+<style>
+    /* when the body has .modal-open, prevent any scrolling */
+body.modal-open {
+  overflow: hidden;
+  height: 100vh;      /* lock the height to prevent “bounce” */
+}
+  .tactical-board-mobile-modal {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* Portrait: only show the hint */
+  .tactical-board-mobile-content { display: none; }
+  .orientation-hint {
+    display: none;
+    color: white;
+    text-align: center;
+    padding: 20px;
+    font-size: 18px;
+  }
+
+  /* Rock animation lives at top level */
+  @keyframes rock {
+    0%   { transform: rotate(-3deg); }
+    50%  { transform: rotate(3deg);  }
+    100% { transform: rotate(-3deg); }
+  }
+  .orientation-hint .rotate-hint {
+    display: inline-block;         /* needed for transform */
+    animation: rock 1.5s infinite; /* smooth rocking */
+    font-size: 18px;
+    line-height: 1.4;
+  }
+
+  @media (orientation: portrait) {
+    .orientation-hint {
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  /* Landscape: show the board */
+  @media (orientation: landscape) {
+    .orientation-hint { display: none; }
+    .tactical-board-mobile-content {
+      display: flex;
+      width: 100%; height: 100%;
+    }
+
+    .control-panel {
+      width: 40%;
+      background: #222;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    .control-panel label {
+      font-size: 12px;
+      line-height: 1.3;
+    }
+    .control-panel .tb-btn {
+      margin: 2px 0;
+      padding: 6px 8px;
+      border: none;
+      background: #444;
+      color: #fff;
+      font-size: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .control-panel .tb-btn:hover {
+      background: #666;
+    }
+
+    .formation-selector,
+    .color-picker,
+    .text-color-picker {
+      margin: 3px 0;
+    }
+    .formation-selector select,
+    .color-picker input,
+    .text-color-picker select {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #333;
+      color: #fff;
+      font-size: 12px;
+    }
+
+    .canvas-panel {
+      width: 60%;
+      position: relative;
+    }
+    #tacticalCanvasMobile {
+      width: 100%;
+      height: 100%;
+      background: url('/images/tactical-pitch.png') center center / cover no-repeat;
+      border-radius: 8px;
+    }
+    .canvas-panel .circle-input {
+      position: absolute;
+      z-index: 10001;
+      box-sizing: border-box;
+      width: 100px;
+      padding: 2px 4px;
+      font-size: 14px;
+      text-align: center;
+      border: 1px solid #333;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.9);
+    }
+  }
+</style>
+
 <script>
-  // Variables
-  let mobileDraggedPlayer = null;
-  let mobileDragOffsetX = 0;
-  let mobileDragOffsetY = 0;
-  let mobileUndoStack = [];
-  let mobileRedoStack = [];
-  let mobilePlayerColor = '#007BFF';
-  let mobileTacticalBoardActivated = false;
-  let mobileArrowMode = false;
-  let mobileArrows = [];
-  let mobileArrowStart = null;
-  let mobileTempArrowEnd = null;
-  let mobileNamingMode = false;
-  let mobilePlayerNameColor = 'white';
-  let mobileCanvas, mobileCtx;
-  const mobilePlayers = [];
-  let mobileCurrentFormationCode = '433';
-
-  const mobilePitchImage = new Image();
-  mobilePitchImage.src = '/images/tactical-pitch.png';
-
-  mobilePitchImage.onload = () => {
-    if (mobileCanvas && mobileCtx) drawMobilePlayers();
+  // formation position maps (x%, y%) from defense (left) to attack (right)
+  const formations = {
+    '4-3-3': [
+      [5,50],[15,20],[15,40],[15,60],[15,80],
+      [35,25],[35,50],[35,75],
+      [65,25],[65,50],[65,75]
+    ],
+    '4-3-3-f9': [
+      [5,50],[15,20],[15,40],[15,60],[15,80],
+      [35,25],[35,50],[35,75],
+      [55,50],[70,25],[70,75]
+    ],
+    '4-4-2': [
+      [5,50],[15,20],[15,40],[15,60],[15,80],
+      [35,20],[35,40],[35,60],[35,80],
+      [65,40],[65,60]
+    ],
+    '4-2-3-1': [
+      [5,50],[15,20],[15,40],[15,60],[15,80],
+      [30,40],[30,60],[50,25],[50,50],[50,75],
+      [70,50]
+    ],
+    '5-3-2': [
+      [5,50],[15,15],[15,35],[15,50],[15,65],[15,85],
+      [35,30],[35,50],[35,70],[65,40],[65,60]
+    ],
+    '5-2-3': [
+      [5,50],[15,20],[15,40],[15,60],[15,80],[15,50],
+      [35,35],[35,65],[65,25],[65,50],[65,75]
+    ]
   };
 
-  function captureMobileState() {
-    return {
-      players: mobilePlayers.map(p => ({ ...p })),
-      arrows: mobileArrows.map(a => ({
-        start: { ...a.start },
-        end: { ...a.end }
-      }))
+  let currentColor   = '#ffff00';
+  let textColor      = '#000000';
+  let currentCoords  = [];
+  let playerNames    = [];
+  const circleRadius = 20;
+  let draggingIndex  = null;
+  let dragOffset     = { x:0, y:0 };
+  let needsDraw      = false;
+  let lastTapTime    = 0;
+  let namingEnabled  = false;
+  let history = [];
+let historyIndex = -1;
+
+  const bgImage = new Image();
+  bgImage.src = '/images/tactical-pitch.png';
+  let bgLoaded = false;
+  bgImage.onload = () => bgLoaded = true;
+
+  function saveState() {
+  history = history.slice(0, historyIndex + 1);
+  const state = {
+    coords: currentCoords.map(pt => ({ x: pt.x, y: pt.y })),
+    names: [...playerNames]
+  };
+  history.push(state);
+  historyIndex++;
+  updateUndoRedoButtons();
+}
+
+function restoreState(idx) {
+  const state = history[idx];
+  currentCoords = state.coords.map(pt => ({ x: pt.x, y: pt.y }));
+  playerNames = [...state.names];
+  needsDraw = true;
+  updateUndoRedoButtons();
+}
+
+function updateUndoRedoButtons() {
+  document.getElementById('mobileUndoBtn').disabled = historyIndex <= 0;
+  document.getElementById('mobileRedoBtn').disabled = historyIndex >= history.length - 1;
+}
+
+  function initMobileCanvas() {
+    const canvas = document.getElementById('tacticalCanvasMobile');
+    const ctx    = canvas.getContext('2d');
+    canvas.width  = canvas.clientWidth * devicePixelRatio;
+    canvas.height = canvas.clientHeight * devicePixelRatio;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+
+    updateCurrentCoords();
+    playerNames = new Array(currentCoords.length).fill('');
+    startRenderLoop();
+
+    // dragging
+    canvas.onmousedown   = startDrag;
+    canvas.onmousemove   = doDrag;
+    document.onmouseup   = endDrag;
+    canvas.ontouchstart  = e => startDrag(normalizeTouch(e));
+    canvas.ontouchmove   = e => doDrag(normalizeTouch(e));
+    document.ontouchend  = endDrag;
+
+    canvas.ondblclick = e => {
+      if (namingEnabled) handleNameAt(e);
     };
-  }
 
-  function changeMobileTeamColor(color) {
-    mobilePlayerColor = color;
-    drawMobilePlayers();
-  }
-
-  function toggleMobileNamingMode() {
-    mobileNamingMode = !mobileNamingMode;
-    document.getElementById('mobileNamingModeStatus').innerText = mobileNamingMode ? 'On' : 'Off';
-    if (mobileNamingMode) {
-      alert("Naming mode ON: Tap a player to set a name.");
-      mobileArrowMode = false;
-      document.getElementById('mobileArrowModeStatus').innerText = 'Off';
-    }
-  }
-
-  function changeMobileTextColor(color) {
-    mobilePlayerNameColor = color;
-    drawMobilePlayers();
-  }
-
-  function toggleMobileArrowMode() {
-    mobileArrowMode = !mobileArrowMode;
-    document.getElementById('mobileArrowModeStatus').innerText = mobileArrowMode ? 'On' : 'Off';
-    if (mobileArrowMode) {
-      mobileNamingMode = false;
-      document.getElementById('mobileNamingModeStatus').innerText = 'Off';
-    }
-  }
-
-  function drawMobileArrow(start, end) {
-    const headlen = 15;
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const angle = Math.atan2(dy, dx);
-
-    mobileCtx.strokeStyle = 'red';
-    mobileCtx.lineWidth = 4;
-    mobileCtx.beginPath();
-    mobileCtx.moveTo(start.x, start.y);
-    mobileCtx.lineTo(end.x, end.y);
-    mobileCtx.stroke();
-
-    // Arrowhead
-    mobileCtx.beginPath();
-    mobileCtx.moveTo(end.x, end.y);
-    mobileCtx.lineTo(end.x - headlen * Math.cos(angle - Math.PI / 6), end.y - headlen * Math.sin(angle - Math.PI / 6));
-    mobileCtx.lineTo(end.x - headlen * Math.cos(angle + Math.PI / 6), end.y - headlen * Math.sin(angle + Math.PI / 6));
-    mobileCtx.lineTo(end.x, end.y);
-    mobileCtx.fillStyle = 'red';
-    mobileCtx.fill();
-  }
-
-  function drawMobilePlayers() {
-    mobileCtx.clearRect(0, 0, mobileCanvas.width, mobileCanvas.height);
-
-    if (mobilePitchImage.complete && mobilePitchImage.naturalWidth !== 0) {
-      mobileCtx.drawImage(mobilePitchImage, 0, 0, mobileCanvas.width, mobileCanvas.height);
-    } else {
-      mobileCtx.fillStyle = '#2c6f2c';
-      mobileCtx.fillRect(0, 0, mobileCanvas.width, mobileCanvas.height);
-    }
-
-    mobileArrows.forEach(arrow => drawMobileArrow(arrow.start, arrow.end));
-    if (mobileArrowStart && mobileTempArrowEnd) {
-      drawMobileArrow(mobileArrowStart, mobileTempArrowEnd);
-    }
-
-    mobilePlayers.forEach(p => {
-      mobileCtx.beginPath();
-      mobileCtx.arc(p.x, p.y, 30, 0, Math.PI * 2);
-      mobileCtx.fillStyle = mobilePlayerColor;
-      mobileCtx.fill();
-      mobileCtx.strokeStyle = 'white';
-      mobileCtx.lineWidth = 2;
-      mobileCtx.stroke();
-      mobileCtx.fillStyle = mobilePlayerNameColor;
-      mobileCtx.font = 'bold 16px Arial';
-      mobileCtx.textAlign = 'center';
-      mobileCtx.textBaseline = 'middle';
-      mobileCtx.fillText(p.name || p.label, p.x, p.y);
+    canvas.addEventListener('touchstart', e => {
+      const now = Date.now(), t = e.changedTouches[0];
+      if (namingEnabled && now - lastTapTime < 300) {
+        handleNameAt({
+          target:        canvas,
+          clientX:       t.clientX,
+          clientY:       t.clientY,
+          preventDefault: () => e.preventDefault()
+        });
+        e.preventDefault();
+      }
+      lastTapTime = now;
     });
   }
 
-  function resizeMobileCanvas() {
-    if (!mobileCanvas) return;
-    mobileCtx.setTransform(1, 0, 0, 1, 0, 0);
-    mobileCanvas.width = mobileCanvas.clientWidth * window.devicePixelRatio;
-    mobileCanvas.height = mobileCanvas.clientHeight * window.devicePixelRatio;
-    mobileCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    drawMobilePlayers();
+  function updateCurrentCoords() {
+    const key  = document.getElementById('formationSelect').value;
+    const base = formations[key] || formations['4-3-3'];
+    const cw   = document.getElementById('tacticalCanvasMobile').clientWidth;
+    const ch   = document.getElementById('tacticalCanvasMobile').clientHeight;
+    currentCoords = base.map(([px,py]) => ({
+      x: (px/100)*cw,
+      y: (py/100)*ch
+    }));
+    currentColor = document.getElementById('circleColor').value;
   }
 
-  window.addEventListener('resize', () => {
-    if (mobileTacticalBoardActivated) resizeMobileCanvas();
+  function startRenderLoop() {
+    needsDraw = true;
+    (function loop(){
+      if (needsDraw && bgLoaded) {
+        drawAll();
+        needsDraw = false;
+      }
+      requestAnimationFrame(loop);
+    })();
+  }
+
+  function drawAll() {
+    const canvas = document.getElementById('tacticalCanvasMobile');
+    const ctx    = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.clientWidth,canvas.clientHeight);
+    ctx.drawImage(bgImage,0,0,canvas.clientWidth,canvas.clientHeight);
+
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font         = `${circleRadius * 0.8}px sans-serif`;
+
+    currentCoords.forEach((pt,i) => {
+      ctx.beginPath();
+      ctx.arc(pt.x,pt.y,circleRadius,0,Math.PI*2);
+      ctx.fillStyle   = currentColor;
+      ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.stroke();
+
+      if (playerNames[i]) {
+        ctx.fillStyle = textColor;
+        ctx.fillText(playerNames[i], pt.x, pt.y);
+      }
+    });
+  }
+
+  function getMousePos(evt) {
+    const r = evt.target.getBoundingClientRect();
+    return {
+      x: (evt.clientX - r.left) * devicePixelRatio,
+      y: (evt.clientY - r.top ) * devicePixelRatio
+    };
+  }
+
+  function normalizeTouch(e) {
+    const t = e.changedTouches[0];
+    return {
+      target:        e.target,
+      clientX:       t.clientX,
+      clientY:       t.clientY,
+      preventDefault: () => e.preventDefault()
+    };
+  }
+
+  function startDrag(evt) {
+    evt.preventDefault();
+    const pos = getMousePos(evt);
+    currentCoords.forEach((pt,i) => {
+      const dx = pos.x/devicePixelRatio - pt.x;
+      const dy = pos.y/devicePixelRatio - pt.y;
+      if (dx*dx + dy*dy <= circleRadius*circleRadius) {
+        draggingIndex = i;
+        dragOffset.x  = pt.x - pos.x/devicePixelRatio;
+        dragOffset.y  = pt.y - pos.y/devicePixelRatio;
+      }
+    });
+  }
+
+  function doDrag(evt) {
+    if (draggingIndex === null) return;
+    evt.preventDefault();
+    const pos = getMousePos(evt);
+    currentCoords[draggingIndex].x = pos.x/devicePixelRatio + dragOffset.x;
+    currentCoords[draggingIndex].y = pos.y/devicePixelRatio + dragOffset.y;
+    needsDraw = true;
+  }
+
+  function endDrag(evt) {
+  if (draggingIndex !== null) {
+    evt.preventDefault();
+    saveState();
+  }
+  draggingIndex = null;
+}
+
+  function handleNameAt(evt) {
+    const pos = getMousePos(evt);
+    currentCoords.forEach((pt,i) => {
+      const dx = pos.x/devicePixelRatio - pt.x;
+      const dy = pos.y/devicePixelRatio - pt.y;
+      if (dx*dx + dy*dy <= circleRadius*circleRadius) {
+        showNameInput(i, pt);
+      }
+    });
+  }
+
+  function showNameInput(i, pt) {
+    const old = document.querySelector('.canvas-panel .circle-input');
+    if (old) old.remove();
+
+    const container = document.querySelector('.canvas-panel');
+    const input = document.createElement('input');
+    input.type      = 'text';
+    input.value     = playerNames[i] || '';
+    input.className = 'circle-input';
+    input.style.left = `${pt.x - 50}px`;
+    input.style.top  = `${pt.y - circleRadius - 28}px`;
+    container.appendChild(input);
+    input.focus();
+
+    function commit() {
+      playerNames[i] = input.value.trim();
+      needsDraw = true;
+      input.remove();
+    }
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') commit();
+    });
+    input.addEventListener('blur', commit);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const nameBtn = document.getElementById('mobileNameBtn');
+    nameBtn.addEventListener('click', () => {
+      namingEnabled = !namingEnabled;
+      nameBtn.textContent = namingEnabled ? 'Naming: ON' : 'Naming: OFF';
+      nameBtn.style.background = namingEnabled ? '#28a745' : '#444';
+    });
+
+    document.getElementById('textColor')
+            .addEventListener('change', e => {
+      textColor = e.target.value;
+      needsDraw = true;
+    });
+
+    document.getElementById('mobileCloseBtn')
+  .addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();       // <-- prevent any parent handlers
+    closeMobileTacticalBoard();
+  });
+    document.getElementById('formationSelect')
+            .addEventListener('change', () => {
+      updateCurrentCoords();
+      playerNames = new Array(currentCoords.length).fill('');
+      needsDraw = true;
+    });
+    document.getElementById('circleColor')
+            .addEventListener('input', () => {
+      currentColor = document.getElementById('circleColor').value;
+      needsDraw = true;
+    });
+    document
+  .getElementById('mobileSaveBtn')
+  .addEventListener('click', e => {
+    // prevent any other click-handlers (like the desktop one) from firing:
+    e.preventDefault();
+    e.stopPropagation();
+
+    html2canvas(document.getElementById('tacticalCanvasMobile'))
+      .then(canvas =>
+        new Promise(resolve => canvas.toBlob(blob => resolve({ canvas, blob })))
+      )
+      .then(({ canvas, blob }) => {
+        // put it into the same hidden input as desktop
+        const input = document.getElementById('tacticImageInput');
+        const dt    = new DataTransfer();
+        dt.items.add(new File([blob], 'tactic-mobile.png', { type: 'image/png' }));
+        input.files = dt.files;
+
+        // show the inline preview
+        let preview = document.getElementById('tacticImagePreview');
+        if (!preview) {
+          preview = document.createElement('img');
+          preview.id = 'tacticImagePreview';
+          preview.style.maxWidth    = '200px';
+          preview.style.marginTop   = '10px';
+          preview.style.borderRadius = '12px';
+          const commentText = document.getElementById('commentText');
+          commentText.parentNode.insertBefore(preview, commentText.nextSibling);
+        }
+        preview.src = URL.createObjectURL(blob);
+        preview.style.display = 'block';
+
+        // close mobile _and_ desktop just in case
+        closeMobileTacticalBoard();
+        if (typeof closeTacticalBoard === 'function') {
+          closeTacticalBoard();
+        }
+
+        alert('Tactic image attached to your comment!');
+      });
+  });
+    document.getElementById('mobileUndoBtn').addEventListener('click', () => {
+  if (historyIndex > 0) restoreState(--historyIndex);
+});
+document.getElementById('mobileRedoBtn').addEventListener('click', () => {
+  if (historyIndex < history.length - 1) restoreState(++historyIndex);
+});
+    window.addEventListener('resize', () => {
+      if (document.getElementById('tacticalBoardMobileModal').style.display === 'flex') {
+        initMobileCanvas();
+      }
+    });
   });
 
-  function mobileUndo() {
-    if (mobileUndoStack.length <= 1) return;
-    mobileRedoStack.push(captureMobileState());
-    mobileUndoStack.pop();
-    const prev = mobileUndoStack[mobileUndoStack.length - 1];
-    mobilePlayers.length = 0;
-    mobilePlayers.push(...prev.players.map(p => ({ ...p })));
-    mobileArrows.length = 0;
-    mobileArrows.push(...prev.arrows.map(a => ({
-      start: { ...a.start },
-      end: { ...a.end }
-    })));
-    drawMobilePlayers();
-  }
-
-  function mobileRedo() {
-    if (mobileRedoStack.length === 0) return;
-    mobileUndoStack.push(captureMobileState());
-    const next = mobileRedoStack.pop();
-    mobilePlayers.length = 0;
-    mobilePlayers.push(...next.players.map(p => ({ ...p })));
-    mobileArrows.length = 0;
-    mobileArrows.push(...next.arrows.map(a => ({
-      start: { ...a.start },
-      end: { ...a.end }
-    })));
-    drawMobilePlayers();
-  }
-
-  function loadMobileFormation(code) {
-    const midY = mobileCanvas.height / 2;
-    const lineX = [60, 180, 300, 420, 540, 660, 780];
-    if (mobilePlayers.length > 0) mobileUndoStack.push(captureMobileState());
-    mobileRedoStack.length = 0;
-    mobilePlayers.length = 0;
-    mobileCurrentFormationCode = code;
-
-    const formations = {
-      '433': [
-        ['GK', 0, 0], ['LB', 2, -170], ['CB', 1, -60], ['CB', 1, 60], ['RB', 2, 170],
-        ['CM', 3, -100], ['CDM', 2, 0], ['CM', 3, 100],
-        ['LW', 4, -150], ['RW', 4, 150], ['ST', 5, 0]
-      ],
-      '433f9': [
-        ['GK', 0, 0], ['LB', 2, -170], ['LCB', 1, -60], ['RCB', 1, 60], ['RB', 2, 170],
-        ['CM', 3, -100], ['CDM', 2, 0], ['CM', 3, 100],
-        ['LW', 5, -130], ['RW', 5, 130], ['False 9', 4, 0]
-      ],
-      '442': [
-        ['GK', 0, 0], ['LB', 2, -170], ['CB', 1, -60], ['CB', 1, 60], ['RB', 2, 170],
-        ['LM', 4, -170], ['CDM', 3, -60], ['CDM', 3, 60], ['RM', 4, 170],
-        ['ST', 5, -60], ['ST', 5, 60]
-      ],
-      '4231': [
-        ['GK', 0, 0], ['LB', 2, -170], ['CB', 1, -60], ['CB', 1, 60], ['RB', 2, 170],
-        ['CDM', 3, -60], ['CDM', 3, 60], ['CAM', 4, 0],
-        ['LM', 4, -170], ['RM', 4, 170], ['ST', 5, 0]
-      ],
-      '532': [
-        ['GK', 0, 0], ['LWB', 3, -190], ['LCB', 2, -110], ['CB', 1, 0], ['RCB', 2, 110], ['RWB', 3, 190],
-        ['CM', 4, -110], ['CDM', 3, 0], ['CM', 4, 110], ['ST', 5, -60], ['ST', 5, 60]
-      ],
-      '523': [
-        ['GK', 0, 0], ['LWB', 3, -190], ['LCB', 2, -110], ['CB', 1, 0], ['RCB', 2, 110], ['RWB', 3, 190],
-        ['CM', 3, -70], ['CM', 3, 70], ['LW', 4, -120], ['RW', 4, 120], ['ST', 5, 0]
-      ]
-    };
-
-    formations[code].forEach(([label, xIdx, yOffset]) =>
-      mobilePlayers.push({ x: lineX[xIdx], y: midY + yOffset, label })
-    );
-    drawMobilePlayers();
-  }
-
-  function setupMobileDragListeners() {
-    if (!mobileCanvas) return;
-
-    function getTouchPos(touchEvent) {
-      const rect = mobileCanvas.getBoundingClientRect();
-      const scaleX = mobileCanvas.width / rect.width;
-      const scaleY = mobileCanvas.height / rect.height;
-      const touch = touchEvent.touches[0] || touchEvent.changedTouches[0];
-      return {
-        x: (touch.clientX - rect.left) * scaleX,
-        y: (touch.clientY - rect.top) * scaleY,
-      };
-    }
-
-    mobileCanvas.addEventListener('touchstart', e => {
-      e.preventDefault();
-      const { x: tx, y: ty } = getTouchPos(e);
-
-      if (mobileArrowMode) {
-        mobileArrowStart = { x: tx, y: ty };
-        return;
-      }
-
-      if (mobileNamingMode) {
-        for (let p of mobilePlayers) {
-          if (Math.hypot(tx - p.x, ty - p.y) < 30) {
-            setTimeout(() => {
-              const input = document.getElementById('mobileNameInput');
-              if (!input) return;
-
-              const inputWidth = 140;
-              const inputHeight = 40;
-
-              const canvasContainer = mobileCanvas.parentElement;
-              const scaleX = canvasContainer.clientWidth / mobileCanvas.width;
-              const scaleY = canvasContainer.clientHeight / mobileCanvas.height;
-
-              const screenX = p.x * scaleX;
-              const screenY = p.y * scaleY;
-
-              input.style.left = `${screenX - inputWidth / 2}px`;
-              input.style.top = `${screenY - inputHeight - 10}px`;
-              input.style.width = inputWidth + 'px';
-              input.style.height = inputHeight + 'px';
-
-              input.style.display = 'block';
-              input.value = p.name || '';
-              input.focus();
-
-              input.onkeydown = ev => {
-                if (ev.key === 'Enter') {
-                  p.name = input.value.trim();
-                  input.style.display = 'none';
-                  drawMobilePlayers();
-                  mobileUndoStack.push(captureMobileState());
-                  mobileRedoStack = [];
-                } else if (ev.key === 'Escape') {
-                  input.style.display = 'none';
-                }
-              };
-            }, 10);
-            return;
-          }
-        }
-        return;
-      }
-
-      for (let p of mobilePlayers) {
-        if (Math.hypot(tx - p.x, ty - p.y) < 30) {
-          mobileDraggedPlayer = p;
-          mobileDragOffsetX = tx - p.x;
-          mobileDragOffsetY = ty - p.y;
-          break;
-        }
-      }
-    }, { passive: false });
-
-    mobileCanvas.addEventListener('touchmove', e => {
-      e.preventDefault();
-      if (!mobileDraggedPlayer && !mobileArrowMode) return;
-
-      const { x: tx, y: ty } = getTouchPos(e);
-
-      if (mobileArrowMode && mobileArrowStart) {
-        mobileTempArrowEnd = { x: tx, y: ty };
-        drawMobilePlayers();
-        return;
-      }
-
-      if (mobileDraggedPlayer) {
-        mobileDraggedPlayer.x = tx - mobileDragOffsetX;
-        mobileDraggedPlayer.y = ty - mobileDragOffsetY;
-        drawMobilePlayers();
-      }
-    }, { passive: false });
-
-    mobileCanvas.addEventListener('touchend', e => {
-      e.preventDefault();
-      if (mobileArrowMode && mobileArrowStart) {
-        const { x: tx, y: ty } = getTouchPos(e);
-        mobileArrows.push({ start: mobileArrowStart, end: { x: tx, y: ty } });
-        mobileArrowStart = null;
-        mobileTempArrowEnd = null;
-        mobileUndoStack.push(captureMobileState());
-        mobileRedoStack = [];
-        drawMobilePlayers();
-      }
-
-      if (mobileDraggedPlayer) {
-        mobileDraggedPlayer = null;
-        mobileUndoStack.push(captureMobileState());
-        mobileRedoStack = [];
-      }
-    }, { passive: false });
-
-    mobileCanvas.addEventListener('touchcancel', e => {
-      e.preventDefault();
-      if (mobileArrowStart) mobileArrowStart = null;
-      if (mobileDraggedPlayer) {
-        mobileDraggedPlayer = null;
-        mobileUndoStack.push(captureMobileState());
-        mobileRedoStack = [];
-      }
-    }, { passive: false });
-  }
-
   function openMobileTacticalBoard() {
-    mobileTacticalBoardActivated = true;
-    const modal = document.getElementById('tacticalMobileModal');
-    modal.style.display = 'flex';
-
-    setTimeout(() => {
-      mobileCanvas = document.getElementById('mobileTacticalCanvas');
-      mobileCtx = mobileCanvas.getContext('2d');
-      mobileCanvas.width = mobileCanvas.offsetWidth;
-      mobileCanvas.height = mobileCanvas.offsetHeight;
-
-      if (mobileUndoStack.length === 0) {
-        loadMobileFormation('433');
-        mobileUndoStack.push(captureMobileState());
-      } else {
-        mobilePlayers.length = 0;
-        const last = mobileUndoStack[mobileUndoStack.length - 1];
-        mobilePlayers.push(...last.players.map(p => ({ ...p })));
-        mobileArrows.push(...last.arrows.map(a => ({
-          start: { ...a.start },
-          end: { ...a.end }
-        })));
-      }
-
-      mobileRedoStack = [];
-      drawMobilePlayers();
-      setupMobileDragListeners();
-      document.querySelector('#mobileTeamColorPicker').disabled = false;
-    }, 10);
-  }
-
-  function closeMobileTacticalBoard() {
-    mobileTacticalBoardActivated = false;
-    document.getElementById('tacticalMobileModal').style.display = 'none';
-  }
-
-  function submitMobileTactics() {
-    drawMobilePlayers();
-
-    mobileCanvas.toBlob(blob => {
-      const tacticInput = document.getElementById('tacticImageInput');
-      const dt = new DataTransfer();
-      dt.items.add(new File([blob], 'tactic.png', { type: 'image/png' }));
-      tacticInput.files = dt.files;
-
-      let preview = document.getElementById('tacticImagePreview');
-      if (!preview) {
-        const img = document.createElement('img');
-        img.id = 'tacticImagePreview';
-        img.style.maxWidth = '200px';
-        img.style.marginTop = '10px';
-        img.style.borderRadius = '12px';
-        img.style.display = 'block';
-
-        const commentText = document.getElementById('commentText');
-        commentText.parentNode.insertBefore(img, commentText.nextSibling);
-
-        preview = img;
-      }
-
-      if (preview.src) {
-        URL.revokeObjectURL(preview.src);
-      }
-
-      const url = URL.createObjectURL(blob);
-      preview.src = url;
-      preview.style.display = 'block';
-
-      closeMobileTacticalBoard();
-      alert('Tactic image attached to your comment!');
-    });
-  }
+  document.body.classList.add('modal-open');
+  document.getElementById('tacticalBoardMobileModal')
+          .style.display = 'flex';
+  initMobileCanvas();
+}
+function closeMobileTacticalBoard() {
+  // hide mobile modal
+  document.getElementById('tacticalBoardMobileModal').style.display = 'none';
+  // unlock background scrolling (if you added body.modal-open earlier)
+  document.body.classList.remove('modal-open');
+  // ensure desktop modal is also hidden
+  const desktop = document.getElementById('tacticalModal');
+  if (desktop) desktop.style.display = 'none';
+}
 </script>

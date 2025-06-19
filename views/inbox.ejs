@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
   <title>My Inbox | Footy Feverz</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
@@ -20,8 +23,8 @@
       margin-top: 2rem;
     }
     .inbox-card {
-      width: 280px;
-      height: 160px;
+      width: 320px;
+      height: 200px;
       background: #fff;
       border-radius: 1.5rem;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
@@ -38,7 +41,7 @@
       transform: scale(1.03);
     }
     .inbox-card h3 {
-      font-size: 1.3rem;
+      font-size: 1.5rem;
       font-weight: 600;
     }
     .notif-badge {
@@ -50,6 +53,16 @@
       font-size: 0.9rem;
       padding: 4px 8px;
       border-radius: 999px;
+    }
+
+    /* On larger desktops, let cards flex to ~40% of the grid, up to 400px */
+    @media (min-width: 1024px) {
+      .inbox-card {
+        flex: 1 1 40%;
+        max-width: 400px;
+        width: auto;
+        height: 220px;
+      }
     }
   </style>
 </head>
@@ -65,30 +78,22 @@
     <h2>📥 My Inbox</h2>
 
     <div class="card-grid">
-  <!-- Chat Notifications -->
-  <a href="/inbox/chat" class="inbox-card">
-    <h3>💬 Chat</h3>
-    <% if (user.chatNotifications > 0) { %>
-      <span class="notif-badge"><%= user.chatNotifications %></span>
-    <% } %>
-  </a>
+      <!-- Chats card -->
+      <a href="/inbox/chats" class="inbox-card">
+        <h3>💬 Chats</h3>
+        <% if (user.chatNotifications > 0) { %>
+          <span class="notif-badge"><%= user.chatNotifications %></span>
+        <% } %>
+      </a>
 
-  <!-- Tag Notifications -->
-  <a href="/inbox/tags" class="inbox-card">
-    <h3>🏷️ Mentions</h3>
-    <% if (user.tagNotifications > 0) { %>
-      <span class="notif-badge"><%= user.tagNotifications %></span>
-    <% } %>
-  </a>
-
-  <!-- Story Notifications -->
-  <a href="/inbox/stories" class="inbox-card">
-    <h3>📸 Stories</h3>
-    <% if (user.storyNotifications > 0) { %>
-      <span class="notif-badge"><%= user.storyNotifications %></span>
-    <% } %>
-  </a>
-</div>
+      <!-- Mentions card -->
+      <a href="/inbox/tags" class="inbox-card">
+        <h3>🏷️ Mentions</h3>
+        <% if (user.tagNotifications > 0) { %>
+          <span class="notif-badge"><%= user.tagNotifications %></span>
+        <% } %>
+      </a>
+    </div>
   </section>
 </body>
 </html>

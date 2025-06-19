@@ -2,26 +2,57 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title><%= teamname %> Fan Page | Footy Feverz</title>
   <link rel="stylesheet" href="/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.2/dist/emoji-button.min.js"></script>
   <style>
     .comment-image-clickable {
-      width: 100%;
-      max-width: 90vw;
-      height: auto;
-      border-radius: 12px;
-      margin-top: 12px;
-      cursor: zoom-in;
+  width: 100%;
+  max-width: 90vw;
+  height: auto;
+  border-radius: 12px;
+  margin-top: 12px;
+  cursor: zoom-in;
+}
+@media (min-width: 768px) {
+    .comment-image-clickable {
+      width: auto;         /* override the 100% */
+      max-width: 300px;    /* smaller cap */
     }
-
-    @media (min-width: 768px) {
-      .comment-image-clickable {
-        max-width: 600px;
-      }
     }
+    @media (max-width: 767px) {
+  /* Make the comments list fill nearly 100% of the viewport */
+  .comments-container {
+    width: 95vw !important;
+    margin: 0 auto !important;
+    padding: 0 8px !important;
+    box-sizing: border-box;
+  }
 
+  /* And the comment form too */
+  .comment-form-container {
+    width: 95vw !important;
+    margin: 0 auto !important;
+    padding: 0 8px !important;
+    box-sizing: border-box;
+  }
+}
+@media (max-width: 767px) {
+  /* Reduce the huge right padding on the form container */
+  .comment-form-container {
+    padding: 20px !important;    /* instead of 30px 70px 30px 40px */
+    width: 95vw !important;
+    margin: 0 auto !important;
+    box-sizing: border-box;
+  }
+
+  /* Make the textarea respect its container’s width + padding */
+  #commentText {
+    width: 100% !important;
+    box-sizing: border-box;      /* include its own padding in that 100% */
+  }
+}
     #imageModal {
       position: fixed;
       top: 0;
@@ -105,82 +136,193 @@
   max-width: 600px;
   text-align: center;
 "></div>
+<!-- Comment Form -->
+  <div class="comments-container" style="margin-top: 40px;">
+    <div class="comment-form-container" style="
+      background: rgba(245, 245, 245, 0.95);
+      border: 4px solid transparent;
+      background-image: url('/images/grass-border.png');
+      background-repeat: round;
+      background-size: 40px;
+      border-radius: 20px;
+      padding: 30px 70px 30px 40px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    ">
+      <form id="commentForm" action="/team/<%= teamname %>/comment" method="POST" enctype="multipart/form-data">
+        <textarea
+  id="commentText"
+  name="text"
+  placeholder="Write your comment... tag @username to mention someone"
+  style="
+    width: 100%;
+    height: 220px;
+    font-size: 18px;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #ccc;
+    background: #fff;
+    resize: vertical;
+    margin-bottom: 15px;
+  "
+></textarea>
 
-<!-- 🎯 Big Centered "Fight Rival" Button -->
-<div style="display: flex; justify-content: center; margin: 40px 0;">
-  <button type="button" id="pokeRivalBtn" style="
-    border: none;
-    background: transparent;
-    padding: 0;
-    cursor: pointer;
-  ">
-    <img src="/images/fight-rival.png" alt="Fight Rival" class="big-poke-button" style="width: 100%; max-width: 600px; height: auto;" />
+        <input type="file" name="media" id="mediaInput" accept="image/*,video/*" style="display: none;" />
+        <input type="file" name="tacticImage" id="tacticImageInput" style="display: none;" />
+        <img id="mediaPreview" style="max-width: 200px; display: none; margin-top: 10px;" />
+        <p id="unauthMessage" class="hidden login-warning" style="margin-top: 12px; font-size: 18px; font-weight: bold; color: #007BFF;">
+  Please <span onclick="openLogin()" style="text-decoration: underline; cursor: pointer;">login</span> to post a comment.
+</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px;">
+          <!-- Post Comment Button -->
+          <button type="submit" id="submitBtn" class="auth-sensitive-btn comment-submit-btn" style="
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+          ">
+            <img src="/images/post-commen.png" alt="Post Comment" style="
+              width: 220px;
+              height: auto;
+              display: block;
+              border-radius: 12px;
+            " />
+          </button>
+          <!-- Attach File Button -->
+          <label for="mediaInput" class="auth-sensitive-btn" style="
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+            display: inline-block;
+          ">
+            <img src="/images/attach-file.png" alt="Attach File" style="
+              width: 220px;
+              height: auto;
+              display: block;
+              border-radius: 12px;
+            " />
+          </label>
+          <!-- 2) Poke Rival Button (moved here) -->
+  <button type="button" id="pokeRivalBtn" style="border:none;background:transparent;padding:0;cursor:pointer;">
+    <img src="/images/fight-rival.png" alt="Fight Rival" style="width:220px;border-radius:12px;" />
   </button>
-</div>
+          <!-- Tactical Board Button — no auth-sensitive-btn class -->
+          <button type="button" id="openTacticalBoardBtn" style="
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+          ">
+            <img src="/images/tactical-board.png" alt="Tactical Board" style="
+              width: 220px;
+              height: auto;
+              display: block;
+              border-radius: 12px;
+            " />
+          </button>
 
+          <!-- Emoji Picker Button (desktop only) -->
+          <button type="button" id="emoji-button" style="
+            width: 60px;
+            height: 60px;
+            font-size: 28px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            background: url('/images/tactical-button-bg.jpg') center/cover no-repeat;
+            color: white;
+            font-weight: bold;
+            display: none;
+          ">😊</button>
+        </div>
+      </form>
+    </div>
+  </div>
 <!-- 🔥 Active Rival Pokes -->
 <% if (pokeThreads && pokeThreads.length > 0) { %>
   <div class="poke-rival-container" style="margin-bottom: 40px;">
-  <h2 style="margin-bottom: 15px; font-size: 28px; font-weight: 700; text-align: center; color: #222;">🔥 Active Rival Debates</h2>
-
-  <% pokeThreads.forEach(poke => {
-    const formattedTeamB = poke.teamB.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-  %>
-    <div style="
-      background: linear-gradient(145deg, #ffffff, #f0f0f0);
-      border-radius: 20px;
-      padding: 25px 30px;
-      margin-bottom: 30px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-      transition: transform 0.3s ease;
-      border: 1px solid #ddd;
-    ">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-        <div style="font-size: 20px; font-weight: 600;">
-          <span style="color: #333;">👤</span> <a href="/user/<%= poke.createdBy %>" style="color: #0055cc; text-decoration: none;"><%= poke.createdBy %></a>
-          <span style="color: #888;"> poked </span>
-          <span style="color: #cc0000; font-weight: bold;"><%= formattedTeamB %></span>
+    <h2 style="margin-bottom: 15px; font-size: 28px; font-weight: 700; text-align: center; color: #222;">
+      🔥 Active Rival Debates
+    </h2>
+    <% pokeThreads.forEach(poke => {
+      // title-case the names
+      const thisTeam  = teamname
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+      const pokeATeam = poke.teamA
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+      const pokeBTeam = poke.teamB
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+    %>
+      <div class="poke-thread" style="
+        background: linear-gradient(145deg, #ffffff, #f0f0f0);
+        border-radius: 20px;
+        padding: 25px 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        border: 1px solid #ddd;
+      ">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+          <div style="font-size: 20px; font-weight: 600;">
+            <span style="color: #333;">🏟️</span>
+            <% if (poke.teamA === teamname) { %>
+              <!-- Scenario 1: THIS page team poked someone -->
+              <strong><%= poke.createdBy %></strong>
+              <span style="color: #888;"> poked </span>
+              <strong style="color: #cc0000;"><%= pokeBTeam %></strong>
+            <% } else if (poke.teamB === teamname) { %>
+              <!-- Scenario 2: RIVAL poked THIS page team -->
+              <strong><%= pokeATeam %></strong>
+              <span style="color: #888;"> poked </span>
+              <strong style="color: #cc0000;"><%= thisTeam %></strong>
+            <% } %>
+          </div>
+          <span id="countdown-<%= poke.id %>" style="font-size: 16px; color: #ff6600; font-weight: bold; margin-top: 10px;">
+            ⏳ ...
+          </span>
         </div>
-        <span id="countdown-<%= poke.id %>" style="font-size: 16px; color: #ff6600; font-weight: bold; margin-top: 10px;">
-          ⏳ ...
-        </span>
-      </div>
 
-      <p style="margin: 20px 0 10px; font-size: 18px; color: #333; line-height: 1.5;"><%= poke.text %></p>
+        <p style="margin: 20px 0 10px; font-size: 18px; color: #333; line-height: 1.5;"><%= poke.text %></p>
 
-      <% if (poke.media) {
-        const isVideo = poke.media.endsWith('.mp4') || poke.media.endsWith('.webm') || poke.media.endsWith('.ogg');
-      %>
-        <div style="margin: 10px 0;">
-          <% if (isVideo) { %>
-            <video src="<%= poke.media %>" controls style="width: 100%; border-radius: 10px;"></video>
-          <% } else { %>
-            <img src="<%= poke.media %>" alt="Poke Media" style="width: 100%; border-radius: 10px;" />
-          <% } %>
+        <% if (poke.media) {
+            const isVideo = poke.media.endsWith('.mp4') || poke.media.endsWith('.webm') || poke.media.endsWith('.ogg');
+        %>
+          <div style="margin: 10px 0;">
+            <% if (isVideo) { %>
+              <video src="<%= poke.media %>" controls style="width: 100%; border-radius: 10px;"></video>
+            <% } else { %>
+              <img src="<%= poke.media %>" alt="Poke Media" style="width: 100%; border-radius: 10px;" />
+            <% } %>
+          </div>
+        <% } %>
+
+        <div style="text-align: center; margin-top: 20px;">
+          <a href="/poke/<%= poke.id %>" style="
+            display: inline-block;
+            background: linear-gradient(to bottom, #ff3c3c, #c40000);
+            color: white;
+            font-size: 18px;
+            padding: 12px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            transition: transform 0.2s ease, background 0.2s ease;
+          " onmouseover="this.style.transform='scale(1.04)'; this.style.background='#a70000';"
+             onmouseout="this.style.transform='scale(1)'; this.style.background='linear-gradient(to bottom, #ff3c3c, #c40000)';">
+            Join the Rivalry →
+          </a>
         </div>
-      <% } %>
-
-      <div style="text-align: center; margin-top: 20px;">
-        <a href="/poke/<%= poke.id %>" style="
-          display: inline-block;
-          background: linear-gradient(to bottom, #ff3c3c, #c40000);
-          color: white;
-          font-size: 18px;
-          padding: 12px 24px;
-          border-radius: 12px;
-          text-decoration: none;
-          font-weight: 600;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-          transition: transform 0.2s ease, background 0.2s ease;
-        " onmouseover="this.style.transform='scale(1.04)'; this.style.background='#a70000';"
-          onmouseout="this.style.transform='scale(1)'; this.style.background='linear-gradient(to bottom, #ff3c3c, #c40000)';">
-          Join the Rivalry →
-        </a>
       </div>
-    </div>
-  <% }); %>
-</div>
+    <% }); %>
+  </div>
 <% } %>
+
 
   <div id="commentsContainer" class="comments-container">
     <% if (comments.length === 0) { %>
@@ -246,110 +388,6 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
- 
-  <!-- Comment Form -->
-  <div class="comments-container" style="margin-top: 40px;">
-    <div class="comment-form-container" style="
-      background: rgba(245, 245, 245, 0.95);
-      border: 4px solid transparent;
-      background-image: url('/images/grass-border.png');
-      background-repeat: round;
-      background-size: 40px;
-      border-radius: 20px;
-      padding: 30px 70px 30px 40px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    ">
-      <form id="commentForm" action="/team/<%= teamname %>/comment" method="POST" enctype="multipart/form-data">
-        <textarea
-  id="commentText"
-  name="text"
-  placeholder="Write your comment... tag @username to mention someone"
-  style="
-    width: 100%;
-    height: 220px;
-    font-size: 18px;
-    padding: 15px;
-    border-radius: 12px;
-    border: 1px solid #ccc;
-    background: #fff;
-    resize: vertical;
-    margin-bottom: 15px;
-  "
-></textarea>
-
-        <input type="file" name="media" id="mediaInput" accept="image/*,video/*" style="display: none;" />
-        <input type="file" name="tacticImage" id="tacticImageInput" style="display: none;" />
-        <img id="mediaPreview" style="max-width: 200px; display: none; margin-top: 10px;" />
-        <p id="unauthMessage" class="hidden login-warning" style="margin-top: 12px; font-size: 18px; font-weight: bold; color: #007BFF;">
-  Please <span onclick="openLogin()" style="text-decoration: underline; cursor: pointer;">login</span> to post a comment.
-</p>
-        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px;">
-          <!-- Tactical Board Button — no auth-sensitive-btn class -->
-          <button type="button" id="openTacticalBoardBtn" style="
-            border: none;
-            background: transparent;
-            padding: 0;
-            margin: 0;
-            cursor: pointer;
-          ">
-            <img src="/images/tactical-board.png" alt="Tactical Board" style="
-              width: 220px;
-              height: auto;
-              display: block;
-              border-radius: 12px;
-            " />
-          </button>
-          
-          <!-- Attach File Button -->
-          <label for="mediaInput" class="auth-sensitive-btn" style="
-            border: none;
-            background: transparent;
-            padding: 0;
-            margin: 0;
-            cursor: pointer;
-            display: inline-block;
-          ">
-            <img src="/images/attach-file.png" alt="Attach File" style="
-              width: 220px;
-              height: auto;
-              display: block;
-              border-radius: 12px;
-            " />
-          </label>
-
-          <!-- Post Comment Button -->
-          <button type="submit" id="submitBtn" class="auth-sensitive-btn comment-submit-btn" style="
-            border: none;
-            background: transparent;
-            padding: 0;
-            margin: 0;
-            cursor: pointer;
-          ">
-            <img src="/images/post-commen.png" alt="Post Comment" style="
-              width: 220px;
-              height: auto;
-              display: block;
-              border-radius: 12px;
-            " />
-          </button>
-
-          <!-- Emoji Picker Button (desktop only) -->
-          <button type="button" id="emoji-button" style="
-            width: 60px;
-            height: 60px;
-            font-size: 28px;
-            border-radius: 12px;
-            border: none;
-            cursor: pointer;
-            background: url('/images/tactical-button-bg.jpg') center/cover no-repeat;
-            color: white;
-            font-weight: bold;
-            display: none;
-          ">😊</button>
-        </div>
-      </form>
-    </div>
-  </div>
 <script>
   document.querySelector('input[name="media"]').addEventListener('change', function () {
     const file = this.files[0];

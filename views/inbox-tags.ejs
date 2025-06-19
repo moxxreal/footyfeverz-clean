@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+  />
   <title>Tag Mentions | Footy Feverz</title>
   <link rel="stylesheet" href="/style.css" />
   <style>
@@ -11,30 +14,58 @@
       margin: 2rem auto;
       padding: 1rem;
     }
+    h2 {
+      text-align: center;
+      font-size: 1.8rem;
+      margin-bottom: 1.5rem;
+      color: #333;
+    }
     .tag-list {
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
-      margin-top: 1rem;
+      gap: 1rem;
     }
     .tag-item {
       background: #fff;
-      padding: 1rem;
-      border-radius: 1rem;
+      border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      padding: 1rem 1.2rem;
     }
     .tag-meta {
       font-size: 0.9rem;
-      color: #666;
+      color: #555;
+      margin-bottom: 0.5rem;
+    }
+    .tag-meta a {
+      color: #007bff;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .tag-meta a:hover {
+      text-decoration: underline;
     }
     .tag-content {
-      margin-top: 0.5rem;
+      margin-bottom: 0.75rem;
+      font-size: 1rem;
+      line-height: 1.4;
+    }
+    .tag-content mark {
+      background: #fffb91;
+      padding: 0 2px;
+      border-radius: 2px;
     }
     .tag-link {
-      color: #0077cc;
-      text-decoration: underline;
       display: inline-block;
-      margin-top: 0.3rem;
+      padding: 0.5rem 1rem;
+      background: #007bff;
+      color: #fff;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+    .tag-link:hover {
+      background: #0056b3;
     }
   </style>
 </head>
@@ -49,22 +80,35 @@
     <h2>🏷️ Tagged Mentions</h2>
 
     <% if (taggedComments.length === 0) { %>
-      <p class="empty-inbox">No one has tagged you in a comment yet.</p>
+      <p style="text-align: center; color: #666;">No one has tagged you in a comment yet.</p>
     <% } else { %>
       <div class="tag-list">
-        <% taggedComments.forEach(tag => { %>
+        <% taggedComments.forEach(tag => {
+             // Extract team from link: "/team/TEAMNAME#comments"
+             const parts = tag.link.split('/');
+             const teamName = parts[2].split('#')[0];
+             const leagueName = teamToLeagueMap[teamName]?.name || 'Unknown League';
+             // Highlight the mention in the content
+             const contentHtml = tag.content.replace(
+               new RegExp(`@${user.username}`, 'gi'),
+               `<mark>@${user.username}</mark>`
+             );
+        %>
           <div class="tag-item">
-            <div class="tag-meta">
-              <a href="/user/<%= tag.fromUser %>" style="color: #007bff;">@<%= tag.fromUser %></a>
-              mentioned you in 
-              <%= tag.threadType === 'poke' ? 'a poke thread' : 'a team comment' %>
-            </div>
-            <div class="tag-content">
-              <%= tag.content.replace(/@(\w+)/g, '<a href="/user/$1" style="color:#007BFF;">@$1</a>') %>
-            </div>
-            <a class="tag-link" href="<%= tag.link %>">View Comment</a>
-          </div>
-        <% }) %>
+    <div class="tag-meta">
+      <!-- display without the '@' -->
+      <a href="/user/<%= tag.fromUser %>"><%= tag.fromUser %></a>
+      mentioned you in a team comment in
+      <a href="/team/<%= teamName %>"><%= teamName %></a>
+      (<%= leagueName %>)
+    </div>
+    <div class="tag-content">
+      <!-- also strip '@' from the highlighted mention -->
+      <%- contentHtml.replace(/@/g, '') %>
+    </div>
+    <a class="tag-link" href="<%= tag.link %>">View Comment</a>
+  </div>
+<% }) %>
       </div>
     <% } %>
   </section>

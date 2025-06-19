@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>🔥 Fever by <%= fever.user %></title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+    .fever-container { max-width: 700px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .fever-media { width: 100%; height: auto; border-radius: 8px; overflow: hidden; }
+    .fever-media img,
+    .fever-media video { width: 100%; height: auto; display: block; }
+    .fever-caption { margin: 15px 0; font-size: 1.1rem; color: #333; }
+    .fever-meta { color: #666; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="fever-container">
+    <% if (fever.mediaType === 'video') { %>
+      <div class="fever-media">
+        <video controls autoplay muted loop>
+          <source src="<%= fever.mediaURL %>" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    <% } else { %>
+      <div class="fever-media">
+        <img src="<%= fever.mediaURL %>" alt="Fever image by <%= fever.user %>" />
+      </div>
+    <% } %>
+
+    <% if (fever.caption) { %>
+      <p class="fever-caption"><%= fever.caption %></p>
+    <% } %>
+
+    <p class="fever-meta">
+      Posted by <strong><%= fever.user %></strong>
+      on <%= fever.createdAt.toLocaleString() %>
+    </p>
+
+    <p style="text-align:center; margin-top:30px;">
+      <a href="/" style="text-decoration:none; color:#007bff;">← Back to Home</a>
+    </p>
+  </div>
+</body>
+</html>

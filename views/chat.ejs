@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+  />
+  <title>Chat with <%= other %> | Footy Feverz</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    /* Outer box holding messages + input */
+    .chat-box {
+      width: 100%;
+      max-width: 800px;
+      margin: 1rem auto;
+      height: calc(100vh - 170px);
+      display: flex;
+      flex-direction: column;
+      background: #f9f9f9;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    /* Scrollable messages area */
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .message {
+      display: flex;
+      width: 100%;
+    }
+    .message.sent { justify-content: flex-end; }
+    .message.received { justify-content: flex-start; }
+
+    .bubble {
+      max-width: 70%;
+      padding: 10px 14px;
+      border-radius: 18px;
+      font-size: 0.95rem;
+      line-height: 1.3;
+    }
+    .message.sent .bubble {
+      background: #e74c3c; /* red */
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .message.received .bubble {
+      background: #2ecc71; /* green */
+      color: #fff;
+      border-bottom-left-radius: 4px;
+    }
+    .bubble .from {
+      font-weight: bold;
+      text-decoration: none;
+      color: inherit;
+    }
+    .bubble .from:hover { text-decoration: underline; }
+    .bubble .text {
+      display: block;
+      margin-top: 4px;
+    }
+    .bubble .meta {
+      font-size: 0.75rem;
+      opacity: 0.6;
+      text-align: right;
+      margin-top: 6px;
+    }
+
+    /* Static input bar at bottom */
+    .input-bar {
+      display: flex;
+      padding: 0.5rem;
+      border-top: 1px solid #ddd;
+      background: #fff;
+    }
+    .input-bar textarea {
+      flex: 1;
+      padding: 0.6rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: none;
+      line-height: 1.3;
+      max-height: 150px;
+      font-size: 16px;
+      font-family: inherit;
+    }
+    .input-bar button {
+      margin-left: 0.5rem;
+      padding: 0.6rem 1rem;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .bubble { padding: 8px 12px; }
+      .input-bar { padding: 0.3rem; }
+      .input-bar button,
+      .input-bar textarea { font-size: 0.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <%- include('partials/_header', {
+    headerClass: 'header-home',
+    useTeamHeader: false,
+    user,
+    request,
+    loginError,
+    signupError,
+    showAuthLinks,
+    showLeagueLink
+  }) %>
+
+  <div class="chat-box">
+    <div class="chat-container" id="chat">
+      <% messages.forEach(m => {
+           const isMine  = m.from === user.username;
+           const dateObj = m.timestamp.toDate ? m.timestamp.toDate() : new Date(m.timestamp);
+      %>
+        <div class="message <%= isMine ? 'sent' : 'received' %>">
+          <div class="bubble">
+            <% if (!isMine) { %>
+              <a href="/user/<%= m.from %>" class="from"><%= m.from %></a>
+            <% } %>
+            <span class="text"><%= m.text %></span>
+            <div class="meta">
+              <%= dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+            </div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+
+    <div class="input-bar">
+      <textarea
+        id="msgInput"
+        placeholder="Type a message…"
+        autocomplete="off"
+        rows="1"
+      ></textarea>
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const me    = '<%= user.username %>';
+    const other = '<%= other %>';
+    const room  = [me, other].sort().join('_');
+
+    socket.emit('join', room);
+
+    function sendMessage() {
+      const input = document.getElementById('msgInput');
+      const text  = input.value.trim();
+      if (!text) return;
+      socket.emit('message', { room, from: me, to: other, text });
+      input.value = '';
+      input.focus();
+    }
+
+    document.getElementById('sendBtn').onclick = sendMessage;
+    document.getElementById('msgInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    socket.on('message', ({ from, text, timestamp }) => {
+      const chatEl  = document.getElementById('chat');
+      const dateObj = new Date(timestamp);
+      const msgDiv  = document.createElement('div');
+      msgDiv.className = `message ${from === me ? 'sent' : 'received'}`;
+      msgDiv.innerHTML = `
+        <div class="bubble">
+          ${from === me 
+             ? '' 
+             : `<a href="/user/${from}" class="from">${from}</a>`}
+          <span class="text">${text}</span>
+          <div class="meta">
+            ${dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>`;
+      chatEl.appendChild(msgDiv);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    });
+
+    // Scroll to bottom on initial load
+    const chatEl = document.getElementById('chat');
+    chatEl.scrollTop = chatEl.scrollHeight;
+  </script>
+</body>
+</html>

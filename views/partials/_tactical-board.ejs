@@ -260,8 +260,8 @@ function drawArrow(start, end) {
   const dy = end.y - start.y;
   const angle = Math.atan2(dy, dx);
 
-  ctx.strokeStyle = 'red';
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'white';  // was 'red'
+  ctx.lineWidth   = 4;
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
   ctx.lineTo(end.x, end.y);
@@ -270,10 +270,16 @@ function drawArrow(start, end) {
   // Arrowhead
   ctx.beginPath();
   ctx.moveTo(end.x, end.y);
-  ctx.lineTo(end.x - headlen * Math.cos(angle - Math.PI / 6), end.y - headlen * Math.sin(angle - Math.PI / 6));
-  ctx.lineTo(end.x - headlen * Math.cos(angle + Math.PI / 6), end.y - headlen * Math.sin(angle + Math.PI / 6));
-  ctx.lineTo(end.x, end.y);
-  ctx.fillStyle = 'red';
+  ctx.lineTo(
+    end.x - headlen * Math.cos(angle - Math.PI / 6),
+    end.y - headlen * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.lineTo(
+    end.x - headlen * Math.cos(angle + Math.PI / 6),
+    end.y - headlen * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.closePath();
+  ctx.fillStyle = 'white';   // was 'red'
   ctx.fill();
 }
 

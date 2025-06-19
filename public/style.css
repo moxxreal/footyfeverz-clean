@@ -228,17 +228,6 @@ body.modal-open {
   width: 100%;
 }
 
-/* --- Close Button --- */
-.close-modal {
-  position: absolute;
-  top: 20px;
-  right: 30px;
-  font-size: 30px;
-  color: white;
-  cursor: pointer;
-  z-index: 10000;
-}
-
 /* --- Progress Bar in Modal --- */
 .story-progress {
   position: absolute;
@@ -305,264 +294,11 @@ body.modal-open {
   color: #ffd700;
 }
 
-/* Dark overlay background for modal */
-.auth-modal {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.75); /* darker overlay */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
 
 /* Hide modals by default */
 .hidden {
   display: none !important;
 }
-
-/* Login/Signup form popup box */
-.auth-form {
-  background: #0a1a2f; /* navy blue */
-  color: #f2f2f2;
-  padding: 2rem;
-  border-radius: 16px;
-  max-width: 420px;
-  width: 90%;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.8);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  position: relative;
-  font-family: 'Segoe UI', sans-serif;
-  border: 1px solid #2c3e50;
-}
-
-/* Form heading */
-.auth-form h2 {
-  margin: 0;
-  font-size: 1.6rem;
-  color: #5dade2; /* soft blue */
-  text-align: center;
-}
-
-/* Form fields */
-.auth-form input {
-  padding: 12px;
-  font-size: 1rem;
-  border-radius: 8px;
-  border: 1px solid #34495e;
-  background-color: #1b2b45;
-  color: #eee;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.auth-form input:focus {
-  border-color: #5dade2;
-}
-
-/* Submit button */
-.auth-form button[type="submit"] {
-  background: #5dade2;
-  color: #0a1a2f;
-  font-weight: bold;
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background 0.3s, transform 0.2s;
-}
-
-.auth-form button[type="submit"]:hover {
-  background: #3498db;
-  transform: scale(1.03);
-}
-
-/* Close (X) button */
-.auth-form .close-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: transparent;
-  border: none;
-  color: #aaa;
-  font-size: 1.2rem;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.auth-form .close-btn:hover {
-  color: white;
-}
-
-.auth-form p {
-  color: #ff6666;
-  font-size: 0.9rem;
-  text-align: center;
-  margin-top: -0.5rem;
-}
-
-/* profile and inbox? */
-.inbox-container {
-  max-width: 800px;
-  margin: 60px auto;
-  padding: 30px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  font-family: 'Segoe UI', sans-serif;
-}
-
-.inbox-container h2 {
-  text-align: center;
-  font-size: 30px;
-  color: #38003c;
-  margin-bottom: 30px;
-}
-
-.empty-inbox {
-  text-align: center;
-  font-size: 18px;
-  color: #777;
-}
-
-.conversation-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.conversation-item {
-  display: flex;
-  align-items: center;
-  background: white;
-  padding: 14px 18px;
-  border: 1px solid #ccc;
-  border-radius: 12px;
-  text-decoration: none;
-  transition: background 0.2s ease;
-}
-
-.conversation-item:hover {
-  background: #f0f8ff;
-}
-
-.avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-right: 15px;
-}
-
-.conversation-content {
-  flex: 1;
-  overflow: hidden;
-}
-
-.conversation-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.conversation-header strong {
-  font-size: 18px;
-  color: #222;
-}
-
-.conversation-header small {
-  color: #999;
-  font-size: 13px;
-}
-
-.conversation-message {
-  margin-top: 5px;
-  font-size: 15px;
-  color: #444;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.unread-dot {
-  width: 10px;
-  height: 10px;
-  background: #ff3b30;
-  border-radius: 50%;
-  margin-left: 12px;
-}
-.chat-container {
-  max-width: 700px;
-  margin: 60px auto;
-  padding: 30px;
-  background: rgba(255,255,255,0.95);
-  border-radius: 20px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  font-family: 'Segoe UI', sans-serif;
-}
-
-.chat-container h2 {
-  text-align: center;
-  color: #38003c;
-  margin-bottom: 20px;
-}
-
-#chat-box {
-  height: 300px;
-  overflow-y: auto;
-  padding: 1em;
-  background: #f9f9f9;
-  border: 1px solid #ccc;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  display: flex;
-  flex-direction: column;
-}
-
-#typing-indicator {
-  text-align: center;
-  font-style: italic;
-  color: #888;
-  display: none;
-  margin-bottom: 10px;
-}
-
-#chat-form {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-#message-input {
-  width: 100%;
-  max-width: 600px;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  font-size: 16px;
-}
-
-#chat-form button {
-  margin-top: 10px;
-  padding: 10px 20px;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background 0.2s;
-}
-
-#chat-form button:hover {
-  background: #0056b3;
-}
-
 
 button.follow-btn,
 a.chat-button {
@@ -579,14 +315,6 @@ button.follow-btn.unfollow:hover {
   background: #c82333; /* darker red */
 }
 
-a.chat-button:hover {
-  background: #0062cc; /* darker blue */
-  transform: translateY(-1px);
-}
-.btn-shared:hover {
-  opacity: 0.9;
-  filter: brightness(1.1);
-}
 .shake {
   animation: shake 0.4s;
 }
@@ -651,4 +379,389 @@ a.chat-button:hover {
 
 .player.blue {
   content: url('/images/player-blue.png');
+}
+
+/* Top fans this week */
+.leaderboard-card {
+  max-width: 600px;
+  margin: 2rem auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  background: #fff;
+  overflow: hidden;
+  width: 90%; /* ensures it doesn't overflow on small screens */
+}
+
+.leaderboard-header {
+  background: linear-gradient(135deg, #ff7e5f, #feb47b);
+  padding: 1rem 1.5rem;
+  color: #fff;
+}
+.leaderboard-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.leaderboard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.leaderboard-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #eee;
+  transition: background 0.2s;
+  gap: 0.5rem;
+  flex-wrap: wrap; /* allow wrapping on smaller screens */
+}
+.leaderboard-item:last-child {
+  border-bottom: none;
+}
+.leaderboard-item:hover {
+  background: #fafafa;
+}
+.rank {
+  font-weight: bold;
+  width: 2rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.username {
+  flex: 1 1 auto;
+  font-weight: 600;
+  color: #333;
+  text-decoration: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.username:hover {
+  text-decoration: underline;
+}
+
+.stats {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  flex: 1 1 100%;
+  margin-top: 0.25rem;
+}
+.stats span {
+  min-width: 60px;
+  text-align: right;
+  font-size: 0.875rem;
+  color: #555;
+}
+.stats .score {
+  font-weight: bold;
+  color: #d48806;
+}
+/* Feverz */
+.modal.hidden {
+  display: none;
+}
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal form {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+}
+
+/* Make the feed a horizontal, scrollable “stories” row */
+#feverFeed {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: #f5f5f5;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+#feverFeed::-webkit-scrollbar {
+  display: none;
+}
+
+/* Each story‐style item: fixed small square */
+.fever-item {
+  flex: 0 0 120px;
+  height: 120px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  cursor: pointer;
+}
+
+/* Media inside fills and crops neatly */
+.fever-item img,
+.fever-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  cursor: pointer;
+}
+@media (min-width: 768px) {
+  .fever-item video {
+    object-fit: contain;
+    background: #000;
+  }
+}
+
+/* hide caption and action bar on feed thumbnails */
+.fever-item .fever-caption,
+.fever-item .actions {
+  display: none;
+}
+
+/* Add-Fever button styling */
+.add-fever-button {
+  flex: 0 0 120px;
+  height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #e0e0e0;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.add-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+.add-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+  text-align: center;
+}
+.fever-item.loading {
+  position: relative;
+  opacity: 0.6;
+}
+.fever-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  color: #333;
+  background: rgba(255,255,255,0.8);
+}
+.fever-spinner::after {
+  content: "Loading…";
+}
+
+/* fullscreen overlay background */
+.fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  touch-action: none;
+}
+.fullscreen-overlay img,
+.fullscreen-overlay video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Hide default overlay nav controls on mobile */
+@media (hover: none) and (pointer: coarse) {
+  .overlay-prev,
+  .overlay-next {
+    display: none;
+  }
+}
+
+/* overlay nav controls */
+.overlay-prev,
+.overlay-next,
+.overlay-close,
+.overlay-mute {
+  position: absolute;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  z-index: 2001;
+}
+.overlay-close {
+  top: 1rem;
+  right: 1rem;
+  font-size: 2rem;
+  padding: 0.5rem;
+}
+.overlay-prev {
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 2rem;
+  padding: 0.5rem;
+}
+.overlay-next {
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 2rem;
+  padding: 0.5rem;
+}
+.overlay-mute {
+  top: 1rem;
+  left: 1rem;
+  font-size: 1.5rem;
+}
+
+/* Fever video progress bar */
+.overlay-progress {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.3);
+  z-index: 2001;
+}
+.overlay-progress-filled {
+  width: 0%;
+  height: 100%;
+  background: #fff;
+}
+/* ─── FEVER ... TikTok-style overlay controls ───────────────────────────────────────── */
+.overlay-controls {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  background: rgba(0,0,0,0.4);
+  padding: 10px 0;
+  z-index: 2002;
+}
+.control-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+/* ─── Comment panel FEVER ─────────────────────────────────────────────────────── */
+.comment-panel {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 60%;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  z-index: 2002;
+}
+.comment-panel.hidden {
+  display: none;
+}
+.comments-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+.comment-input {
+  display: flex;
+  border-top: 1px solid #ccc;
+}
+.comment-input input {
+  flex: 1;
+  border: none;
+  padding: 10px;
+}
+.comment-input button {
+  border: none;
+  background: #007bff;
+  color: #fff;
+  padding: 0 15px;
+  cursor: pointer;
+}
+/* Prevent mobile autofocusing zoom on comment input */
+.comment-input input {
+  font-size: 16px;
+  /* ensure our font-size doesn’t blow up the layout */
+  line-height: 1.2;
+}
+
+/* Disable automatic text-size adjustments in WebKit */
+html, body, input, textarea, button {
+  -webkit-text-size-adjust: 100%;
+}
+/* Comment username link styling */
+.comment-item .comment-user {
+  color: inherit;
+  text-decoration: none;
+  font-weight: bold;
+  cursor: pointer;
+}
+.comment-item .comment-user:hover {
+  text-decoration: underline;
+}
+/*  Fever buttons */
+@media (min-width: 768px) {
+  .overlay-controls {
+    /*  them across the whole width */
+    justify-content: center;
+    /* control the gap between each icon */
+    gap: 0.5rem;
+    /* you can also reduce vertical padding if you like */
+    padding: 5px 0;
+  }
+
+  .overlay-controls .control-btn {
+    /* make sure they don’t pick up extra margins */
+    margin: 0;
+  }
+}
+/* fullscreen overlay uploader name */
+
+.overlay-uploader {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 1rem;
+  text-decoration: none;
+  background: rgba(0,0,0,0.5);
+  padding: 4px 8px;
+  border-radius: 4px;
+  z-index: 2001;
+}
+.overlay-uploader:hover {
+  background: rgba(0,0,0,0.75);
 }

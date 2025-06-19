@@ -48,61 +48,41 @@
     .avatar-overlay div:hover {
       color: #00ffff;
     }
-    .story-carousel {
-      display: flex;
-      overflow-x: auto;
-      gap: 15px;
-      padding: 20px 0;
-      margin-bottom: 40px;
-    }
-    .story-item {
-      flex: 0 0 auto;
-      width: 150px;
-    }
-    .story-item img, .story-item video {
-      width: 100%;
-      border-radius: 10px;
-    }
     .user-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.user-entry {
-  display: flex;
-  align-items: center;
-  background: #eee;
-  padding: 8px 12px;
-  border-radius: 8px;
-  text-decoration: none;
-  color: #333;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-
-.user-entry:hover {
-  background: #ddd;
-}
-
-.user-entry img {
-  width: 32px;
-  height: 32px;
-  object-fit: cover;
-  border-radius: 50%;
-  margin-right: 8px;
-}
-
-@media screen and (max-width: 600px) {
-  .user-list {
-    flex-direction: column;
-  }
-
-  .user-entry {
-    font-size: 1rem;
-    padding: 10px;
-  }
-}
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .user-entry {
+      display: flex;
+      align-items: center;
+      background: #eee;
+      padding: 8px 12px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: #333;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .user-entry:hover {
+      background: #ddd;
+    }
+    .user-entry img {
+      width: 32px;
+      height: 32px;
+      object-fit: cover;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    @media screen and (max-width: 600px) {
+      .user-list {
+        flex-direction: column;
+      }
+      .user-entry {
+        font-size: 1rem;
+        padding: 10px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -113,164 +93,155 @@
 
   <section class="user-profile" style="padding: 40px 20px; max-width: 900px; margin: 0 auto;">
     <div class="profile-box" style="display: flex; gap: 30px; flex-wrap: wrap; align-items: center; justify-content: flex-start;">
-      <!-- Avatar Upload -->
+      <!-- Avatar Upload / Display -->
       <% if (user && user.username === profileUser) { %>
         <div class="avatar-container">
           <form id="avatarForm" method="POST" action="/user/upload-avatar" enctype="multipart/form-data">
             <label for="avatarInput" style="cursor: pointer;">
-              <img src="<%= profilePic %>" alt="Avatar" style="width: 130px; height: 130px; object-fit: cover; border-radius: 50%; border: 3px solid #ddd;" />
+              <img src="<%= profilePic %>" alt="Avatar"
+                   style="width: 130px; height: 130px; object-fit: cover; border-radius: 50%; border: 3px solid #ddd;" />
               <div class="avatar-overlay">
                 <div><%= profilePic === '/default-avatar.png' ? 'Upload Photo' : 'Change Photo' %></div>
                 <button type="button" onclick="document.getElementById('removeAvatarForm').submit()">Remove Photo</button>
               </div>
             </label>
-            <input type="file" name="profile_pic" id="avatarInput" accept="image/*" style="display: none;" onchange="document.getElementById('avatarForm').submit()" />
+            <input type="file" name="profile_pic" id="avatarInput" accept="image/*" style="display: none;"
+                   onchange="document.getElementById('avatarForm').submit()" />
           </form>
           <form id="removeAvatarForm" method="POST" action="/user/remove-avatar"></form>
         </div>
       <% } else { %>
         <div>
-          <img src="<%= profilePic %>" alt="Avatar" style="width: 130px; height: 130px; object-fit: cover; border-radius: 50%; border: 3px solid #ddd;" />
+          <img src="<%= profilePic %>" alt="Avatar"
+               style="width: 130px; height: 130px; object-fit: cover; border-radius: 50%; border: 3px solid #ddd;" />
         </div>
       <% } %>
 
-      <!-- Username, Stats, Buttons -->
+      <!-- Username, Stats, and Action Buttons -->
       <div style="flex: 1; min-width: 240px;">
         <h1 style="margin: 0 0 10px; font-size: 1.8rem;"><%= profileUser %></h1>
 
         <div class="stats" style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
-          <div class="stat-box"><strong><%= totalComments %></strong><span>Comments</span></div>
-          <div class="stat-box"><strong><%= totalLikes %></strong><span>Likes</span></div>
-          <div class="stat-box"><strong><%= followersCount %></strong><span>Followers</span></div>
-          <div class="stat-box"><strong><%= followingCount %></strong><span>Following</span></div>
+          <div class="stat-box">
+            <strong><%= totalComments %></strong>
+            <span>Comments</span>
+          </div>
+          <div class="stat-box">
+            <strong><%= totalLikes %></strong>
+            <span>Likes</span>
+          </div>
+          <div class="stat-box" id="followersToggle" style="cursor: pointer;">
+            <strong><%= followers.length %></strong>
+            <span>Followers ⬇️</span>
+          </div>
+          <div class="stat-box" id="followingToggle" style="cursor: pointer;">
+            <strong><%= following.length %></strong>
+            <span>Following ⬇️</span>
+          </div>
         </div>
-<% if (user && user.username === profileUser && followRequests.length > 0) { %>
-  <div style="margin: 20px 0;">
-    <% followRequests.forEach(requester => { %>
-      <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 15px;">
-        <span><a href="/user/<%= requester %>"><%= requester %></a></span>
-        <form action="/user/<%= requester %>/accept-follow" method="POST" style="display:inline;">
-          <button type="submit">Accept & Follow Back</button>
-        </form>
-        <form action="/user/<%= requester %>/reject-follow" method="POST" style="display:inline;">
-          <button type="submit">Reject</button>
-        </form>
-      </div>
-    <% }) %>
-  </div>
-<% } %>
-<% if (user && user.username !== profileUser) { %>
-  <div style="display: flex; gap: 15px; margin-top: 10px; justify-content: center;">
-    <% if (isFollowing) { %>
-      <form method="POST" action="/user/<%= profileUser %>/unfollow">
-        <button type="submit" class="follow-btn unfollow" style="
-          padding: 10px 20px;
-          min-width: 130px;
-          text-align: center;
-          background: #dc3545;
-          color: white;
-          border: none;
-          border-radius: 5px;
-          font-size: 1rem;
-          cursor: pointer;
-        ">
-          Unfollow
-        </button>
-      </form>
-    <% } else if (requestSent) { %>
-      <button disabled style="
-        padding: 10px 20px;
-        min-width: 130px;
-        text-align: center;
-        background: #6c757d;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        font-size: 1rem;
-        cursor: not-allowed;
-      ">
-        Request Sent
-      </button>
-    <% } else { %>
-      <form method="POST" action="/user/<%= profileUser %>/follow">
-        <button type="submit" class="follow-btn" style="
-          padding: 10px 20px;
-          min-width: 130px;
-          text-align: center;
-          background: #28a745;
-          color: white;
-          border: none;
-          border-radius: 5px;
-          font-size: 1rem;
-          cursor: pointer;
-        ">
-          Follow
-        </button>
-      </form>
-    <% } %>
-    <form action="/chat/<%= profileUser %>" method="GET">
-  <button type="submit" style="
-    padding: 10px 20px;
-    min-width: 130px;
-    text-align: center;
-    background: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background 0.3s;
-  " onmouseover="this.style.background='#0069d9'" onmouseout="this.style.background='#007bff'">
-    Message
-  </button>
-</form>
-  </div>
-<% } %>
+
+        <!-- Pending Follow Requests -->
+        <% if (user && user.username === profileUser && followRequests.length > 0) { %>
+          <div style="margin: 20px 0;">
+            <% followRequests.forEach(requester => { %>
+              <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 15px;">
+                <span><a href="/user/<%= requester %>"><%= requester %></a></span>
+                <form action="/user/<%= requester %>/accept-follow" method="POST" style="display:inline;">
+                  <button type="submit">Accept & Follow Back</button>
+                </form>
+                <form action="/user/<%= requester %>/reject-follow" method="POST" style="display:inline;">
+                  <button type="submit">Reject</button>
+                </form>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+
+        <!-- Follow/Unfollow + Message Buttons -->
+        <% if (user && user.username !== profileUser) { %>
+          <div style="display: flex; gap: 15px; margin-top: 10px; justify-content: center;">
+            <% if (isFollowing) { %>
+              <form method="POST" action="/user/<%= profileUser %>/unfollow">
+                <button type="submit" class="follow-btn unfollow"
+                        style="padding: 10px 20px; min-width: 130px; background: #dc3545; color: #fff; border: none; border-radius: 5px; font-size: 1rem; cursor: pointer;">
+                  Unfollow
+                </button>
+              </form>
+            <% } else if (requestSent) { %>
+              <button disabled
+                      style="padding: 10px 20px; min-width: 130px; background: #6c757d; color: #fff; border: none; border-radius: 5px; font-size: 1rem;">
+                Request Sent
+              </button>
+            <% } else { %>
+              <form method="POST" action="/user/<%= profileUser %>/follow">
+                <button type="submit" class="follow-btn"
+                        style="padding: 10px 20px; min-width: 130px; background: #28a745; color: #fff; border: none; border-radius: 5px; font-size: 1rem; cursor: pointer;">
+                  Follow
+                </button>
+              </form>
+            <% } %>
+
+            <!-- Message Button -->
+            <form action="/chat/<%= profileUser %>">
+              <button type="submit"
+                      style="padding: 10px 20px; background: #007bff; color: #fff; border: none; border-radius: 5px; font-size: 1rem; cursor: pointer;">
+                Message
+              </button>
+            </form>
+          </div>
+        <% } %>
       </div>
     </div>
-<h3 id="followersToggle" onclick="toggleSection('followersListWrap', 'followersToggle')" style="cursor: pointer;">
-  👥 Followers (<%= followers.length %>) ⬇️
-</h3>
 
-<% if (followers && followers.length > 0) { %>
-  <div id="followersListWrap" style="display: none;">
-    <input id="followersSearch" oninput="filterUsers('followersSearch', 'followersList', followersData)" placeholder="Search followers..." style="padding: 8px; width: 100%; max-width: 400px; margin-bottom: 10px;" />
-    <div id="followersList" class="user-list"></div>
-    <div id="followersPagination" style="margin-top: 10px;"></div>
-  </div>
-<% } else { %>
-  <p style="margin-bottom: 30px;">This user has no followers yet.</p>
-<% } %>
-
-<!-- Following Section -->
-<h3 id="followingToggle" onclick="toggleSection('followingListWrap', 'followingToggle')" style="cursor: pointer;">
-  ➡️ Following (<%= following.length %>) ⬇️
-</h3>
-
-<% if (following && following.length > 0) { %>
-  <div id="followingListWrap" style="display: none;">
-    <input id="followingSearch" oninput="filterUsers('followingSearch', 'followingList', followingData)" placeholder="Search following..." style="padding: 8px; width: 100%; max-width: 400px; margin-bottom: 10px;" />
-    <div id="followingList" class="user-list"></div>
-    <div id="followingPagination" style="margin-top: 10px;"></div>
-  </div>
-<% } else { %>
-  <p>This user isn’t following anyone yet.</p>
-<% } %>
-
-    <% if (stories.length > 0) { %>
-      <div class="story-carousel">
-        <% stories.forEach(story => { %>
-          <div class="story-item" onclick="openStoryModal('<%= story.image %>', '<%= story.caption %>')" style="cursor: pointer;">
-  <% if (story.image.endsWith('.mp4') || story.image.endsWith('.webm') || story.image.endsWith('.ogg')) { %>
-    <video src="<%= story.image %>" muted playsinline></video>
-  <% } else { %>
-    <img src="<%= story.image %>" alt="Story" />
-  <% } %>
-</div>
-        <% }) %>
+    <!-- Followers List -->
+    <% if (followers && followers.length > 0) { %>
+      <div id="followersListWrap" style="display: none; margin-top: 20px;">
+        <input id="followersSearch"
+               oninput="filterUsers('followersSearch','followersList',followersData)"
+               placeholder="Search followers..."
+               style="padding: 8px; width: 100%; max-width: 400px; margin-bottom: 10px;" />
+        <div id="followersList" class="user-list"></div>
+        <div id="followersPagination" style="margin-top: 10px;"></div>
       </div>
+    <% } else { %>
+      <p style="margin-bottom: 30px;">This user has no followers yet.</p>
     <% } %>
 
+    <!-- Following List -->
+    <% if (following && following.length > 0) { %>
+      <div id="followingListWrap" style="display: none; margin-top: 20px;">
+        <input id="followingSearch"
+               oninput="filterUsers('followingSearch','followingList',followingData)"
+               placeholder="Search following..."
+               style="padding: 8px; width: 100%; max-width: 400px; margin-bottom: 10px;" />
+        <div id="followingList" class="user-list"></div>
+        <div id="followingPagination" style="margin-top: 10px;"></div>
+      </div>
+    <% } else { %>
+      <p>This user isn’t following anyone yet.</p>
+    <% } %>
+
+    <!-- User’s Fevers -->
+    <% if (fevers && fevers.length) { %>
+      <section class="user-fevers" style="margin: 30px 0; max-width: 900px;">
+        <h2 style="margin-bottom: 15px; font-size: 1.4rem;">🔥 <%= profileUser %>'s Fevers</h2>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+          <% fevers.forEach(f => { %>
+            <a href="/fever/<%= f.id %>" style="width: 120px; height: 120px; overflow: hidden; border-radius: 8px;">
+              <% if (f.mediaType === 'video') { %>
+                <video src="<%= f.mediaURL %>" muted autoplay loop playsinline preload="metadata"
+                       style="width:100%; height:100%; object-fit:cover; background:#000;"></video>
+              <% } else { %>
+                <img src="<%= f.mediaURL %>" alt="Fever"
+                     style="width:100%; height:100%; object-fit:cover;" />
+              <% } %>
+            </a>
+          <% }) %>
+        </div>
+      </section>
+    <% } %>
+
+    <!-- Recent Comments -->
     <div class="recent-activity">
       <% if (comments.length === 0) { %>
         <p>This user hasn't posted any comments yet.</p>
@@ -281,7 +252,8 @@
             <p><%= comment.text %></p>
 
             <% if (comment.media) {
-              const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg'); %>
+              const isVideo = /\.(mp4|webm|ogg)$/i.test(comment.media);
+            %>
               <% if (isVideo) { %>
                 <video src="<%= comment.media %>" controls style="max-width: 100%; margin-top: 10px;"></video>
               <% } else { %>
@@ -302,137 +274,98 @@
       <% } %>
     </div>
   </section>
-  <div id="storyModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:1000; justify-content:center; align-items:center;">
-  <div id="storyContent" style="max-width:90vw; max-height:90vh; text-align:center;">
-    <span onclick="closeStoryModal()" style="position:absolute; top:20px; right:30px; color:white; font-size:2rem; cursor:pointer;">✖</span>
-    <div id="storyMedia"></div>
-    <p id="storyCaption" style="color:white; margin-top:15px;"></p>
-  </div>
-</div>
-<script>
-  function openStoryModal(mediaUrl, caption) {
-    const storyModal = document.getElementById('storyModal');
-    const storyMedia = document.getElementById('storyMedia');
-    const storyCaption = document.getElementById('storyCaption');
 
-    storyMedia.innerHTML = '';
-
-    if (mediaUrl.match(/\.(mp4|webm|ogg)$/)) {
-      const video = document.createElement('video');
-      video.src = mediaUrl;
-      video.controls = true;
-      video.style.maxWidth = '100%';
-      video.style.maxHeight = '80vh';
-      storyMedia.appendChild(video);
-    } else {
-      const img = document.createElement('img');
-      img.src = mediaUrl;
-      img.style.maxWidth = '100%';
-      img.style.maxHeight = '80vh';
-      storyMedia.appendChild(img);
+  <script>
+    function toggleSection(id, btnId) {
+      const section = document.getElementById(id);
+      const button  = document.getElementById(btnId);
+      if (section.style.display === 'none') {
+        section.style.display = 'block';
+        button.querySelector('span')
+          .innerText = button.querySelector('span').innerText.replace('⬇️', '⬆️');
+      } else {
+        section.style.display = 'none';
+        button.querySelector('span')
+          .innerText = button.querySelector('span').innerText.replace('⬆️', '⬇️');
+      }
     }
 
-    storyCaption.textContent = caption;
-    storyModal.style.display = 'flex';
-  }
-
-  function closeStoryModal() {
-    document.getElementById('storyModal').style.display = 'none';
-  }
-  
-  function toggleSection(id, btnId) {
-    const section = document.getElementById(id);
-    const button = document.getElementById(btnId);
-    if (section.style.display === 'none') {
-      section.style.display = 'flex';
-      button.innerText = button.innerText.replace('⬇️', '⬆️');
-    } else {
-      section.style.display = 'none';
-      button.innerText = button.innerText.replace('⬆️', '⬇️');
-    }
-  }
-
-  const followersData = <%- JSON.stringify(followers) %>;
-  const followingData = <%- JSON.stringify(following) %>;
-
-  function toggleSection(id, btnId) {
-    const section = document.getElementById(id);
-    const button = document.getElementById(btnId);
-    if (section.style.display === 'none') {
-      section.style.display = 'block';
-      button.innerText = button.innerText.replace('⬇️', '⬆️');
-    } else {
-      section.style.display = 'none';
-      button.innerText = button.innerText.replace('⬆️', '⬇️');
-    }
-  }
-
- function renderPaginatedUsers(data, listId, paginationId, currentPage = 1, perPage = 10) {
-  const list = document.getElementById(listId);
-  const pagination = document.getElementById(paginationId);
-  list.innerHTML = '';
-
-  const filtered = data.filter(u => !u.hidden);
-  const total = filtered.length;
-  const pages = Math.ceil(total / perPage);
-  const start = (currentPage - 1) * perPage;
-  const end = start + perPage;
-  const pageUsers = filtered.slice(start, end);
-
-  pageUsers.forEach(user => {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'user-entry-wrapper';
-
-    const a = document.createElement('a');
-    a.className = 'user-entry';
-    a.href = `/user/${user.username}`;
-    a.innerHTML = `
-      <img src="${user.profilePic || '/default-avatar.png'}" alt="${user.username}" />
-      <span>${user.username}</span>
-    `;
-
-    wrapper.appendChild(a);
-
-    if (user.showFollowBack) {
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = `/user/${user.username}/follow`;
-      form.innerHTML = `
-        <button type="submit" class="follow-back-btn">Follow Back</button>
-      `;
-      wrapper.appendChild(form);
-    }
-
-    list.appendChild(wrapper);
-  });
-
-  pagination.innerHTML = '';
-  if (pages > 1) {
-    for (let i = 1; i <= pages; i++) {
-      const btn = document.createElement('button');
-      btn.textContent = i;
-      btn.style.margin = '0 4px';
-      btn.onclick = () => renderPaginatedUsers(data, listId, paginationId, i, perPage);
-      if (i === currentPage) btn.style.fontWeight = 'bold';
-      pagination.appendChild(btn);
-    }
-  }
-}
-
-  function filterUsers(inputId, listId, data) {
-    const input = document.getElementById(inputId).value.toLowerCase();
-    data.forEach(user => {
-      user.hidden = !user.username.toLowerCase().includes(input);
+    document.getElementById('followersToggle').addEventListener('click', () => {
+      const followWrap = document.getElementById('followingListWrap');
+      if (followWrap.style.display === 'block') {
+        toggleSection('followingListWrap', 'followingToggle');
+      }
+      toggleSection('followersListWrap', 'followersToggle');
     });
-    const paginationId = listId === 'followersList' ? 'followersPagination' : 'followingPagination';
-    renderPaginatedUsers(data, listId, paginationId, 1);
-  }
 
-  // Initial render
-  document.addEventListener('DOMContentLoaded', () => {
-    renderPaginatedUsers(followersData, 'followersList', 'followersPagination');
-    renderPaginatedUsers(followingData, 'followingList', 'followingPagination');
-  });
-</script>
+    document.getElementById('followingToggle').addEventListener('click', () => {
+      const followersWrap = document.getElementById('followersListWrap');
+      if (followersWrap.style.display === 'block') {
+        toggleSection('followersListWrap', 'followersToggle');
+      }
+      toggleSection('followingListWrap', 'followingToggle');
+    });
+
+    const followersData = <%- JSON.stringify(followers) %>;
+    const followingData = <%- JSON.stringify(following) %>;
+
+    function renderPaginatedUsers(data, listId, paginationId, currentPage = 1, perPage = 10) {
+      const list = document.getElementById(listId);
+      const pagination = document.getElementById(paginationId);
+      list.innerHTML = '';
+      const filtered = data.filter(u => !u.hidden);
+      const total = filtered.length;
+      const pages = Math.ceil(total / perPage);
+      const start = (currentPage - 1) * perPage;
+      const end = start + perPage;
+
+      filtered.slice(start, end).forEach(user => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'user-entry-wrapper';
+        const a = document.createElement('a');
+        a.className = 'user-entry';
+        a.href = `/user/${user.username}`;
+        a.innerHTML = `<img src="${user.profilePic || '/default-avatar.png'}" alt="${user.username}" />
+                       <span>${user.username}</span>`;
+        wrapper.appendChild(a);
+        if (user.showFollowBack) {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = `/user/${user.username}/follow`;
+          form.innerHTML = `<button type="submit" class="follow-back-btn">Follow Back</button>`;
+          wrapper.appendChild(form);
+        }
+        list.appendChild(wrapper);
+      });
+
+      pagination.innerHTML = '';
+      if (pages > 1) {
+        for (let i = 1; i <= pages; i++) {
+          const btn = document.createElement('button');
+          btn.textContent = i;
+          btn.style.margin = '0 4px';
+          btn.onclick = () => renderPaginatedUsers(data, listId, paginationId, i, perPage);
+          if (i === currentPage) btn.style.fontWeight = 'bold';
+          pagination.appendChild(btn);
+        }
+      }
+    }
+
+    function filterUsers(inputId, listId, data) {
+      const input = document.getElementById(inputId).value.toLowerCase();
+      data.forEach(user => {
+        user.hidden = !user.username.toLowerCase().includes(input);
+      });
+      const paginationId = listId === 'followersList'
+        ? 'followersPagination'
+        : 'followingPagination';
+      renderPaginatedUsers(data, listId, paginationId, 1);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderPaginatedUsers(followersData, 'followersList', 'followersPagination');
+      renderPaginatedUsers(followingData, 'followingList', 'followingPagination');
+    });
+  </script>
 </body>
 </html>

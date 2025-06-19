@@ -12,6 +12,25 @@
       background: #fafafa;
     }
 
+    .login-prompt {
+  text-align: center;
+  background: linear-gradient(90deg, #ff416c, #ff4b2b);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  margin: 0 auto 20px;
+  max-width: 600px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.login-prompt .login-link {
+  color: #fff;
+  font-weight: bold;
+  text-decoration: underline;
+  margin: 0 4px;
+}
+
     .rival-header {
       text-align: center;
       margin-top: 30px;
@@ -173,24 +192,35 @@
 <body>
   <%- include('partials/_header') %>
 
+  <% if (!user) { %>
+  <div class="login-prompt">
+    <a href="#" onclick="openLogin()" class="login-link">Log in now</a>
+    to cast your vote and jump into the rivalry! ⚔️
+  </div>
+<% } %>
+
   <% if (user && !userVote) { %>
-    <form action="/poke/<%= pokeId %>/support" method="POST">
-      <p>Which side are you on?</p>
-      <button type="submit" name="team" value="teamA">Support <%= teamA %></button>
-      <button type="submit" name="team" value="teamB">Support <%= teamB %></button>
-    </form>
-  <% } else if (userVote) { %>
-    <p style="text-align:center;"><strong>You’re supporting: <%= userVote === 'teamA' ? teamA : teamB %></strong></p>
-  <% } %>
+  <form id="support-form" action="/poke/<%= pokeId %>/support" method="POST">
+    <p>Which side are you on?</p>
+    <button type="submit" name="team" value="teamA">Support <%= teamA %></button>
+    <button type="submit" name="team" value="teamB">Support <%= teamB %></button>
+  </form>
+<% } else if (userVote) { %>
+  <p style="text-align:center;">
+    <strong>You’re supporting: <%= userVote === 'teamA' ? teamA : teamB %></strong>
+  </p>
+<% } %>
 
   <div style="text-align:center; margin: 20px 0;">
-    <div class="scoreboard" id="scoreboard">⚽ Live Score: 0 - 0</div>
+  <div class="scoreboard" id="scoreboard">
+    ⚽ <%= teamA.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %> 0 - 0 <%= teamB.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %>
+     </div>
     <div class="goal-flash" id="goalFlash">GOAL!</div>
   </div>
 
   <div class="pitch-container">
     <img src="/images/pitch.jpg" alt="Football Pitch" class="pitch" />
-    <img id="ball" src="/images/ball.png" class="ball" style="left: 45%;" />
+        <img id="ball" src="/images/ball.png" class="ball" style="left: 50%;" />
 
     <% for (let i = 0; i < 5; i++) { 
       const topOffset = 34 + i * 5;
@@ -206,48 +236,122 @@
   </div>
 
   <script>
-    let scoreA = 0;
-    let scoreB = 0;
+  // ─── CONFIG & TEAM NAMES ─────────────────────────────
+  const teamAName  = `<%= teamA.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %>`;
+  const teamBName  = `<%= teamB.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %>`;
+  const pokeId     = `<%= pokeId %>`;
+  const storageKey = `poke-${pokeId}-vote`;
 
-    async function fetchVotes() {
-      try {
-        const res = await fetch('/poke/<%= pokeId %>/votes');
-        const data = await res.json();
-        const teamAVotes = data.teamA || 0;
-        const teamBVotes = data.teamB || 0;
-        const net = teamAVotes - teamBVotes;
-        const max = 10;
-
-        if (Math.abs(net) >= max) {
-          if (net > 0) scoreA++;
-          else scoreB++;
-          document.getElementById('goalFlash').style.display = 'block';
-          setTimeout(() => {
-            document.getElementById('goalFlash').style.display = 'none';
-          }, 1000);
-          await fetch('/poke/<%= pokeId %>/reset-votes', { method: 'POST' });
-        }
-
-        document.getElementById('scoreboard').innerText = `⚽ Live Score: ${scoreA} - ${scoreB}`;
-        const percent = 45 + Math.max(-max, Math.min(net, max)) * 5;
-        document.getElementById('ball').style.left = percent + '%';
-
-        for (let i = 0; i < 5; i++) {
-          document.getElementById('red-player-' + i).style.left = (percent - 6) + '%';
-          document.getElementById('blue-player-' + i).style.left = (percent + 6) + '%';
-        }
-      } catch (err) {
-        console.error("Failed to fetch votes:", err);
-      }
+  // ─── 1) ON LOAD: HIDE FORM IF VOTED ───────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      const form = document.getElementById('support-form');
+      if (form) form.remove();
+      const msg = document.createElement('p');
+      msg.style.textAlign = 'center';
+      msg.innerHTML = `<strong>You’re supporting: ${
+        saved === 'teamA' ? teamAName : teamBName
+      }</strong>`;
+      // Insert right where the form was
+      document.querySelector('body').appendChild(msg);
     }
+  });
 
-    fetchVotes();
-    setInterval(fetchVotes, 3000);
-  </script>
+  // ─── 2) FORM SUBMIT: VOTE + STORE ─────────────────────
+  const supportForm = document.getElementById('support-form');
+  if (supportForm) {
+    let selectedTeam = null;
+    // track which button was clicked
+    supportForm.querySelectorAll('button[type="submit"]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        selectedTeam = e.currentTarget.value;
+      });
+    });
+    supportForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      try {
+        const res = await fetch(supportForm.action, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `team=${encodeURIComponent(selectedTeam)}`
+        });
+        if (!res.ok) throw new Error(res.statusText);
+        // save locally so it persists across refresh
+        localStorage.setItem(storageKey, selectedTeam);
+      } catch (err) {
+        console.error('Vote failed:', err);
+      }
+      // remove form and show confirmation
+      supportForm.remove();
+      const msg = document.createElement('p');
+      msg.style.textAlign = 'center';
+      msg.innerHTML = `<strong>You’re supporting: ${
+        selectedTeam === 'teamA' ? teamAName : teamBName
+      }</strong>`;
+      document.querySelector('body').appendChild(msg);
+    });
+  }
+
+  // ─── 3) GAME LOGIC (UNCHANGED) ────────────────────────
+  let scoreA = 0, scoreB = 0;
+  const maxMargin     = 5;   // or whatever margin you set
+  const CENTER_PERCENT = 50;
+  const STEP_PERCENT = CENTER_PERCENT / maxMargin; // 50 ÷ 5 = 10% per vote
+  let goalLocked = false;
+
+  function showGoalFlash() {
+    const flash = document.getElementById('goalFlash');
+    flash.style.display = 'block';
+    setTimeout(() => flash.style.display = 'none', 1000);
+  }
+
+  function updateScoreboard() {
+    document.getElementById('scoreboard').innerText =
+      `⚽ ${teamAName} ${scoreA} - ${scoreB} ${teamBName}`;
+  }
+
+  function setBallPosition(pct) {
+    document.getElementById('ball').style.left = pct + '%';
+    for (let i = 0; i < 5; i++) {
+      document.getElementById('red-player-' + i).style.left  = (pct - 6) + '%';
+      document.getElementById('blue-player-' + i).style.left = (pct + 6) + '%';
+    }
+  }
+
+  async function fetchVotes() {
+    try {
+      const res  = await fetch(`/poke/${pokeId}/votes`);
+      const data = await res.json();
+      const net  = (data.teamA || 0) - (data.teamB || 0);
+      const clamped = Math.max(-maxMargin, Math.min(net, maxMargin));
+      const percent = CENTER_PERCENT + clamped * STEP_PERCENT;
+
+      if (Math.abs(net) >= maxMargin) {
+        if (!goalLocked) {
+          goalLocked = true;
+          net > 0 ? scoreA++ : scoreB++;
+          showGoalFlash();
+          updateScoreboard();
+          setBallPosition(CENTER_PERCENT);
+          await fetch(`/poke/${pokeId}/reset-votes`, { method: 'POST' });
+        }
+      } else {
+        goalLocked = false;
+        setBallPosition(percent);
+      }
+    } catch (err) {
+      console.error("Failed to fetch votes:", err);
+    }
+  }
+
+  // ─── 4) START UP ────────────────────────────────────────
+  fetchVotes();
+  setInterval(fetchVotes, 3000);
+</script>
 
   <div class="rival-header">
-    <h1><%= teamA.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) %> ⚔️ <%= teamB.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) %></h1>
-    <p>Started by <strong><%= pokeData.createdBy %></strong> — <%= pokeData.text %></p>
     <% if (pokeData.media) { 
       const isVideo = pokeData.media.endsWith('.mp4') || pokeData.media.endsWith('.webm') || pokeData.media.endsWith('.ogg'); 
     %>
@@ -263,46 +367,41 @@
     <h2>💬 Comments from both sides</h2>
     <% comments.forEach(comment => {
       const isTeamA = comment.team === 'teamA';
-      const teamEmoji = isTeamA ? '🔵' : '🔴';
-      const teamLabel = `${teamEmoji} ${isTeamA ? teamA : teamB} Supporter`;
+      const teamLabel = comment.team
+       ? `${isTeamA ? '🔵' : '🔴'} ${isTeamA ? teamA : teamB} Supporter`
+       : '🤝 Neutral';
+%>
+  <div style="border:1px solid #ccc; padding:12px; border-radius:10px; margin-bottom:15px; background:#fff;">
+    <strong>
+      <a href="/user/<%= comment.user %>"><%= comment.user %></a>
+    </strong>
+    <span style="margin-left:10px;"><%= teamLabel %></span>
+    <p><%= comment.text %></p>
+
+    <% if (comment.media) {
+         const isVideo = comment.media.match(/\.(mp4|webm|ogg)$/);
     %>
-      <div style="border: 1px solid #ccc; padding: 12px; border-radius: 10px; margin-bottom: 15px; background: #fff;">
-        <strong><a href="/user/<%= comment.user %>"><%= comment.user %></a></strong>
-        <span style="margin-left: 10px;"><%= teamLabel %></span>
-        <p><%- comment.text.replace(/@(\w+)/g, '<a href="/user/$1" style="color:#007BFF;">@$1</a>') %></p>
+      <% if (isVideo) { %>
+        <video src="<%= comment.media %>" controls style="margin-top:10px;"></video>
+      <% } else { %>
+        <img src="<%= comment.media %>" style="margin-top:10px;" />
+      <% } %>
+    <% } %>
 
-        <% if (comment.media) { 
-          const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg'); 
-        %>
-          <% if (isVideo) { %>
-            <video src="<%= comment.media %>" controls style="margin-top: 10px;"></video>
-          <% } else { %>
-            <img src="<%= comment.media %>" style="margin-top: 10px;" />
-          <% } %>
-        <% } %>
-
-        <div style="color: gray; font-size: 14px;"><%= comment.relativeTime %></div>
-        <div style="margin-top: 8px;">
-          <button>❤️</button>
-          <button>😂</button>
-          <button>😡</button>
-          <button>👍</button>
-        </div>
-      </div>
-    <% }) %>
+    <div style="color:gray; font-size:14px;"><%= comment.relativeTime %></div>
+  </div>
+<% }) %>
 
     <div class="poke-comment-form">
-      <% if (user) { %>
-        <form action="/poke/<%= pokeId %>/comment" method="POST" enctype="multipart/form-data">
-          <textarea name="text" rows="4" placeholder="Join the rivalry... Tag @username to mention someone" required></textarea>
-          <input type="file" name="media" accept="image/*,video/*" style="margin-top: 10px;" />
-          <br />
-          <button type="submit" style="margin-top: 10px;">Post Comment</button>
-        </form>
-      <% } else { %>
-        <p><a href="#" onclick="openLogin()">Login</a> to join the battle!</p>
-      <% } %>
-    </div>
+    <% if (user) { %>
+      <form action="/poke/<%= pokeId %>/comment" method="POST" enctype="multipart/form-data">
+        <textarea name="text" rows="4" placeholder="Join the rivalry.." required></textarea>
+        <input type="file" name="media" accept="image/*,video/*" style="margin-top: 10px;" />
+        <br />
+        <button type="submit" style="margin-top: 10px;">Post Comment</button>
+      </form>
+    <% } %>
   </div>
+</div>
 </body>
 </html>

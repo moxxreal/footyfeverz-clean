@@ -5,96 +5,421 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Footy Feverz</title>
   <link rel="stylesheet" href="/style.css" />
+  <style>
+    /* disable native long-press menu & text selection on videos */
+    .fullscreen-overlay video {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: none;
+    }
+    .login-message {
+      color: #c00;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      animation: fadeOut 0.3s ease-out 2.7s forwards;
+      opacity: 1;
+    }
+    @keyframes fadeOut {
+      to { opacity: 0; }
+    }
+  </style>
 </head>
 <body>
- <%- include('partials/_header', {
-  headerClass: 'header-default',
-  useTeamHeader: typeof useTeamHeader !== 'undefined' ? useTeamHeader : false,
-  leagueSlug: typeof leagueSlug !== 'undefined' ? leagueSlug : '',
-  leagueName: typeof leagueName !== 'undefined' ? leagueName : ''
-}) %>
-  <%- include('partials/_stories', { stories, user }) %>
+  <%- include('partials/_header', {
+    headerClass: 'header-default',
+    useTeamHeader: typeof useTeamHeader !== 'undefined' ? useTeamHeader : false,
+    leagueSlug: typeof leagueSlug !== 'undefined' ? leagueSlug : '',
+    leagueName: typeof leagueName !== 'undefined' ? leagueName : ''
+  }) %>
+
+  <!-- expose auth state to client -->
+  <script>
+    const isLoggedIn = Boolean(<%= user ? 'true' : 'false' %>);
+
+    function showLoginMessage() {
+      const openBtn = document.getElementById('openFeverButton');
+      if (openBtn.nextElementSibling?.classList.contains('login-message')) return;
+      const msg = document.createElement('div');
+      msg.className = 'login-message';
+      msg.textContent = 'Please login to add a Fever';
+      openBtn.parentNode.insertBefore(msg, openBtn.nextSibling);
+      setTimeout(() => msg.remove(), 3000);
+    }
+
+    function requireLogin() {
+      showLoginMessage();
+    }
+  </script>
+
+  <!-- Fever Feed -->
+  <div id="feverFeed">
+    <form id="feverForm" action="/fever" method="POST" enctype="multipart/form-data" style="display:none;">
+      <input type="file" name="feverMedia" id="feverFileInput" accept="image/*,video/*">
+    </form>
+    <button id="openFeverButton" class="fever-item add-fever-button">
+      <span class="add-icon">+</span>
+      <span class="add-text">Add a Fever 🔥</span>
+    </button>
+  </div>
 
   <!-- League Cards -->
   <div class="card-container">
     <% const leagues = [
-      ['premier', 'premier-league'], ['laliga', 'la-liga'], ['serie-a', 'serie-a'], ['bundesliga', 'bundesliga'],
-      ['ligue1', 'ligue1'], ['roshn-saudi', 'saudi-league'], ['eredivisie', 'eredivisie'],
-      ['liga-portugal', 'liga-portugal'], ['super-lig', 'super-lig'],
+      ['premier','premier-league'], ['laliga','la-liga'], ['serie-a','serie-a'],
+      ['bundesliga','bundesliga'], ['ligue1','ligue1'], ['roshn-saudi','saudi-league'],
+      ['eredivisie','eredivisie'], ['liga-portugal','liga-portugal'], ['super-lig','super-lig']
     ]; %>
-    <% leagues.forEach(([slug, image]) => { %>
-      <a href="/<%= slug %>.html" class="card" style="background-image: url('/<%= image %>.jpg');"></a>
+    <% leagues.forEach(([slug,image])=>{ %>
+      <a href="/<%=slug%>.html" class="card" style="background-image:url('/<%=image%>.jpg');"></a>
     <% }); %>
   </div>
-  <!-- Top Fans Leaderboard -->
-<section class="leaderboard">
-  <h2>🏆 Top Fans This Week</h2>
-  <table class="leaderboard-table">
-    <thead>
-      <tr>
-        <th>Rank</th>
-        <th>User</th>
-        <th>Comments</th>
-        <th>Reactions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% topFans.forEach((fan, index) => { %>
-        <tr>
-          <td>#<%= index + 1 %></td>
-          <td><a href="/user/<%= fan.username %>"><%= fan.username %></a></td>
-          <td><%= fan.comments %></td>
-          <td><%= fan.likes %></td>
-        </tr>
+
+  <!-- Leaderboard -->
+  <section class="leaderboard leaderboard-card">
+    <div class="leaderboard-header"><h2>🏆 Top Fans This Week</h2></div>
+    <ul class="leaderboard-list">
+      <% topFans.forEach((fan,i)=>{ %>
+        <li class="leaderboard-item">
+          <span class="rank">#<%=i+1%></span>
+          <a href="/user/<%=fan.username%>" class="username"><%=fan.username%></a>
+          <div class="stats">
+            <span class="comments">💬 <%=fan.comments%></span>
+            <span class="reactions">❤️ <%=fan.likes%></span>
+            <span class="score">⭐ <%=fan.score%></span>
+          </div>
+        </li>
       <% }) %>
-    </tbody>
-  </table>
-</section>
-  <!-- Fan Battle Section -->
-  <% if (battle) { %>
-    <section class="fan-battle">
-      <h2>🔥 Fan Battle: <%= battle.team1 %> vs <%= battle.team2 %> 🔥</h2>
-      <form id="fanBattleForm">
-        <input type="hidden" name="battleId" value="<%= battle.id %>" />
-        <button type="button" onclick="submitVote('team1')"><%= battle.team1 %></button>
-        <button type="button" onclick="submitVote('team2')"><%= battle.team2 %></button>
-      </form>
-      <div id="battleResults">
-        <p><strong><%= battle.team1 %>:</strong> <span id="votes1"><%= battle.votes_team1 %></span> votes</p>
-        <p><strong><%= battle.team2 %>:</strong> <span id="votes2"><%= battle.votes_team2 %></span> votes</p>
-      </div>
-      <p id="voteMsg" style="margin-top: 10px;"></p>
-    </section>
-  <% } %>
+    </ul>
+  </section>
 
-  <!-- Scripts -->
+  <!-- Infinite-Scroll Feed Script -->
   <script>
-    function submitVote(team) {
-      const form = document.getElementById('fanBattleForm');
-      const battleId = form.battleId.value;
+    let lastCreated = null, loading = false;
+    async function loadFevers() {
+      if (loading) return;
+      loading = true;
+      const res = await fetch('/api/fevers?limit=10' + (lastCreated ? '&lastCreated='+encodeURIComponent(lastCreated):''));
+      const items = await res.json();
+      items.forEach(f=>{
+        lastCreated = f.createdAt;
+        const el = document.createElement('div');
+        el.className = 'fever-item';
+        el.dataset.id   = f.id;
+        el.dataset.user = f.user; 
+        el.dataset.likes = f.likes;
+        el.innerHTML =
+          (f.mediaType==='video' ? '<video src="'+f.mediaURL+'" autoplay muted loop playsinline></video>' : '<img src="'+f.mediaURL+'"/>') +
+          '<p>'+f.caption+'</p>'+
+          '<small>'+new Date(f.createdAt).toLocaleString()+'</small>';
+        document.getElementById('feverFeed').appendChild(el);
+      });
+      loading = false;
+    }
+    window.addEventListener('scroll',()=>{ if (window.innerHeight+window.scrollY >= document.body.offsetHeight-200) loadFevers(); });
+    loadFevers();
+  </script>
 
-      fetch('/battle/vote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ battleId, vote: team })
-      })
-      .then(res => res.json())
-      .then(data => {
-        const msg = document.getElementById('voteMsg');
-        if (data.success) {
-          msg.textContent = `Thanks for voting for ${data.votedFor}! 🗳️`;
-          msg.style.color = 'lightgreen';
-          const span = document.getElementById(data.votedFor === 'team1' ? 'votes1' : 'votes2');
-          span.textContent = parseInt(span.textContent) + 1;
-        } else {
-          msg.textContent = data.message || 'There was a problem.';
-          msg.style.color = 'orange';
-        }
-      })
-      .catch(() => {
-        document.getElementById('voteMsg').textContent = 'Network error. Try again.';
+  <!-- Direct-Upload & Placeholder Script -->
+  <script>
+    const openBtn = document.getElementById('openFeverButton'),
+          fileInput = document.getElementById('feverFileInput'),
+          feverForm = document.getElementById('feverForm'),
+          feed = document.getElementById('feverFeed');
+
+    openBtn.addEventListener('click',()=>{
+      if (!isLoggedIn) { showLoginMessage(); return; }
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change',()=>{
+      if (!fileInput.files.length) return;
+      const file = fileInput.files[0], url = URL.createObjectURL(file);
+      const placeholder = document.createElement('div');
+      placeholder.className = 'fever-item loading';
+      let mediaEl;
+      if (file.type.startsWith('video/')) {
+        mediaEl = document.createElement('video');
+        mediaEl.src = url; mediaEl.muted = true; mediaEl.loop = true; mediaEl.play();
+      } else {
+        mediaEl = document.createElement('img');
+        mediaEl.src = url;
+      }
+      placeholder.appendChild(mediaEl);
+      const spinner = document.createElement('div');
+      spinner.className = 'fever-spinner';
+      placeholder.appendChild(spinner);
+      feed.prepend(placeholder);
+      feverForm.submit();
+    });
+  </script>
+
+  <!-- Lightbox + TikTok-style Controls + Comments -->
+  <script>
+    const feedContainer = document.getElementById('feverFeed');
+    let touchStartX = 0, overlayMuted = true;
+
+    function showOverlay(media, card) {
+  let autoAdvanceTimer = null;
+  const overlay = document.createElement('div');
+  overlay.className = 'fullscreen-overlay';
+  overlay.style.touchAction = 'none';
+
+  // 2) Add uploader link at the very top
+  const userLink = document.createElement('a');
+  userLink.href = '/user/' + card.dataset.user;
+  userLink.textContent = card.dataset.user;    // no “@”
+  userLink.className = 'overlay-uploader';
+  overlay.appendChild(userLink);
+
+  // 1) Clone the media element
+  const clone = media.cloneNode(true);
+  if (clone.tagName === 'VIDEO') {
+    clone.controls = false;
+    clone.autoplay  = true;
+    clone.muted     = overlayMuted;
+    clone.loop      = false;
+    clone.addEventListener('ended', () => navigate(1));
+  } else {
+    autoAdvanceTimer = setTimeout(() => navigate(1), 5000);
+  }
+  overlay.appendChild(clone);
+
+  // 2) Video progress bar + hold‐to‐pause + click‐to‐toggle
+  if (clone.tagName === 'VIDEO') {
+    const progC = document.createElement('div');
+    progC.className = 'overlay-progress';
+    const prog = document.createElement('div');
+    prog.className = 'overlay-progress-filled';
+    progC.appendChild(prog);
+    overlay.appendChild(progC);
+
+    clone.addEventListener('timeupdate', () => {
+      prog.style.width = (clone.currentTime / clone.duration * 100) + '%';
+    });
+
+    let hold;
+    clone.addEventListener('touchstart', e => {
+      e.preventDefault();
+      hold = setTimeout(() => clone.pause(), 200);
+    }, { passive: false });
+    clone.addEventListener('touchend', () => {
+      clearTimeout(hold);
+      if (clone.paused) clone.play();
+    });
+
+    if (window.matchMedia('(pointer: fine)').matches) {
+      clone.style.cursor = 'pointer';
+      clone.addEventListener('click', e => {
+        e.stopPropagation();
+        clone.paused ? clone.play() : clone.pause();
       });
     }
+  }
+
+  // 3) Utility to create buttons
+  const makeBtn = (cls, txt, onClick) => {
+    const b = document.createElement('button');
+    b.className = cls;
+    b.textContent = txt;
+    b.addEventListener('click', onClick);
+    overlay.appendChild(b);
+    return b;
+  };
+
+  // 4) Close / Prev / Next / Mute buttons
+  makeBtn('overlay-close', '×', removeOverlay);
+  makeBtn('overlay-prev',  '<', () => navigate(-1));
+  makeBtn('overlay-next',  '>', () => navigate(1));
+  const muteBtn = makeBtn('overlay-mute', overlayMuted ? '🔇' : '🔊', e => {
+    e.stopPropagation();
+    overlayMuted = !overlayMuted;
+    if (clone.tagName === 'VIDEO') clone.muted = overlayMuted;
+    muteBtn.textContent = overlayMuted ? '🔇' : '🔊';
+  });
+
+  // 5) TikTok‐style control bar
+  const controlBar = document.createElement('div');
+  controlBar.className = 'overlay-controls';
+  controlBar.innerHTML = `
+    <button class="control-btn like-btn">❤️ <span class="like-count">${card.dataset.likes||0}</span></button>
+    <button class="control-btn comment-btn">💬</button>
+    <button class="control-btn share-btn">🔗</button>
+  `;
+  overlay.appendChild(controlBar);
+
+  // Like logic
+  const likeBtn = controlBar.querySelector('.like-btn');
+  likeBtn.addEventListener('click', async () => {
+    if (!isLoggedIn) return requireLogin();
+    likeBtn.disabled = true;
+    const res = await fetch(`/api/fevers/${card.dataset.id}/like`, { method: 'POST' });
+    if (res.ok) {
+      const { likes } = await res.json();
+      card.dataset.likes = likes;
+      controlBar.querySelector('.like-count').textContent = likes;
+      likeBtn.textContent = '❤️ Liked';
+    } else {
+      likeBtn.disabled = false;
+    }
+  });
+
+  // 6) Comment panel
+  const commentPanel = document.createElement('div');
+  commentPanel.className = 'comment-panel hidden';
+  commentPanel.innerHTML = `
+    <div class="comments-list"></div>
+    <div class="comment-input">
+      <input type="text" placeholder="Add a comment…"/>
+      <button class="send-comment">Post</button>
+    </div>
+  `;
+  overlay.appendChild(commentPanel);
+
+  // 6) Comment panel toggle (complete replacement)
+controlBar.querySelector('.comment-btn').addEventListener('click', () => {
+  if (!isLoggedIn) return requireLogin();
+
+  // toggle and compute "show"
+  const show = !commentPanel.classList.toggle('hidden');
+
+  if (show) {
+    // → panel just opened: pause media / stop auto-advance
+    if (clone.tagName === 'VIDEO') {
+      clone.pause();
+    } else {
+      clearTimeout(autoAdvanceTimer);
+    }
+    loadComments(card.dataset.id);
+  } else {
+    // → panel just closed: resume media / restart auto-advance
+    if (clone.tagName === 'VIDEO') {
+      clone.play();
+    } else {
+      autoAdvanceTimer = setTimeout(() => navigate(1), 5000);
+    }
+  }
+});
+
+  commentPanel.querySelector('.send-comment').addEventListener('click', async () => {
+    if (!isLoggedIn) return requireLogin();
+    const input = commentPanel.querySelector('input');
+    const text  = input.value.trim();
+    if (!text) return;
+    await fetch(`/api/fevers/${card.dataset.id}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    input.value = '';
+    loadComments(card.dataset.id);
+  });
+
+  // 7) Share button
+  controlBar.querySelector('.share-btn').addEventListener('click', () => {
+    if (!isLoggedIn) return requireLogin();
+    const shareUrl = `${window.location.origin}/fever/${card.dataset.id}`;
+    if (navigator.share) navigator.share({ url: shareUrl });
+    else {
+      navigator.clipboard.writeText(shareUrl);
+      alert('Link copied to clipboard!');
+    }
+  });
+
+  // Helper: load comments
+  function loadComments(fid) {
+    fetch(`/api/fevers/${fid}/comments`)
+      .then(r => r.json())
+      .then(comments => {
+        const list = commentPanel.querySelector('.comments-list');
+        list.innerHTML = comments.map(c => `
+          <div class="comment-item">
+            <strong><a href="/user/${c.user}" class="comment-user">@${c.user}</a></strong>
+            ${c.text}
+          </div>
+        `).join('');
+      });
+  }
+
+  // Helper: remove overlay
+  function removeOverlay() {
+    clearTimeout(autoAdvanceTimer);
+    document.removeEventListener('keydown', keyHandler);
+    overlay.remove();
+  }
+
+  // Helper: navigate between fevers
+  function navigate(dir) {
+    clearTimeout(autoAdvanceTimer);
+    const cards = Array.from(feedContainer.querySelectorAll('.fever-item'));
+    const idx   = cards.indexOf(card);
+    const next  = cards[idx + dir];
+    if (!next) return;
+    removeOverlay();
+    showOverlay(next.querySelector('video, img'), next);
+  }
+
+  // Key navigation
+  function keyHandler(e) {
+    if (e.key === 'ArrowRight') navigate(1);
+    if (e.key === 'ArrowLeft')  navigate(-1);
+    if (e.key === 'Escape')     removeOverlay();
+  }
+  document.addEventListener('keydown', keyHandler);
+
+  // 8) TOUCH HANDLING: ignore taps on comment panel, only tap in vertical middle 50% for nav, swipes anywhere
+  let startX = 0, startY = 0;
+  const tapMaxMovement = 10;    // px for tap
+  const swipeThreshold = 50;    // px for swipe
+
+  overlay.addEventListener('touchstart', e => {
+    const t = e.changedTouches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+  }, { passive: true });
+
+  overlay.addEventListener('touchend', e => {
+    // If interaction targeted comment panel or its input/button, bail out
+    if (e.target.closest('.comment-panel, .comment-input, .send-comment')) {
+      return;
+    }
+
+    const t  = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    const w  = window.innerWidth;
+    const h  = window.innerHeight;
+    const topBound    = h * 0.25;  // 25% down
+    const bottomBound = h * 0.75;  // 75% down
+
+    // 1) Tap only if in vertical middle 50% and small movement
+    if (
+      Math.abs(dx) < tapMaxMovement &&
+      Math.abs(dy) < tapMaxMovement &&
+      t.clientY >= topBound &&
+      t.clientY <= bottomBound
+    ) {
+      return navigate(t.clientX < w/2 ? -1 : 1);
+    }
+
+    // 2) Swipe anywhere
+    if (dx > swipeThreshold)      return navigate(-1);
+    if (dx < -swipeThreshold)     return navigate(1);
+    // else ignore
+  }, { passive: true });
+
+  // 9) Attach the overlay
+  document.body.appendChild(overlay);
+}
+
+    // Click delegate
+    feedContainer.addEventListener('click', e=>{
+      if (e.target.closest('#openFeverButton')) return;
+      const card = e.target.closest('.fever-item');
+      if (!card) return;
+      const media = card.querySelector('video, img');
+      showOverlay(media, card);
+    });
   </script>
-  </body>
+</body>
 </html>
