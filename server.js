@@ -478,27 +478,48 @@ async function renderHomeWithError(res, errorType, errorMsg) {
 
 // --- Signup ---
 app.post('/signup', async (req, res) => {
-  const { username, password, confirmPassword } = req.body;
+  const { username, email, password, confirmPassword } = req.body;
 
-  if (!username || !password || !confirmPassword) {
+  // ✅ Validate presence of all fields
+  if (!username || !email || !password || !confirmPassword) {
     return renderHomeWithError(res, 'signupError', 'All fields are required.');
   }
 
+  // ✅ Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return renderHomeWithError(res, 'signupError', 'Invalid email format.');
+  }
+
+  // ✅ Passwords must match
   if (password !== confirmPassword) {
     return renderHomeWithError(res, 'signupError', 'Passwords do not match.');
   }
 
   try {
+    // ✅ Check if username is already taken
     const userDoc = await db.collection('users').doc(username).get();
     if (userDoc.exists) {
       return renderHomeWithError(res, 'signupError', 'Username already taken.');
     }
 
+    // ✅ Check if email is already in use
+    const existingEmailSnap = await db.collection('users')
+      .where('email', '==', email)
+      .limit(1)
+      .get();
+
+    if (!existingEmailSnap.empty) {
+      return renderHomeWithError(res, 'signupError', 'Email is already registered.');
+    }
+
+    // ✅ Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // ✅ Create user document
     await db.collection('users').doc(username).set({
       username,
+      email,
       password: hashedPassword,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
