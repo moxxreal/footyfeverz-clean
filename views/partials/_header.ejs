@@ -41,7 +41,7 @@
     <a href="#" class="header-link" onclick="openSignup()">Sign Up</a>
   <% } %>
 
-  <% if (user) { %>
+  <% if (user && !useTeamHeader) { %>
   <a href="/inbox" class="header-link inbox-link">
     Inbox
     <% const totalChat = locals.chatNotifications; %>
