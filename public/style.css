@@ -765,3 +765,17 @@ html, body, input, textarea, button {
 .overlay-uploader:hover {
   background: rgba(0,0,0,0.75);
 }
+.fever-item {
+  position: relative;
+}
+
+.delete-fever-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: transparent;
+  border: none;
+  color: red;
+  font-size: 1.2rem;
+  cursor: pointer;
+}

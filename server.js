@@ -402,6 +402,42 @@ app.get('/fever/:id', async (req, res) => {
   }
 });
 
+app.post('/fever/:id/delete', async (req, res) => {
+  const username = req.session.user?.username;
+  const feverId = req.params.id;
+
+  if (!username) return res.status(401).send('Login required');
+
+  try {
+    const docRef = db.collection('fevers').doc(feverId);
+    const doc = await docRef.get();
+
+    if (!doc.exists) return res.status(404).send('Fever not found');
+
+    const data = doc.data();
+    if (data.user !== username) return res.status(403).send('Not your Fever');
+
+    // Optional: also delete media file from /public/uploads if needed
+
+    // Delete Fever document
+    await docRef.delete();
+
+    // Delete associated comments
+    const commentSnap = await db.collection('feverComments')
+      .where('feverId', '==', feverId)
+      .get();
+
+    const batch = db.batch();
+    commentSnap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+
+    res.redirect('/');
+  } catch (err) {
+    console.error('❌ Delete Fever error:', err);
+    res.status(500).send("Couldn't delete Fever");
+  }
+});
+
 // ✅ First middleware: fetch unread messages
 app.use(async (req, res, next) => {
   try {

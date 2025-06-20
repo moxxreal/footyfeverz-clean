@@ -109,9 +109,15 @@
         el.dataset.user = f.user; 
         el.dataset.likes = f.likes;
         el.innerHTML =
-          (f.mediaType==='video' ? '<video src="'+f.mediaURL+'" autoplay muted loop playsinline></video>' : '<img src="'+f.mediaURL+'"/>') +
-          '<p>'+f.caption+'</p>'+
-          '<small>'+new Date(f.createdAt).toLocaleString()+'</small>';
+  (f.mediaType === 'video'
+    ? '<video src="' + f.mediaURL + '" autoplay muted loop playsinline></video>'
+    : '<img src="' + f.mediaURL + '"/>') +
+  '<p>' + f.caption + '</p>' +
+  '<small>' + new Date(f.createdAt).toLocaleString() + '</small>' +
+  (isLoggedIn && f.user === '<%= user?.username || "" %>' ?
+    `<form method="POST" action="/fever/${f.id}/delete" onsubmit="return confirm('Delete this Fever?')">
+       <button type="submit" class="delete-fever-btn">🗑️</button>
+     </form>` : '');
         document.getElementById('feverFeed').appendChild(el);
       });
       loading = false;
