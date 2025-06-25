@@ -1,50 +1,67 @@
-const express = require('express');
-const path = require('path');
-const bodyParser = require('body-parser');
-const multer = require('multer');
-const dayjs = require('dayjs');
-const relativeTime = require('dayjs/plugin/relativeTime');
-const session = require('express-session');
-const bcrypt = require('bcrypt');
-const admin = require('firebase-admin');
-const teamToLeagueMap = require('./teamToLeagueMap');
-const sanitizeHtml = require('sanitize-html');
-const teamImages = require('./teamImages');
-const http = require('http');
-const { Server } = require('socket.io');
-
-
+// ─── Load .env & parse your service account ─────────────────────────────────
 require('dotenv').config();
 
-dayjs.extend(relativeTime);
+const decoded        = Buffer.from(process.env.FIREBASE_KEY_BASE64, 'base64').toString('utf8');
+const serviceAccount = JSON.parse(decoded);
 
-const decoded = Buffer.from(process.env.FIREBASE_KEY_BASE64, 'base64').toString('utf8');
-admin.initializeApp({ credential: admin.credential.cert(JSON.parse(decoded)) });
+const bucketName = process.env.FIREBASE_STORAGE_BUCKET;
+if (!bucketName) {
+  console.error('❌ Missing FIREBASE_STORAGE_BUCKET in your .env');
+  process.exit(1);
+}
+
+// ─── Imports ─────────────────────────────────────────────────────────────────
+const http         = require('http');
+const express      = require('express');
+const bodyParser   = require('body-parser');
+const path         = require('path');
+const dayjs        = require('dayjs');
+const relativeTime = require('dayjs/plugin/relativeTime');
+const session      = require('express-session');
+const bcrypt       = require('bcrypt');
+const admin        = require('firebase-admin');
+const { Storage }  = require('@google-cloud/storage');
+const multer       = require('multer');
+const { Server }   = require('socket.io');
+const sanitizeHtml = require('sanitize-html');
+const teamToLeagueMap = require('./teamToLeagueMap');
+
+// ─── Firebase Admin & Firestore ─────────────────────────────────────────────
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  storageBucket: bucketName
+});
 const db = admin.firestore();
 
-(async () => {
-  try {
-    const test = await db.listCollections();
-    console.log(`✅ Firestore connected. Collections: ${test.map(col => col.id).join(', ') || 'none yet'}`);
-  } catch (err) {
-    console.error('❌ Firestore connection failed:', err);
-  }
-})();
+// ─── Google Cloud Storage client ────────────────────────────────────────────
+const gcsStorage = new Storage({
+  projectId:   serviceAccount.project_id,
+  credentials: serviceAccount
+});
+const bucket = gcsStorage.bucket(bucketName);
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+// ─── App setup ───────────────────────────────────────────────────────────────
+dayjs.extend(relativeTime);
+
+const memoryUpload = multer({ storage: multer.memoryStorage() });
+const multiUpload  = memoryUpload.fields([
+  { name: 'media',       maxCount: 1 },
+  { name: 'profile_pic', maxCount: 1 },
+  { name: 'tacticImage', maxCount: 1 },
+  { name: 'feverMedia',  maxCount: 1 }
+]);
+
+const app    = express();
+const PORT   = process.env.PORT || 3000;
+const server = http.createServer(app);
+const io     = new Server(server);
 
 // ─── Session setup ──────────────────────────────────────────────────────────
-const sessionMiddleware = session({
+app.use(session({
   secret: process.env.SESSION_SECRET || 'super-secret-key',
   resave: false,
   saveUninitialized: true
-});
-app.use(sessionMiddleware);
-
-// Create HTTP server and Socket.IO server
-const server = http.createServer(app);
-const io = new Server(server);
+}));
 
 // --- Chat notification middleware ---
 app.use(async (req, res, next) => {
@@ -78,10 +95,10 @@ app.get('/inbox/chats', async (req, res) => {
 
   res.render('inbox-chats', {
     user: req.session.user,
-    request: req,             // so header can read request.originalUrl
-    loginError: null,         // satisfy header’s loginError check
-    signupError: null,        // satisfy header’s signupError check
-    showAuthLinks: true,      // show “Sign Up” / “Login” if you want
+    request: req,
+    loginError: null,
+    signupError: null,
+    showAuthLinks: true,
     showLeagueLink: false,
     useTeamHeader: false,
     chats
@@ -97,23 +114,14 @@ app.get('/chat/:other', async (req, res) => {
   const chatId = [me, other].sort().join('_');
   const chatRef = db.collection('chats').doc(chatId);
 
-  // Load existing messages or initialize chat
   const chatDoc = await chatRef.get();
   let messages = [];
 
   if (chatDoc.exists) {
-    const snap = await chatRef
-      .collection('messages')
-      .orderBy('timestamp', 'asc')
-      .get();
+    const snap = await chatRef.collection('messages').orderBy('timestamp','asc').get();
     messages = snap.docs.map(d => d.data());
-
-    // Reset my unread count
-    await chatRef.update({
-      [`participants.${me}.unreadCount`]: 0
-    });
+    await chatRef.update({ [`participants.${me}.unreadCount`]: 0 });
   } else {
-    // Create new chat document with both participants
     await chatRef.set({
       participants: {
         [me]:    { unreadCount: 0 },
@@ -122,13 +130,12 @@ app.get('/chat/:other', async (req, res) => {
     });
   }
 
-  // Render the chat view, passing all header/context vars
   res.render('chat', {
-    user:          req.session.user,
-    request:       req,           // for request.originalUrl in header
-    loginError:    null,          // satisfy header checks
-    signupError:   null,
-    showAuthLinks: true,          // toggle as desired
+    user: req.session.user,
+    request: req,
+    loginError: null,
+    signupError: null,
+    showAuthLinks: true,
     showLeagueLink: false,
     useTeamHeader: false,
     other,
@@ -143,27 +150,22 @@ io.on('connection', socket => {
   socket.on('message', async ({ room, from, to, text }) => {
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
     const chatRef = db.collection('chats').doc(room);
-
-    // persist message
     await chatRef.collection('messages').add({ from, to, text, timestamp });
-    // bump unread count
     await chatRef.update({
       [`participants.${to}.unreadCount`]: admin.firestore.FieldValue.increment(1)
     });
-
-    // broadcast
     io.to(room).emit('message', { from, text, timestamp: Date.now() });
   });
 });
 
-// Replace your app.listen with:
+// ─── Finally, start the server ───────────────────────────────────────────────
 server.listen(PORT, () => console.log(`🚀 Server UP on port ${PORT}`));
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
 
 function computeFeverScore(fever) {
   const ageHours = (Date.now() - fever.createdAt.toDate().getTime()) / 36e5;
@@ -171,77 +173,57 @@ function computeFeverScore(fever) {
   return (fever.likes + fever.comments) * 10 - ageHours * 2;
 }
 
-// Storage engine with sanitized filename
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'public/uploads/'),
-  filename: (req, file, cb) => {
-    const cleanName = path.basename(file.originalname);
-    const ext = path.extname(cleanName);
-    const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
-    cb(null, filename);
-  }
-});
-
-// Accept only images and videos (optional but recommended)
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/quicktime'];
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Unsupported file type'), false);
-  }
-};
-
-// Upload config
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB max
-});
-
-// Multi-field upload for comments, profiles, tactical images, fevers etc
-const multiUpload = upload.fields([
-  { name: 'media', maxCount: 1 },
-  { name: 'profile_pic', maxCount: 1 },
-  { name: 'tacticImage', maxCount: 1 },
-  { name: 'feverMedia', maxCount: 1 }
-]);
-
-// Firestore document: fevers/{feverId}
-// {
-//   user:      "alice",
-//   caption:   "Epic goal celebration!",
-//   mediaURL:  "/uploads/1623456789-1a2b3c.gif",
-//   mediaType: "video" | "image",
-//   createdAt: FieldValue.serverTimestamp(),
-//   likes:     0,
-//   comments:  0
-// }
-
-//fevers
-app.post('/fever', multiUpload, async (req, res) => {
-  if (!req.session.user) return res.status(401).send("Login required");
-
-  const file = req.files?.feverMedia?.[0];
-  if (!file) return res.status(400).send("Please upload an image or video");
-
-  const mediaURL = `/uploads/${file.filename}`;
-  const mediaType = file.mimetype.startsWith('video/') ? 'video' : 'image';
-  const caption = sanitizeHtml(req.body.caption || '');
-
+app.post('/fever', memoryUpload.single('feverMedia'), async (req, res) => {
   try {
+    // 0) Auth check
+    if (!req.session.user) {
+      return res.status(401).send("Login required");
+    }
+
+    // 1) Ensure a file was uploaded
+    const file = req.file;
+    if (!file) {
+      return res.status(400).send("Please upload an image or video");
+    }
+
+    // 2) Build a unique GCS path
+    const ext     = path.extname(file.originalname);  // e.g. ".png"
+    const gcsPath = `fevers/${Date.now()}-${Math.random().toString(36).substr(2,6)}${ext}`;
+    const gcsFile = bucket.file(gcsPath);
+
+    // 3) Stream the buffer into GCS
+    await new Promise((resolve, reject) => {
+      const stream = gcsFile.createWriteStream({
+        metadata: { contentType: file.mimetype }
+      });
+      stream.on('error', reject);
+      stream.on('finish', resolve);
+      stream.end(file.buffer);
+    });
+
+    // 4) Make it publicly readable
+    await gcsFile.makePublic();
+    const publicUrl = `https://storage.googleapis.com/${bucketName}/${gcsPath}`;
+
+    // 5) Sanitize caption and determine mediaType
+    const caption   = sanitizeHtml(req.body.caption || '');
+    const mediaType = file.mimetype.startsWith('video/') ? 'video' : 'image';
+
+    // 6) Write to Firestore
     await db.collection('fevers').add({
-      user: req.session.user.username,
+      user:      req.session.user.username,
       caption,
-      mediaURL,
+      mediaURL:  publicUrl,
       mediaType,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      likes: 0,
-      comments: 0
+      likes:     0,
+      comments:  0
     });
+
+    // 7) Redirect home
     res.redirect('/');
   } catch (err) {
-    console.error('Fever post error:', err);
+    console.error('❌ /fever error:', err);
     res.status(500).send("Could not post your Fever");
   }
 });
@@ -416,8 +398,6 @@ app.post('/fever/:id/delete', async (req, res) => {
 
     const data = doc.data();
     if (data.user !== username) return res.status(403).send('Not your Fever');
-
-    // Optional: also delete media file from /public/uploads if needed
 
     // Delete Fever document
     await docRef.delete();
@@ -651,160 +631,146 @@ app.get('/', async (req, res) => {
   }
 });
 
-// --- Team Comments ---
+// Team comments (with optional media or tacticImage)
 app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
-  if (!req.session.user) return res.status(401).send("Login required");
-
-  const { teamname } = req.params;
-  const { text } = req.body;
-
-  const media =
-    req.files?.media?.[0]?.path?.includes('uploads')
-      ? `/uploads/${req.files.media[0].filename}`
-      : req.files?.tacticImage?.[0]
-      ? `/uploads/${req.files.tacticImage[0].filename}`
-      : '';
-
-  let profilePic = '';
-  const userDoc = await db.collection('users').doc(req.session.user.username).get();
-  if (userDoc.exists) {
-    profilePic = userDoc.data().profile_pic || '';
-  }
-
-  // ✅ Allow comment if text or media is present
-  if (!text?.trim() && !media) {
-    return res.status(400).send("Comment must include text or an image");
-  }
-
   try {
-    const trimmedText = text.trim();
+    if (!req.session.user) 
+      return res.status(401).send("Login required");
 
-    // 🔽 Save the comment
-await db.collection('comments').add({
-  team: teamname,
-  user: req.session.user.username,
-  text: trimmedText,
-  media,
-  profile_pic: profilePic,
-  like_reactions: 0,
-  timestamp: admin.firestore.FieldValue.serverTimestamp()
-});
-await db.collection('userStats').doc(req.session.user.username).set({
-  comments: admin.firestore.FieldValue.increment(1),
-  likes: 0,
-  funny: 0,
-  angry: 0,
-  love: 0,
-  score: admin.firestore.FieldValue.increment(1)
-}, { merge: true });
+    const { teamname } = req.params;
+    const text = (req.body.text || '').trim();
+    if (!text && !req.files.media && !req.files.tacticImage) 
+      return res.status(400).send("Comment must include text or an image");
 
+    // Optional media → GCS
+    let mediaUrl = '';
+    const fileField = req.files.media?.[0] ? 'media' 
+                    : req.files.tacticImage?.[0] ? 'tacticImage'
+                    : null;
+    if (fileField) {
+      const f       = req.files[fileField][0];
+      const ext     = path.extname(f.originalname);
+      const gcsPath = `comments/${teamname}/${Date.now()}${ext}`;
+      const gcsFile = bucket.file(gcsPath);
 
-    // ✅ Mention tagging logic
-    const mentionedUsernames = [...trimmedText.matchAll(/@(\w+)/g)].map(match => match[1]);
+      await new Promise((resolve, reject) => {
+        const stream = gcsFile.createWriteStream({
+          metadata: { contentType: f.mimetype }
+        });
+        stream.on('error', reject);
+        stream.on('finish', resolve);
+        stream.end(f.buffer);
+      });
 
-    for (const username of mentionedUsernames) {
-      const tag = {
-        fromUser: req.session.user.username,
-        taggedUserId: username,
-        content: trimmedText,
-        timestamp: new Date(),
-        threadType: 'team',
-        link: `/team/${teamname}#comments`,
-        seen: false
-      };
-      await db.collection('tags').add(tag);
+      await gcsFile.makePublic();
+      mediaUrl = `https://storage.googleapis.com/${bucketName}/${gcsPath}`;
+    }
+
+    // Fetch profile pic URL
+    const userDoc   = await db.collection('users').doc(req.session.user.username).get();
+    const profilePic = userDoc.exists ? userDoc.data().profile_pic || '' : '';
+
+    // Save comment
+    await db.collection('comments').add({
+      team:          teamname,
+      user:          req.session.user.username,
+      text,
+      media:         mediaUrl,
+      profile_pic:   profilePic,
+      like_reactions:0,
+      timestamp:     admin.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection('userStats').doc(req.session.user.username).set({
+      comments: admin.firestore.FieldValue.increment(1),
+      score:    admin.firestore.FieldValue.increment(1)
+    }, { merge: true });
+
+    // Tag mentions
+    const mentions = [...text.matchAll(/@(\w+)/g)].map(m => m[1]);
+    for (const u of mentions) {
+      await db.collection('tags').add({
+        fromUser:     req.session.user.username,
+        taggedUserId: u,
+        content:      text,
+        timestamp:    new Date(),
+        threadType:   'team',
+        link:         `/team/${teamname}#comments`,
+        seen:         false
+      });
     }
 
     res.redirect(`/team/${teamname}#comments`);
   } catch (err) {
-    console.error('Team comment error:', err);
+    console.error('❌ /team/:teamname/comment error:', err);
     res.status(500).send("Failed to post comment");
   }
 });
 
-//-----Poke-rival
+// /poke-rival (no tagging)
 app.post('/poke-rival', multiUpload, async (req, res) => {
-  if (!req.session.user) return res.status(401).send("Login required");
-
-  const { teamA, teamB, text } = req.body;
-  const username = req.session.user.username;
-
-  if (!teamA || !teamB || !text?.trim()) {
-    return res.status(400).send("Missing data");
-  }
-
-  const media =
-    req.files?.media?.[0]?.path?.includes('uploads')
-      ? `/uploads/${req.files.media[0].filename}`
-      : '';
-
   try {
-    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+    if (!req.session.user) 
+      return res.status(401).send("Login required");
 
-    // 🔁 Reverse rivalry check (teamB vs teamA)
-    const reverseCheck = await db.collection('rivalPokes')
+    const { teamA, teamB, text } = req.body;
+    if (!teamA || !teamB || !text?.trim()) 
+      return res.status(400).send("Missing data");
+
+    // 1) Optional media upload
+    let mediaUrl = '';
+    if (req.files.media?.[0]) {
+      const f       = req.files.media[0];
+      const ext     = path.extname(f.originalname);
+      const gcsPath = `pokes/${Date.now()}${ext}`;
+      const gcsFile = bucket.file(gcsPath);
+
+      await new Promise((resolve, reject) => {
+        const stream = gcsFile.createWriteStream({ metadata: { contentType: f.mimetype } });
+        stream.on('error', reject);
+        stream.on('finish', resolve);
+        stream.end(f.buffer);
+      });
+
+      await gcsFile.makePublic();
+      mediaUrl = `https://storage.googleapis.com/${bucketName}/${gcsPath}`;
+    }
+
+    // 2) Rivalry checks
+    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+    const reverseSnap = await db.collection('rivalPokes')
       .where('createdAt', '>', fourHoursAgo)
       .where('teamA', '==', teamB)
       .where('teamB', '==', teamA)
       .get();
-
-    if (!reverseCheck.empty) {
-      return res.status(400).json({
-        error: "A reverse rivalry is already active. Please wait until it expires."
-      });
+    if (!reverseSnap.empty) {
+      return res.status(400).send("A reverse rivalry is already active. Please wait until it expires.");
     }
-
-    // ⏱️ Same direction rivalry check
-    const sameCheck = await db.collection('rivalPokes')
+    const sameSnap = await db.collection('rivalPokes')
       .where('createdAt', '>', fourHoursAgo)
       .where('teamA', '==', teamA)
       .where('teamB', '==', teamB)
       .get();
-
-    if (!sameCheck.empty) {
-      return res.status(400).json({
-        error: 'An active rivalry already exists between these two teams. Please wait until it expires.'
-      });
+    if (!sameSnap.empty) {
+      return res.status(400).send("An active rivalry already exists between these two teams. Please wait until it expires.");
     }
 
-        // ✅ Save the poke thread (with expiresAt for 4-hour TTL)
+    // 3) Create poke thread
     const now       = admin.firestore.Timestamp.now();
-    const expiresAt = admin.firestore.Timestamp.fromMillis(
-      Date.now() + 4 * 60 * 60 * 1000
-    );
-
-    const newDocRef = await db.collection('rivalPokes').add({
+    const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 4 * 60 * 60 * 1000);
+    await db.collection('rivalPokes').add({
       teamA,
       teamB,
-      createdBy: username,
-      text: text.trim(),
-      media,
+      createdBy: req.session.user.username,
+      text:      text.trim(),
+      media:     mediaUrl,
       createdAt: now,
-      expiresAt,              // ← new field for TTL
-      score: { teamA: 0, teamB: 0 }
+      expiresAt,
+      score:     { teamA: 0, teamB: 0 }
     });
-
-    const pokeId = newDocRef.id;
-
-    // ✅ Detect @username mentions and add tag notifications
-    const mentionedUsernames = [...text.matchAll(/@(\w+)/g)].map(match => match[1]);
-
-    for (const taggedUser of mentionedUsernames) {
-      const tag = {
-        fromUser: username,
-        taggedUserId: taggedUser,
-        content: text,
-        timestamp: new Date(),
-        threadType: 'poke',
-        link: `/poke/${pokeId}#comments`,
-        seen: false
-      };
-      await db.collection('tags').add(tag);
-    }
 
     res.redirect(`/team/${teamA}`);
   } catch (err) {
-    console.error('❌ Failed to poke rival:', err);
+    console.error('❌ /poke-rival error:', err);
     res.status(500).send("Failed to poke rival");
   }
 });
@@ -1124,67 +1090,62 @@ app.post('/poke/:id/reset-votes', async (req, res) => {
   }
 });
 
-// --- Full comment handler for rival-poke posts (no tagging allowed) ---
+// Poke-thread comments (no tagging, optional media)
 app.post('/poke/:id/comment', multiUpload, async (req, res) => {
-  const { id } = req.params;
-  const { text } = req.body;
-  const username = req.session.user?.username;
-
-  if (!username || !text?.trim()) {
-    return res.status(400).send("Missing data");
-  }
-
-  // Handle uploaded media (image/video)
-  const media =
-    req.files?.media?.[0]?.path.includes('uploads')
-      ? `/uploads/${req.files.media[0].filename}`
-      : '';
-
   try {
-    // 1) Determine fan side from existing vote only
-    let fanSide = null;
-    const voteDoc = await db
-      .collection('rivalPokes')
-      .doc(id)
-      .collection('votes')
-      .doc(username)
-      .get();
+    const { id } = req.params;
+    const text   = (req.body.text || '').trim();
+    const user   = req.session.user?.username;
+    if (!user || !text) 
+      return res.status(400).send("Missing data");
 
-    if (voteDoc.exists) {
-      const vote = voteDoc.data().team;
-      if (vote === 'teamA') fanSide = 'teamA';
-      else if (vote === 'teamB') fanSide = 'teamB';
+    // Optional media → GCS
+    let mediaUrl = '';
+    if (req.files.media?.[0]) {
+      const f       = req.files.media[0];
+      const ext     = path.extname(f.originalname);
+      const gcsPath = `poke-comments/${id}/${Date.now()}${ext}`;
+      const gcsFile = bucket.file(gcsPath);
+
+      await new Promise((resolve, reject) => {
+        const stream = gcsFile.createWriteStream({
+          metadata: { contentType: f.mimetype }
+        });
+        stream.on('error', reject);
+        stream.on('finish', resolve);
+        stream.end(f.buffer);
+      });
+
+      await gcsFile.makePublic();
+      mediaUrl = `https://storage.googleapis.com/${bucketName}/${gcsPath}`;
     }
 
-    // 2) Save the comment under the poke thread, include `team` only when fanSide is set
-    const commentData = {
-      user: username,
-      text: text.trim(),
-      media,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    // Determine fan side
+    const voteDoc = await db.collection('rivalPokes').doc(id)
+                             .collection('votes').doc(user).get();
+    const fanSide  = voteDoc.exists ? voteDoc.data().team : null;
+
+    // Save comment
+    const data = {
+      user,
+      text,
+      media:     mediaUrl,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
     };
-    if (fanSide) commentData.team = fanSide;
+    if (fanSide) data.team = fanSide;
 
-    await db
-      .collection('rivalPokes')
-      .doc(id)
-      .collection('comments')
-      .add(commentData);
+    await db.collection('rivalPokes').doc(id)
+            .collection('comments').add(data);
 
-    // 3) Update the user's stats
-    await db.collection('userStats').doc(username).set({
+    // Update stats
+    await db.collection('userStats').doc(user).set({
       comments: admin.firestore.FieldValue.increment(1),
-      likes: 0,
-      funny: 0,
-      angry: 0,
-      love: 0,
-      score: admin.firestore.FieldValue.increment(1)
+      score:    admin.firestore.FieldValue.increment(1)
     }, { merge: true });
 
-    // 4) Redirect back to thread
     res.redirect(`/poke/${id}`);
   } catch (err) {
-    console.error('❌ Failed to post comment:', err);
+    console.error('❌ /poke/:id/comment error:', err);
     res.status(500).send("Failed to post comment");
   }
 });
@@ -1371,6 +1332,52 @@ app.post('/user/:fromUser/reject-follow', async (req, res) => {
   }
 });
 
+// ─── Delete own account ─────────────────────────────────────────────────────
+app.post('/user/delete-account', async (req, res, next) => {
+  const username = req.session.user?.username;
+  if (!username) {
+    // not logged in
+    return res.redirect('/?error=Login required');
+  }
+
+  try {
+    // 1) Delete all comments by this user
+    const commentsSnap = await db.collection('comments')
+      .where('user', '==', username).get();
+    const batch = db.batch();
+    commentsSnap.docs.forEach(d => batch.delete(d.ref));
+
+    // 2) Delete all fevers by this user
+    const feversSnap = await db.collection('fevers')
+      .where('user', '==', username).get();
+    feversSnap.docs.forEach(d => batch.delete(d.ref));
+
+    // 3) Remove follow relationships
+    //    (you may choose to cascade this or leave as is)
+    batch.update(
+      db.collection('users').doc(username),
+      { followers: [], following: [] }
+    );
+
+    // 4) Delete the userStats doc
+    batch.delete(db.collection('userStats').doc(username));
+
+    // 5) Finally delete the user document
+    batch.delete(db.collection('users').doc(username));
+
+    await batch.commit();
+
+    // 6) Destroy session & redirect
+    req.session.destroy(err => {
+      if (err) return next(err);
+      res.redirect('/?info=Account+deleted');
+    });
+  } catch (err) {
+    console.error('❌ Delete account error:', err);
+    next(err);
+  }
+});
+
 // ✅ Inbox Hub Page: /inbox
 app.get('/inbox', async (req, res) => {
   if (!req.session.user) return res.redirect('/?error=Login required');
@@ -1489,24 +1496,40 @@ app.post('/user/:username/unfollow', async (req, res) => {
     res.redirect('/user/' + targetUser);
   }
 });
-// --- Upload/change profile picture ---
-app.post('/user/upload-avatar', upload.single('profile_pic'), async (req, res) => {
+
+// 1) Profile picture upload
+app.post('/user/upload-avatar', memoryUpload.single('profile_pic'), async (req, res) => {
   const username = req.session.user?.username;
   if (!username || !req.file) return res.redirect('/');
 
-  const filePath = `/uploads/${req.file.filename}`;
+  // 1.1) Prepare GCS path
+  const ext     = path.extname(req.file.originalname);
+  const gcsPath = `avatars/${username}-${Date.now()}${ext}`;
+  const gcsFile = bucket.file(gcsPath);
 
-  try {
-    await db.collection('users').doc(username).update({
-      profile_pic: filePath
-    });
+  // 1.2) Upload buffer
+  const stream = gcsFile.createWriteStream({ metadata: { contentType: req.file.mimetype } });
+  stream.end(req.file.buffer);
 
-    req.session.user.profile_pic = filePath; // update session (optional)
-    res.redirect('/user/' + username);
-  } catch (err) {
-    console.error('❌ Avatar upload error:', err);
-    res.redirect('/user/' + username);
-  }
+  stream.on('error', err => {
+    console.error('Avatar upload to GCS failed:', err);
+    return res.redirect('/user/' + username);
+  });
+
+  stream.on('finish', async () => {
+    try {
+      await gcsFile.makePublic();
+      const publicUrl = `https://storage.googleapis.com/${bucketName}/${gcsPath}`;
+
+      // 1.3) Save URL in Firestore
+      await db.collection('users').doc(username).update({ profile_pic: publicUrl });
+      req.session.user.profile_pic = publicUrl;
+      res.redirect('/user/' + username);
+    } catch (err) {
+      console.error('Firestore write error for avatar:', err);
+      res.redirect('/user/' + username);
+    }
+  });
 });
 
 //Leagues 

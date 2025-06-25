@@ -68,77 +68,92 @@
 </div>
 </header>
 
-<!-- Updated Login Modal -->
-<div id="loginModal" class="auth-modal hidden">
-  <div class="auth-form-wrapper">
-    <form action="/login" method="POST" class="auth-form">
-      <div class="auth-header">
-        <h2>Login</h2>
-        <button type="button" class="close-btn" onclick="closeModals()">×</button>
-      </div>
+  <!-- Updated Login Modal -->
+  <div id="loginModal" class="auth-modal hidden">
+    <div class="auth-form-wrapper">
+      <form action="/login" method="POST" class="auth-form">
+        <div class="auth-header">
+          <h2>Login</h2>
+          <button type="button" class="close-btn" onclick="closeModals()">×</button>
+        </div>
 
-      <% if (loginError) { %>
-        <p class="error-message"><%= loginError %></p>
-      <% } %>
+        <% if (loginError) { %>
+          <p class="error-message"><%= loginError %></p>
+        <% } %>
 
-      <div class="auth-body">
-        <label>
-          <span>Username</span>
-          <input type="text" name="username" placeholder="Your username" required>
-        </label>
-        <label>
-          <span>Password</span>
-          <input type="password" name="password" placeholder="••••••••" required>
-        </label>
-        <button type="submit" class="submit-btn">Log In</button>
-      </div>
+        <div class="auth-body">
+          <label>
+            <span>Username</span>
+            <input type="text" name="username" placeholder="Your username" required>
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" name="password" placeholder="••••••••" required>
+          </label>
+          <button type="submit" class="submit-btn">Log In</button>
+        </div>
 
-      <div class="auth-footer">
-        <p>Don’t have an account? <span onclick="openSignup()" class="auth-link">Sign up here</span></p>
-      </div>
-    </form>
+        <div class="auth-footer">
+          <p>Don’t have an account? <span onclick="openSignup()" class="auth-link">Sign up here</span></p>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
 
-<!-- Updated Signup Modal -->
-<div id="signupModal" class="auth-modal hidden">
-  <div class="auth-form-wrapper">
-    <form action="/signup" method="POST" class="auth-form">
-      <div class="auth-header">
-        <h2>Sign Up</h2>
-        <button type="button" class="close-btn" onclick="closeModals()">×</button>
-      </div>
+  <!-- auto–open login modal on error -->
+  <% if (loginError) { %>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => openLogin());
+  </script>
+  <% } %>
 
-      <% if (signupError) { %>
-        <p class="error-message"><%= signupError %></p>
-      <% } %>
 
-      <div class="auth-body">
-        <label>
-          <span>Username</span>
-          <input type="text" name="username" placeholder="Choose a username" required>
-        </label>
-        <label>
-  <span>Email</span>
-  <input type="email" name="email" placeholder="Your email address" required>
-</label>
-        <label>
-          <span>Password</span>
-          <input type="password" name="password" placeholder="Create a password" required>
-        </label>
-        <label>
-          <span>Confirm Password</span>
-          <input type="password" name="confirmPassword" placeholder="Repeat password" required>
-        </label>
-        <button type="submit" class="submit-btn">Create Account</button>
-      </div>
+  <!-- Updated Signup Modal -->
+  <div id="signupModal" class="auth-modal hidden">
+    <div class="auth-form-wrapper">
+      <form action="/signup" method="POST" class="auth-form">
+        <div class="auth-header">
+          <h2>Sign Up</h2>
+          <button type="button" class="close-btn" onclick="closeModals()">×</button>
+        </div>
 
-      <div class="auth-footer">
-        <p>Already have an account? <span onclick="openLogin()" class="auth-link">Log in here</span></p>
-      </div>
-    </form>
+        <% if (signupError) { %>
+          <p class="error-message"><%= signupError %></p>
+        <% } %>
+
+        <div class="auth-body">
+          <label>
+            <span>Username</span>
+            <input type="text" name="username" placeholder="Choose a username" required>
+          </label>
+          <label>
+            <span>Email</span>
+            <input type="email" name="email" placeholder="Your email address" required>
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" name="password" placeholder="Create a password" required>
+          </label>
+          <label>
+            <span>Confirm Password</span>
+            <input type="password" name="confirmPassword" placeholder="Repeat password" required>
+          </label>
+          <button type="submit" class="submit-btn">Create Account</button>
+        </div>
+
+        <div class="auth-footer">
+          <p>Already have an account? <span onclick="openLogin()" class="auth-link">Log in here</span></p>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
+
+  <!-- auto–open signup modal on error -->
+  <% if (signupError) { %>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => openSignup());
+  </script>
+  <% } %>
 
 <style>
   /* 1. Global box-sizing so padding/borders don’t cause overflow */
