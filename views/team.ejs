@@ -329,38 +329,86 @@
       <p>No comments yet. Be the first!</p>
     <% } else { %>
       <% comments.forEach(comment => { %>
-        <div class="comment-item">
-          <div class="comment-user" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-            <img src="<%= comment.profile_pic || '/default-avatar.png' %>" alt="Avatar" class="comment-avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
-            <strong><a href="/user/<%= comment.user %>"><%= comment.user %></a></strong>
-          </div>
+  <div class="comment-item" data-id="<%= comment.id %>">
+    <!-- Avatar & Username -->
+    <div class="comment-user" style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+      <img
+        src="<%= comment.profile_pic || '/default-avatar.png' %>"
+        alt="Avatar"
+        class="comment-avatar"
+        style="width:40px; height:40px; border-radius:50%; object-fit:cover;"
+      />
+      <strong><a href="/user/<%= comment.user %>"><%= comment.user %></a></strong>
+    </div>
 
-          <% if (comment.text && comment.text.trim()) { %>
-  <p><%- comment.text.replace(/@(\w+)/g, '<a href="/user/$1" style="color:#007BFF;">$1</a>') %></p>
-<% } %>
+    <!-- Edit/Delete controls (only your own comments) -->
+    <% if (user && user.username === comment.user) { %>
+      <div class="comment-controls" style="text-align:right; margin-bottom:8px;">
+        <button class="edit-comment-btn" data-id="<%= comment.id %>">✏️ Edit</button>
+        <form
+          action="/team/<%= teamname %>/comment/<%= comment.id %>/delete"
+          method="POST"
+          style="display:inline;"
+          onsubmit="return confirm('Delete this comment?');"
+        >
+          <button type="submit">🗑️ Delete</button>
+        </form>
+      </div>
+    <% } %>
 
-          <% if (comment.media) {
-            const isVideo = comment.media.endsWith('.mp4') || comment.media.endsWith('.webm') || comment.media.endsWith('.ogg');
-          %>
-            <% if (isVideo) { %>
-              <video src="<%= comment.media %>" controls style="max-width: 100%; border-radius: 10px; margin-top: 10px;"></video>
-            <% } else { %>
-              <img src="<%= comment.media %>" class="comment-image-clickable" />
-            <% } %>
-          <% } %>
+    <!-- Comment Text -->
+    <% if (comment.text && comment.text.trim()) { %>
+      <p class="comment-text">
+        <%- comment.text.replace(
+              /@(\w+)/g,
+              '<a href="/user/$1" style="color:#007BFF;">@$1</a>'
+            ) %>
+      </p>
+    <% } %>
 
-          <div class="reactions">
-            <button onclick="reactToComment('<%= comment.id %>', 'like')">👍 <span id="like-<%= comment.id %>"><%= comment.like_reactions || 0 %></span></button>
-            <button onclick="reactToComment('<%= comment.id %>', 'funny')">😂 <span id="funny-<%= comment.id %>"><%= comment.funny_reactions || 0 %></span></button>
-            <button onclick="reactToComment('<%= comment.id %>', 'angry')">😡 <span id="angry-<%= comment.id %>"><%= comment.angry_reactions || 0 %></span></button>
-            <button onclick="reactToComment('<%= comment.id %>', 'love')">😍 <span id="love-<%= comment.id %>"><%= comment.love_reactions || 0 %></span></button>
-          </div>
+    <!-- Optional Media -->
+    <% if (comment.media) {
+         const isVideo = comment.media.endsWith('.mp4')
+                       || comment.media.endsWith('.webm')
+                       || comment.media.endsWith('.ogg');
+    %>
+      <% if (isVideo) { %>
+        <video
+          src="<%= comment.media %>"
+          controls
+          style="max-width:100%; border-radius:10px; margin-top:10px;"
+        ></video>
+      <% } else { %>
+        <img
+          src="<%= comment.media %>"
+          class="comment-image-clickable"
+          style="margin-top:10px;"
+        />
+      <% } %>
+    <% } %>
 
-          <small style="color: #999;" title="<%= comment.timestamp?.toDate().toLocaleString() %>">
-  <%= comment.relativeTime %>
-</small>
-        </div>
-      <% }) %>
+    <!-- Reactions -->
+    <div class="reactions" style="margin-top:8px;">
+      <button onclick="reactToComment('<%= comment.id %>', 'like')">
+        👍 <span id="like-<%= comment.id %>"><%= comment.like_reactions || 0 %></span>
+      </button>
+      <button onclick="reactToComment('<%= comment.id %>', 'funny')">
+        😂 <span id="funny-<%= comment.id %>"><%= comment.funny_reactions || 0 %></span>
+      </button>
+      <button onclick="reactToComment('<%= comment.id %>', 'angry')">
+        😡 <span id="angry-<%= comment.id %>"><%= comment.angry_reactions || 0 %></span>
+      </button>
+      <button onclick="reactToComment('<%= comment.id %>', 'love')">
+        😍 <span id="love-<%= comment.id %>"><%= comment.love_reactions || 0 %></span>
+      </button>
+    </div>
+
+    <!-- Timestamp -->
+    <small style="color:#999; display:block; margin-top:4px;" title="<%= comment.timestamp?.toDate().toLocaleString() %>">
+      <%= comment.relativeTime %>
+    </small>
+  </div>
+<% }) %>
     <% } %>
   </div>
   <% if (totalPages > 1) { %>
@@ -592,5 +640,45 @@ document.getElementById('openTacticalBoardBtn').addEventListener('click', e => {
 <%- include('partials/_tactical-board') %>
 <!-- 🟩 Tactical Board Mobile Modal -->
 <%- include('partials/_tactical-board-mobile') %>
+<script>
+  document.querySelectorAll('.edit-comment-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const id = btn.dataset.id;
+      const container = document.querySelector(`.comment-item[data-id="${id}"]`);
+      const p = container.querySelector('p.comment-text');
+      const original = p.innerText;
+
+      // build an edit form
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = `/team/${'<%= teamname %>'}/comment/${id}/edit`;
+
+      const ta = document.createElement('textarea');
+ta.name = 'text';
+ta.value = original;
+ta.style.width = '100%';
+ta.style.height = '120px';      // ← new
+ta.style.marginBottom = '8px';
+
+      const save = document.createElement('button');
+      save.type = 'submit';
+      save.textContent = '💾 Save';
+
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.textContent = '❌ Cancel';
+      cancel.style.marginLeft = '8px';
+      cancel.addEventListener('click', () => {
+        container.replaceChild(p, form);
+      });
+
+      form.appendChild(ta);
+      form.appendChild(save);
+      form.appendChild(cancel);
+
+      container.replaceChild(form, p);
+    });
+  });
+</script>
 </body>
 </html>

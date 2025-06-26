@@ -706,6 +706,62 @@ app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
   }
 });
 
+// EDIT a comment
+app.post('/team/:teamname/comment/:id/edit', async (req, res) => {
+  const username = req.session.user?.username;
+  const { teamname, id } = req.params;
+  const newText   = (req.body.text || '').trim();
+  if (!username) {
+    return res.status(401).send('Login required');
+  }
+  if (!newText) {
+    return res.status(400).send('Comment cannot be empty');
+  }
+  try {
+    const commentRef = db.collection('comments').doc(id);
+    const commentDoc = await commentRef.get();
+    if (!commentDoc.exists) {
+      return res.status(404).send('Comment not found');
+    }
+    const data = commentDoc.data();
+    if (data.user !== username || data.team !== teamname) {
+      return res.status(403).send('Not permitted');
+    }
+    await commentRef.update({ text: sanitizeHtml(newText) });
+    // optionally update your userStats…
+    res.redirect(`/team/${teamname}#comments`);
+  } catch (err) {
+    console.error('Edit comment error:', err);
+    res.status(500).send('Could not edit comment');
+  }
+});
+
+// DELETE a comment
+app.post('/team/:teamname/comment/:id/delete', async (req, res) => {
+  const username = req.session.user?.username;
+  const { teamname, id } = req.params;
+  if (!username) {
+    return res.status(401).send('Login required');
+  }
+  try {
+    const commentRef = db.collection('comments').doc(id);
+    const commentDoc = await commentRef.get();
+    if (!commentDoc.exists) {
+      return res.status(404).send('Comment not found');
+    }
+    const data = commentDoc.data();
+    if (data.user !== username || data.team !== teamname) {
+      return res.status(403).send('Not permitted');
+    }
+    await commentRef.delete();
+    // optionally decrement userStats…
+    res.redirect(`/team/${teamname}#comments`);
+  } catch (err) {
+    console.error('Delete comment error:', err);
+    res.status(500).send('Could not delete comment');
+  }
+});
+
 // /poke-rival (no tagging)
 app.post('/poke-rival', multiUpload, async (req, res) => {
   try {
