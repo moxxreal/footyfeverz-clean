@@ -43,7 +43,12 @@ const bucket = gcsStorage.bucket(bucketName);
 // ─── App setup ───────────────────────────────────────────────────────────────
 dayjs.extend(relativeTime);
 
-const memoryUpload = multer({ storage: multer.memoryStorage() });
+// Limit uploads to 5 MB per file
+const memoryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }  // 5 MB
+});
+
 const multiUpload  = memoryUpload.fields([
   { name: 'media',       maxCount: 1 },
   { name: 'profile_pic', maxCount: 1 },
@@ -173,60 +178,76 @@ function computeFeverScore(fever) {
   return (fever.likes + fever.comments) * 10 - ageHours * 2;
 }
 
-app.post('/fever', memoryUpload.single('feverMedia'), async (req, res) => {
-  try {
-    // 0) Auth check
-    if (!req.session.user) {
-      return res.status(401).send("Login required");
-    }
+// POST /fever — upload a new Fever
+app.post(
+  '/fever',
+  memoryUpload.single('feverMedia'),
+  async (req, res) => {
+    try {
+      // 0) Auth check
+      if (!req.session.user) {
+        return res.status(401).send("Login required");
+      }
 
-    // 1) Ensure a file was uploaded
-    const file = req.file;
-    if (!file) {
-      return res.status(400).send("Please upload an image or video");
-    }
+      // 1) Ensure a file was uploaded
+      const file = req.file;
+      if (!file) {
+        return res.status(400).send("Please upload an image or video");
+      }
 
-    // 2) Build a unique GCS path
-    const ext     = path.extname(file.originalname);  // e.g. ".png"
-    const gcsPath = `fevers/${Date.now()}-${Math.random().toString(36).substr(2,6)}${ext}`;
-    const gcsFile = bucket.file(gcsPath);
+      // 2) Build a unique GCS path
+      const ext     = path.extname(file.originalname);  // e.g. ".png"
+      const gcsPath = `fevers/${Date.now()}-${Math.random().toString(36).substr(2,6)}${ext}`;
+      const gcsFile = bucket.file(gcsPath);
 
-    // 3) Stream the buffer into GCS
-    await new Promise((resolve, reject) => {
-      const stream = gcsFile.createWriteStream({
-        metadata: { contentType: file.mimetype }
+      // 3) Stream the buffer into GCS with a 1-year cache header
+      await new Promise((resolve, reject) => {
+        const stream = gcsFile.createWriteStream({
+          metadata: {
+            contentType: file.mimetype,
+            cacheControl: 'public, max-age=31536000'
+          }
+        });
+        stream.on('error', reject);
+        stream.on('finish', resolve);
+        stream.end(file.buffer);
       });
-      stream.on('error', reject);
-      stream.on('finish', resolve);
-      stream.end(file.buffer);
-    });
 
-    // 4) Make it publicly readable
-    await gcsFile.makePublic();
-    const publicUrl = `https://storage.googleapis.com/${bucketName}/${gcsPath}`;
+      // 4) Make it publicly readable
+      await gcsFile.makePublic();
+      const publicUrl = `https://storage.googleapis.com/${bucketName}/${gcsPath}`;
 
-    // 5) Sanitize caption and determine mediaType
-    const caption   = sanitizeHtml(req.body.caption || '');
-    const mediaType = file.mimetype.startsWith('video/') ? 'video' : 'image';
+      // 5) Sanitize caption and determine mediaType
+      const caption   = sanitizeHtml(req.body.caption || '');
+      const mediaType = file.mimetype.startsWith('video/') ? 'video' : 'image';
 
-    // 6) Write to Firestore
-    await db.collection('fevers').add({
-      user:      req.session.user.username,
-      caption,
-      mediaURL:  publicUrl,
-      mediaType,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      likes:     0,
-      comments:  0
-    });
+      // 6) Write to Firestore
+      await db.collection('fevers').add({
+    user:      req.session.user.username,
+    caption,
+    mediaURL:  publicUrl,
+     gcsPath,                             // ← new!
+     mediaType,
+     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+     likes:     0,
+     comments:  0
+   });
 
-    // 7) Redirect home
-    res.redirect('/');
-  } catch (err) {
-    console.error('❌ /fever error:', err);
-    res.status(500).send("Could not post your Fever");
+      // 7) Redirect home
+      res.redirect('/');
+    } catch (err) {
+      console.error('❌ /fever error:', err);
+      res.status(500).send("Could not post your Fever");
+    }
+  },
+  // Multer error handler for file size limits
+  (err, req, res, next) => {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).send('File too large. Max size is 5 MB.');
+    }
+    next(err);
   }
-});
+);
 
 app.get('/api/fevers', async (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 10;
@@ -393,16 +414,30 @@ app.post('/fever/:id/delete', async (req, res) => {
   try {
     const docRef = db.collection('fevers').doc(feverId);
     const doc = await docRef.get();
-
     if (!doc.exists) return res.status(404).send('Fever not found');
 
     const data = doc.data();
-    if (data.user !== username) return res.status(403).send('Not your Fever');
 
-    // Delete Fever document
+    // 1) Delete the Storage object using the stored gcsPath
+  if (data.gcsPath) {
+    try {
+      // Use the Admin SDK’s bucket so it matches your upload bucket
+      const adminBucket = admin.storage().bucket();
+      await adminBucket
+        .file(data.gcsPath)
+        .delete({ ignoreNotFound: true });
+      console.log(`✅ Deleted Storage file: ${data.gcsPath}`);
+    } catch (err) {
+      console.warn('⚠️ Could not delete Storage file:', err);
+    }
+  } else {
+    console.warn('⚠️ No gcsPath on this Fever; skipping file deletion');
+  }
+
+    // 2) Delete the Firestore Fever document
     await docRef.delete();
 
-    // Delete associated comments
+    // 3) Delete associated comments
     const commentSnap = await db.collection('feverComments')
       .where('feverId', '==', feverId)
       .get();
@@ -411,6 +446,7 @@ app.post('/fever/:id/delete', async (req, res) => {
     commentSnap.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
 
+    // 4) Finally, destroy session or redirect
     res.redirect('/');
   } catch (err) {
     console.error('❌ Delete Fever error:', err);
@@ -655,8 +691,11 @@ app.post('/team/:teamname/comment', multiUpload, async (req, res) => {
 
       await new Promise((resolve, reject) => {
         const stream = gcsFile.createWriteStream({
-          metadata: { contentType: f.mimetype }
-        });
+   metadata: {
+     contentType: f.mimetype,
+     cacheControl: 'public, max-age=31536000'
+   }
+ });
         stream.on('error', reject);
         stream.on('finish', resolve);
         stream.end(f.buffer);
@@ -736,29 +775,38 @@ app.post('/team/:teamname/comment/:id/edit', async (req, res) => {
   }
 });
 
-// DELETE a comment
 app.post('/team/:teamname/comment/:id/delete', async (req, res) => {
   const username = req.session.user?.username;
   const { teamname, id } = req.params;
-  if (!username) {
-    return res.status(401).send('Login required');
-  }
+  if (!username) return res.status(401).send('Login required');
+
   try {
     const commentRef = db.collection('comments').doc(id);
     const commentDoc = await commentRef.get();
     if (!commentDoc.exists) {
       return res.status(404).send('Comment not found');
     }
+
     const data = commentDoc.data();
-    if (data.user !== username || data.team !== teamname) {
-      return res.status(403).send('Not permitted');
+    // 1) Delete associated media file in GCS, if any
+    if (data.media) {
+      try {
+        const url = new URL(data.media);
+        const gcsPath = url.pathname.replace(`/${bucketName}/`, '');
+        await bucket.file(gcsPath).delete();
+        console.log(`✅ Deleted comment media: ${gcsPath}`);
+      } catch (err) {
+        console.warn('⚠️ Could not delete GCS file for comment:', err);
+      }
     }
+
+    // 2) Delete the Firestore comment document
     await commentRef.delete();
-    // optionally decrement userStats…
+
     res.redirect(`/team/${teamname}#comments`);
   } catch (err) {
-    console.error('Delete comment error:', err);
-    res.status(500).send('Could not delete comment');
+    console.error('❌ /team/:teamname/comment/:id/delete error:', err);
+    res.status(500).send("Could not delete comment");
   }
 });
 
@@ -781,7 +829,12 @@ app.post('/poke-rival', multiUpload, async (req, res) => {
       const gcsFile = bucket.file(gcsPath);
 
       await new Promise((resolve, reject) => {
-        const stream = gcsFile.createWriteStream({ metadata: { contentType: f.mimetype } });
+        const stream = gcsFile.createWriteStream({
+   metadata: {
+     contentType: f.mimetype,
+     cacheControl: 'public, max-age=31536000'
+   }
+ });
         stream.on('error', reject);
         stream.on('finish', resolve);
         stream.end(f.buffer);
@@ -1165,8 +1218,11 @@ app.post('/poke/:id/comment', multiUpload, async (req, res) => {
 
       await new Promise((resolve, reject) => {
         const stream = gcsFile.createWriteStream({
-          metadata: { contentType: f.mimetype }
-        });
+   metadata: {
+     contentType: f.mimetype,
+     cacheControl: 'public, max-age=31536000'
+   }
+ });
         stream.on('error', reject);
         stream.on('finish', resolve);
         stream.end(f.buffer);
@@ -1553,36 +1609,59 @@ app.post('/user/:username/unfollow', async (req, res) => {
   }
 });
 
-// 1) Profile picture upload
 app.post('/user/upload-avatar', memoryUpload.single('profile_pic'), async (req, res) => {
   const username = req.session.user?.username;
   if (!username || !req.file) return res.redirect('/');
 
-  // 1.1) Prepare GCS path
+  // 0) Fetch existing avatar URL so we can delete it
+  try {
+    const userRef = db.collection('users').doc(username);
+    const userSnap = await userRef.get();
+    const prevUrl = userSnap.exists ? userSnap.data().profile_pic : null;
+
+    if (prevUrl) {
+      try {
+        const url = new URL(prevUrl);
+        const oldPath = url.pathname.replace(`/${bucketName}/`, '');
+        await bucket.file(oldPath).delete();
+        console.log(`✅ Deleted old avatar: ${oldPath}`);
+      } catch (err) {
+        console.warn('⚠️ Could not delete old avatar:', err);
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Failed to lookup previous avatar:', err);
+  }
+
+  // 1) Prepare GCS path for the new avatar
   const ext     = path.extname(req.file.originalname);
   const gcsPath = `avatars/${username}-${Date.now()}${ext}`;
   const gcsFile = bucket.file(gcsPath);
 
-  // 1.2) Upload buffer
-  const stream = gcsFile.createWriteStream({ metadata: { contentType: req.file.mimetype } });
+  // 2) Stream the new file
+  const stream = gcsFile.createWriteStream({
+   metadata: {
+     contentType: req.file.mimetype,
+     cacheControl: 'public, max-age=31536000'
+   }
+ });
   stream.end(req.file.buffer);
 
   stream.on('error', err => {
-    console.error('Avatar upload to GCS failed:', err);
+    console.error('❌ Avatar upload to GCS failed:', err);
     return res.redirect('/user/' + username);
   });
 
   stream.on('finish', async () => {
     try {
+      // 3) Make it public and save URL in Firestore
       await gcsFile.makePublic();
       const publicUrl = `https://storage.googleapis.com/${bucketName}/${gcsPath}`;
-
-      // 1.3) Save URL in Firestore
       await db.collection('users').doc(username).update({ profile_pic: publicUrl });
       req.session.user.profile_pic = publicUrl;
       res.redirect('/user/' + username);
     } catch (err) {
-      console.error('Firestore write error for avatar:', err);
+      console.error('❌ Firestore write error for avatar:', err);
       res.redirect('/user/' + username);
     }
   });
