@@ -223,15 +223,14 @@ app.post(
 
       // 6) Write to Firestore
       await db.collection('fevers').add({
-    user:      req.session.user.username,
-    caption,
-    mediaURL:  publicUrl,
-     gcsPath,                             // ← new!
-     mediaType,
-     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-     likes:     0,
-     comments:  0
-   });
+        user:      req.session.user.username,
+        caption,
+        mediaURL:  publicUrl,
+        mediaType,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        likes:     0,
+        comments:  0
+      });
 
       // 7) Redirect home
       res.redirect('/');
@@ -418,21 +417,19 @@ app.post('/fever/:id/delete', async (req, res) => {
 
     const data = doc.data();
 
-    // 1) Delete the Storage object using the stored gcsPath
-  if (data.gcsPath) {
-    try {
-      // Use the Admin SDK’s bucket so it matches your upload bucket
-      const adminBucket = admin.storage().bucket();
-      await adminBucket
-        .file(data.gcsPath)
-        .delete({ ignoreNotFound: true });
-      console.log(`✅ Deleted Storage file: ${data.gcsPath}`);
-    } catch (err) {
-      console.warn('⚠️ Could not delete Storage file:', err);
+    // 1) Delete the GCS object for this Fever
+    if (data.mediaURL) {
+      try {
+        // Parse out the bucket path from the public URL
+        const url = new URL(data.mediaURL);
+        // URL.pathname is "/<bucketName>/<objectPath>"
+        const gcsPath = url.pathname.replace(`/${bucketName}/`, '');
+        await bucket.file(gcsPath).delete();
+        console.log(`✅ Deleted GCS file: ${gcsPath}`);
+      } catch (err) {
+        console.warn('⚠️ Could not delete GCS file for Fever:', err);
+      }
     }
-  } else {
-    console.warn('⚠️ No gcsPath on this Fever; skipping file deletion');
-  }
 
     // 2) Delete the Firestore Fever document
     await docRef.delete();
