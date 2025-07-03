@@ -25,6 +25,8 @@ const multer       = require('multer');
 const { Server }   = require('socket.io');
 const sanitizeHtml = require('sanitize-html');
 const teamToLeagueMap = require('./teamToLeagueMap');
+const { RedisStore } = require('connect-redis');
+const redisClient = require('./redisClient');
 
 // ─── Firebase Admin & Firestore ─────────────────────────────────────────────
 admin.initializeApp({
@@ -61,11 +63,19 @@ const PORT   = process.env.PORT || 3000;
 const server = http.createServer(app);
 const io     = new Server(server);
 
-// ─── Session setup ──────────────────────────────────────────────────────────
+// ─── Session setup (with Redis & 7-day cookie) ─────────────────────────────
+const ONE_WEEK = 1000 * 60 * 60 * 24 * 7;
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'super-secret-key',
+  store: new RedisStore({ client: redisClient }),
+  secret: process.env.SESSION_SECRET,  // now using your long, random key
   resave: false,
-  saveUninitialized: true
+  saveUninitialized: false,
+  cookie: {
+    maxAge: ONE_WEEK,   // 7 days in milliseconds
+    httpOnly: true,
+    // secure: true,     // enable this once you're running over HTTPS
+  }
 }));
 
 // --- Chat notification middleware ---
@@ -527,7 +537,10 @@ async function renderHomeWithError(res, errorType, errorMsg) {
 
 // --- Signup ---
 app.post('/signup', async (req, res) => {
-  const { username, email, password, confirmPassword } = req.body;
+  let { username, email, password, confirmPassword } = req.body;
+
+  // Normalize username to lowercase
+  username = username.trim().toLowerCase();
 
   // ✅ Validate presence of all fields
   if (!username || !email || !password || !confirmPassword) {
@@ -557,7 +570,6 @@ app.post('/signup', async (req, res) => {
       .where('email', '==', email)
       .limit(1)
       .get();
-
     if (!existingEmailSnap.empty) {
       return renderHomeWithError(res, 'signupError', 'Email is already registered.');
     }
@@ -565,7 +577,7 @@ app.post('/signup', async (req, res) => {
     // ✅ Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ✅ Create user document
+    // ✅ Create user document (username saved lowercase)
     await db.collection('users').doc(username).set({
       username,
       email,
@@ -593,27 +605,38 @@ app.post('/signup', async (req, res) => {
 });
 
 // --- Login ---
+// --- Login (case-insensitive, with fallback for existing mixed-case users) ─────
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+  let { username, password } = req.body;
+  const original = username.trim();          // what user typed
+  const lower    = original.toLowerCase();   // normalized
 
-  if (!username || !password) {
+  if (!original || !password) {
     return renderHomeWithError(res, 'loginError', 'Username and password are required.');
   }
 
   try {
-    const userDoc = await db.collection('users').doc(username).get();
+    // 1) Try lowercase ID first
+    let userDoc = await db.collection('users').doc(lower).get();
+
+    // 2) Fallback: try original casing (for existing accounts created pre-migration)
+    if (!userDoc.exists) {
+      userDoc = await db.collection('users').doc(original).get();
+    }
+
     if (!userDoc.exists) {
       return renderHomeWithError(res, 'loginError', 'User not found.');
     }
 
     const userData = userDoc.data();
     const passwordMatch = await bcrypt.compare(password, userData.password);
-
     if (!passwordMatch) {
       return renderHomeWithError(res, 'loginError', 'Incorrect password.');
     }
 
-    req.session.user = { username: userData.username };
+    // 3) On success, store the lowercase key in session so everything downstream uses the new ID
+    const key = userDoc.id.toLowerCase();
+    req.session.user = { username: key };
     res.redirect('/');
   } catch (err) {
     console.error('Login error:', err);
