@@ -45,10 +45,10 @@ const bucket = gcsStorage.bucket(bucketName);
 // ─── App setup ───────────────────────────────────────────────────────────────
 dayjs.extend(relativeTime);
 
-// Limit uploads to 5 MB per file
+// Limit uploads to 60 MB per file
 const memoryUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }  // 5 MB
+  limits: { fileSize: 60 * 1024 * 1024 }  // 60 MB
 });
 
 const multiUpload  = memoryUpload.fields([
